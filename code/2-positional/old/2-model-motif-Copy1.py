@@ -43,12 +43,12 @@ import torch_sparse
 import tqdm.auto as tqdm
 
 # %%
-import peakfreeatac as pfa
-import peakfreeatac.fragments
-import peakfreeatac.transcriptome
+import chromatinhd as chd
+import chromatinhd.fragments
+import chromatinhd.transcriptome
 
 # %%
-folder_root = pfa.get_output()
+folder_root = chd.get_output()
 folder_data = folder_root / "data"
 
 # dataset_name = "lymphoma"
@@ -62,8 +62,8 @@ promoter_name, window = "10k10k", (-10000, 10000)
 window_width = window[1] - window[0]
 
 # %%
-transcriptome = peakfreeatac.transcriptome.Transcriptome(folder_data_preproc / "transcriptome")
-fragments = peakfreeatac.fragments.Fragments(folder_data_preproc / "fragments" / promoter_name)
+transcriptome = chromatinhd.transcriptome.Transcriptome(folder_data_preproc / "transcriptome")
+fragments = chromatinhd.fragments.Fragments(folder_data_preproc / "fragments" / promoter_name)
 
 # %%
 motifscores = pickle.load(open(folder_data_preproc / "motifscores.pkl", "rb"))
@@ -1049,7 +1049,7 @@ cutwindow = (-150, 150)
 np.prod(motifscores.shape) * 32 / 8 / 1024 / 1024 / 1024
 
 # %%
-import peakfreeatac.genome.motifs
+import chromatinhd.genome.motifs
 
 # %%
 window = (-padding_negative, padding_positive)
@@ -1079,7 +1079,7 @@ def get_motifscores(fragments, motifscores, window, cutwindow, fragment_batch_si
         genemapping = genemapping_full[fragment_start:fragment_end]
         coordinates = coordinates_full[fragment_start:fragment_end]
 
-        fragmentscores[fragment_start:fragment_end] = peakfreeatac.genome.motifs.score_fragments(
+        fragmentscores[fragment_start:fragment_end] = chromatinhd.genome.motifs.score_fragments(
             genemapping,
             coordinates,
             motifscores,
@@ -1151,7 +1151,7 @@ params = get_motifscores(fragments, motifscores > 0, window, cutwindow, fragment
 # %%
 import cProfile
 
-stats = cProfile.run("peakfreeatac.genome.motifs.score_fragments(*params)", "restats")
+stats = cProfile.run("chromatinhd.genome.motifs.score_fragments(*params)", "restats")
 import pstats
 
 p = pstats.Stats("restats")
@@ -1221,7 +1221,7 @@ ax.axvline(local_cut_right, color = "blue", dashes = (2, 2))
 # Look at the sequence
 
 # %%
-folder_motifs = pfa.get_output() / "data" / "motifs" / "hs" / "hocomoco"
+folder_motifs = chd.get_output() / "data" / "motifs" / "hs" / "hocomoco"
 pwms = pickle.load((folder_motifs / "pwms.pkl").open("rb"))
 motifs_oi = pickle.load((folder_data_preproc / "motifs_oi.pkl").open("rb"))
 
@@ -1326,10 +1326,10 @@ mean_gene_expression = transcriptome.X.dense().mean(0)
 # ### Subset cells and genes
 
 # %%
-import peakfreeatac.fragments
+import chromatinhd.fragments
 
 # %%
-split = pfa.fragments.SplitDouble(torch.arange(0, 100), torch.arange(0, 100))
+split = chd.fragments.SplitDouble(torch.arange(0, 100), torch.arange(0, 100))
 
 # %%
 # fragments.create_cell_fragment_mapping()
@@ -1359,7 +1359,7 @@ axes[0].set_ylabel("Fragment")
 # ### Pool fragments
 
 # %%
-from peakfreeatac.models.promotermotif.v1 import EmbeddingGenePooler
+from chromatinhd.models.promotermotif.v1 import EmbeddingGenePooler
 
 # %%
 embedding_gene_pooler = EmbeddingGenePooler(debug = True)
@@ -1374,7 +1374,7 @@ cell_gene_embedding.detach().numpy().flatten().max()
 # ### Create expression predictor
 
 # %%
-from peakfreeatac.models.promotermotif.v1 import EmbeddingToExpression
+from chromatinhd.models.promotermotif.v1 import EmbeddingToExpression
 
 # %%
 embedding_to_expression = EmbeddingToExpression(n_embedding_dimensions = n_embedding_dimensions, mean_gene_expression = mean_gene_expression)
@@ -1387,7 +1387,7 @@ expression_predicted = embedding_to_expression(cell_gene_embedding, split.gene_i
 # ### Whole model
 
 # %%
-from peakfreeatac.models.promotermotif.v1 import FragmentEmbeddingToExpression
+from chromatinhd.models.promotermotif.v1 import FragmentEmbeddingToExpression
 
 # %%
 model = FragmentEmbeddingToExpression(fragments.n_genes, mean_gene_expression, n_embedding_dimensions)

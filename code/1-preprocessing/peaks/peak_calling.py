@@ -24,17 +24,18 @@ import matplotlib.pyplot as plt
 import matplotlib as mpl
 
 import seaborn as sns
-sns.set_style('ticks')
+
+sns.set_style("ticks")
 
 import pickle
 
 import tqdm.auto as tqdm
 
 # %%
-import peakfreeatac as pfa
+import chromatinhd as chd
 
 # %%
-folder_root = pfa.get_output()
+folder_root = chd.get_output()
 folder_data = folder_root / "data"
 
 # dataset_name = "pbmc10k"
@@ -56,17 +57,17 @@ dataset_name = "brain"
 # dataset_name = "morf_20"
 
 folder_data_preproc = folder_data / dataset_name
-folder_data_preproc.mkdir(exist_ok = True, parents = True)
+folder_data_preproc.mkdir(exist_ok=True, parents=True)
 
 # %%
-software_folder = pfa.get_git_root() / "software"
+software_folder = chd.get_git_root() / "software"
 
 # %% [markdown]
 # ## Cell ranger
 
 # %%
 peaks_folder = folder_root / "peaks" / dataset_name / "cellranger"
-peaks_folder.mkdir(exist_ok = True, parents = True)
+peaks_folder.mkdir(exist_ok=True, parents=True)
 
 # %%
 # !cp {folder_data_preproc}/peaks.tsv {peaks_folder}/peaks.bed
@@ -82,7 +83,7 @@ peaks_folder.mkdir(exist_ok = True, parents = True)
 
 # %%
 peaks_folder = folder_root / "peaks" / dataset_name / "genrich"
-peaks_folder.mkdir(exist_ok = True, parents = True)
+peaks_folder.mkdir(exist_ok=True, parents=True)
 
 # %% [markdown]
 #
@@ -109,11 +110,11 @@ peaks_folder.mkdir(exist_ok = True, parents = True)
 # !echo '{software_folder}/Genrich-0.6.1/Genrich -t {folder_data_preproc}/bam/atac_readsorted_bam.bam -j -f {peaks_folder}/log -o {peaks_folder}/peaks.bed -v'
 
 # %%
-#(run on updeplasrv7)
+# (run on updeplasrv7)
 # create peaks folder
 # !echo 'mkdir -p {peaks_folder}'
 
-# sync from updeplasrv6 to updeplasrv7 
+# sync from updeplasrv6 to updeplasrv7
 # !echo 'rsync wsaelens@updeplasrv6.epfl.ch:{peaks_folder}/peaks.bed {peaks_folder}/peaks.bed'
 
 # %% [markdown]
@@ -121,7 +122,7 @@ peaks_folder.mkdir(exist_ok = True, parents = True)
 
 # %%
 peaks_folder = folder_root / "peaks" / dataset_name / "macs2"
-peaks_folder.mkdir(exist_ok = True, parents = True)
+peaks_folder.mkdir(exist_ok=True, parents=True)
 
 # %%
 # !echo 'ls {peaks_folder}'
@@ -163,14 +164,14 @@ peaks_folder
 
 # %%
 peaks_folder = folder_root / "peaks" / dataset_name / "macs2_q0.20"
-peaks_folder.mkdir(exist_ok = True, parents = True)
+peaks_folder.mkdir(exist_ok=True, parents=True)
 
 # %%
 # !echo 'cd {peaks_folder} && macs2 callpeak -t {folder_data_preproc}/atac_fragments.tsv.gz -f BEDPE -q 0.20 && cp {peaks_folder}/NA_peaks.narrowPeak {peaks_folder}/peaks.bed'
 
 # %%
 peaks_folder = folder_root / "peaks" / dataset_name / "macs2_q0.50"
-peaks_folder.mkdir(exist_ok = True, parents = True)
+peaks_folder.mkdir(exist_ok=True, parents=True)
 
 # %%
 # !echo 'cd {peaks_folder} && macs2 callpeak -t {folder_data_preproc}/atac_fragments.tsv.gz -f BEDPE -q 0.50 && cp {peaks_folder}/NA_peaks.narrowPeak {peaks_folder}/peaks.bed'
@@ -180,7 +181,7 @@ peaks_folder.mkdir(exist_ok = True, parents = True)
 
 # %%
 peaks_folder = folder_root / "peaks" / dataset_name / "macs2_improved"
-peaks_folder.mkdir(exist_ok = True, parents = True)
+peaks_folder.mkdir(exist_ok=True, parents=True)
 
 # %%
 # !echo 'ls {peaks_folder}'

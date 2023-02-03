@@ -1,8 +1,8 @@
 import pandas as pd
 import numpy as np
 
-import peakfreeatac as pfa
-import peakfreeatac.scorer
+import chromatinhd as chd
+import chromatinhd.scorer
 
 import pickle
 
@@ -11,7 +11,7 @@ import tqdm.auto as tqdm
 
 device = "cuda:0"
 
-folder_root = pfa.get_output()
+folder_root = chd.get_output()
 folder_data = folder_root / "data"
 
 for dataset_name in [
@@ -34,15 +34,13 @@ for dataset_name in [
     )
     window_width = window[1] - window[0]
 
-    fragments = pfa.data.Fragments(
-        folder_data_preproc / "fragments" / promoter_name
-    )
+    fragments = chd.data.Fragments(folder_data_preproc / "fragments" / promoter_name)
     fragments.window = window
 
     # create design to run
     from design import get_design, get_folds_inference
 
-    class Prediction(pfa.flow.Flow):
+    class Prediction(chd.flow.Flow):
         pass
 
     # folds & minibatching
@@ -54,19 +52,25 @@ for dataset_name in [
         "leiden_0.1"
     ]:
         latent_folder = folder_data_preproc / "latent"
-        latent = torch.from_numpy(pickle.load((latent_folder / (latent_name + ".pkl")).open("rb")).values).to(torch.float)
+        latent = torch.from_numpy(
+            pickle.load((latent_folder / (latent_name + ".pkl")).open("rb")).values
+        ).to(torch.float)
 
         # create design to run
         from design import get_design, get_folds_inference
+
         design = get_design(dataset_name, latent_name, fragments)
-        design = {k:design[k] for k in [
-            # "v4_128-64-32",
-            # "v4_256-128-64-32",
-            "v4_128",
-            "v4_64",
-            "v4_32",
-            "v4_64-32",
-        ]}
+        design = {
+            k: design[k]
+            for k in [
+                # "v4_128-64-32",
+                # "v4_256-128-64-32",
+                "v4_128",
+                "v4_64",
+                "v4_32",
+                "v4_64-32",
+            ]
+        }
         fold_slice = slice(0, 1)
 
         # folds & minibatching
@@ -75,11 +79,23 @@ for dataset_name in [
 
         for prediction_name, design_row in design.items():
             print(f"{dataset_name=} {promoter_name=} {prediction_name=}")
-            prediction = Prediction(pfa.get_output() / "prediction_likelihood" / dataset_name / promoter_name / latent_name / prediction_name)
+            prediction = Prediction(
+                chd.get_output()
+                / "prediction_likelihood"
+                / dataset_name
+                / promoter_name
+                / latent_name
+                / prediction_name
+            )
 
             ## Single base-pair inference
             # load all models
-            models = [pickle.load(open(prediction.path / ("model_" + str(fold_ix) + ".pkl"), "rb")) for fold_ix, fold in enumerate(folds[fold_slice])]
+            models = [
+                pickle.load(
+                    open(prediction.path / ("model_" + str(fold_ix) + ".pkl"), "rb")
+                )
+                for fold_ix, fold in enumerate(folds[fold_slice])
+            ]
             model = models[0]
 
             # device = "cuda"
@@ -89,7 +105,7 @@ for dataset_name in [
             # design_gene = pd.DataFrame({"gene_ix":np.arange(fragments.n_genes)})
             # design_latent = pd.DataFrame({"active_latent":np.arange(latent.shape[1])})
             # design_coord = pd.DataFrame({"coord":np.arange(window[0], window[1]+1, step = 25)})
-            # design = pfa.utils.crossing(design_gene, design_latent, design_coord)
+            # design = chd.utils.crossing(design_gene, design_latent, design_coord)
             # design["batch"] = np.floor(np.arange(design.shape[0]) / 10000).astype(int)
 
             # # infer
@@ -101,12 +117,12 @@ for dataset_name in [
             #     pseudocoordinates = (pseudocoordinates - window[0]) / (window[1] - window[0])
             #     pseudolatent = torch.nn.functional.one_hot(torch.from_numpy(design_subset["active_latent"].values).to(device), latent.shape[1]).to(torch.float)
             #     gene_ix = torch.from_numpy(design_subset["gene_ix"].values).to(device)
-                
+
             #     likelihood_mixture, rho_delta, rho = model.evaluate_pseudo(pseudocoordinates.to(device), latent = pseudolatent.to(device), gene_ix = gene_ix)
             #     prob_mixture = likelihood_mixture.detach().cpu().numpy()
             #     rho_delta = rho_delta.detach().cpu().numpy()
             #     rho = rho.detach().cpu().numpy()
-                
+
             #     probs.append(prob_mixture)
             #     rho_deltas.append(rho_delta)
             #     rhos.append(rho)
@@ -169,5 +185,5 @@ for dataset_name in [
             probs_diff_interpolated_masked = model.rank(window, latent.shape[1])
 
             # # score
-            # scorer = pfa.scoring.likelihood.Scorer(models, folds[:len(models)], loaders = loaders, device = device, gene_ids = fragments.var.index, cell_ids = fragments.obs.index)
+            # scorer = chd.scoring.likelihood.Scorer(models, folds[:len(models)], loaders = loaders, device = device, gene_ids = fragments.var.index, cell_ids = fragments.obs.index)
             # scores, genescores = scorer.score()

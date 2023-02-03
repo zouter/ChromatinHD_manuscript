@@ -27,7 +27,8 @@ import matplotlib.pyplot as plt
 import matplotlib as mpl
 
 import seaborn as sns
-sns.set_style('ticks')
+
+sns.set_style("ticks")
 
 import torch
 
@@ -38,13 +39,13 @@ import scanpy as sc
 import tqdm.auto as tqdm
 
 # %%
-import peakfreeatac as pfa
+import chromatinhd as chd
 
 # %%
-folder_root = pfa.get_output()
+folder_root = chd.get_output()
 folder_data = folder_root / "data"
 folder_data_preproc = folder_data / "pbmc10k"
-folder_data_preproc.mkdir(exist_ok = True, parents = True)
+folder_data_preproc.mkdir(exist_ok=True, parents=True)
 
 # %%
 import torch
@@ -89,12 +90,16 @@ main_url = "https://cf.10xgenomics.com/samples/cell-arc/2.0.0/pbmc_granulocyte_s
 # !wget http://hgdownload.soe.ucsc.edu/goldenPath/hg38/bigZips/hg38.chrom.sizes -O  {folder_data_preproc}/chromosome.sizes
 
 # %%
-gff = pd.read_table(folder_data_preproc / "genes.gff", sep = "\t", names = ["chr", "type", "__", "start", "end", "dot", "strand", "dot2", "info"])
+gff = pd.read_table(
+    folder_data_preproc / "genes.gff",
+    sep="\t",
+    names=["chr", "type", "__", "start", "end", "dot", "strand", "dot2", "info"],
+)
 genes = gff.copy()
 genes["chr"] = "chr" + genes["chr"]
 genes["symbol"] = genes["info"].str.split(";").str[1].str[5:]
 genes["gene"] = genes["info"].str.split(";").str[0].str[8:]
-genes = genes.set_index("gene", drop = False)
+genes = genes.set_index("gene", drop=False)
 
 # %%
 import pybedtools
@@ -106,10 +111,10 @@ genes.query("symbol == 'PCNA'")
 # ## Create transcriptome
 
 # %%
-import peakfreeatac.transcriptome
+import chromatinhd.transcriptome
 
 # %%
-transcriptome = peakfreeatac.transcriptome.Transcriptome(folder_data_preproc)
+transcriptome = chromatinhd.transcriptome.Transcriptome(folder_data_preproc)
 
 # %%
 adata = sc.read_10x_h5(transcriptome.path / "filtered_feature_bc_matrix.h5")
@@ -123,7 +128,9 @@ adata.var = adata.var.reset_index()
 adata.var.index = adata.var["gene_ids"]
 adata.var.index.name = "gene"
 
-all_gene_ids = sorted(list(set(genes.loc[genes["chr"].isin(chromosomes)]["gene"]) & set(adata.var.index)))
+all_gene_ids = sorted(
+    list(set(genes.loc[genes["chr"].isin(chromosomes)]["gene"]) & set(adata.var.index))
+)
 
 adata = adata[:, all_gene_ids]
 
@@ -143,7 +150,9 @@ sc.pp.pca(adata)
 sc.pp.highly_variable_genes(adata)
 
 # %%
-adata = adata[:, adata.var["dispersions_norm"].sort_values(ascending = False)[:5000].index]
+adata = adata[
+    :, adata.var["dispersions_norm"].sort_values(ascending=False)[:5000].index
+]
 
 all_gene_ids = adata.var.index
 
@@ -159,10 +168,12 @@ transcriptome.var = adata.var
 transcriptome.obs = adata.obs
 
 # %%
-sc.pl.umap(adata, color = transcriptome.gene_id(["ANPEP", "FCGR3A"]))
+sc.pl.umap(adata, color=transcriptome.gene_id(["ANPEP", "FCGR3A"]))
 
 # %%
-adata.var.query("dispersions_norm > 0.5").index.to_series().to_json((folder_data_preproc/"variable_genes.json").open("w"))
+adata.var.query("dispersions_norm > 0.5").index.to_series().to_json(
+    (folder_data_preproc / "variable_genes.json").open("w")
+)
 
 # %% [markdown]
 # ## Create windows
@@ -176,17 +187,25 @@ genewindows["start"] = np.maximum(genewindows["start"] - 20000, 0)
 genewindows["end"] = genewindows["end"] + 20000
 
 # %%
-genewindows_bed = pybedtools.BedTool.from_dataframe(genewindows[["chr", "start", "end", "strand", "gene"]])
+genewindows_bed = pybedtools.BedTool.from_dataframe(
+    genewindows[["chr", "start", "end", "strand", "gene"]]
+)
 
 # %%
-peaks = pybedtools.BedTool(folder_data_preproc/"atac_peaks.bed")
+peaks = pybedtools.BedTool(folder_data_preproc / "atac_peaks.bed")
 
 # %%
-intersect = genewindows_bed.intersect(peaks, wo = True)
+intersect = genewindows_bed.intersect(peaks, wo=True)
 intersect = intersect.to_dataframe()
 
 # %%
-intersect["peak_id"] = intersect["strand"] + ":" + intersect["thickStart"].astype(str) + "-" + intersect["thickEnd"].astype(str)
+intersect["peak_id"] = (
+    intersect["strand"]
+    + ":"
+    + intersect["thickStart"].astype(str)
+    + "-"
+    + intersect["thickEnd"].astype(str)
+)
 
 # %%
 gene_peak_links = intersect[["score", "peak_id"]].copy()
@@ -214,10 +233,13 @@ import pybedtools
 all_gene_ids = transcriptome.var.index
 
 # %%
-promoters = pd.DataFrame(index = all_gene_ids)
+promoters = pd.DataFrame(index=all_gene_ids)
 
 # %%
-promoters["tss"] = [genes_row["start"] if genes_row["strand"] == "+" else genes_row["end"] for _, genes_row in genes.loc[promoters.index].iterrows()]
+promoters["tss"] = [
+    genes_row["start"] if genes_row["strand"] == "+" else genes_row["end"]
+    for _, genes_row in genes.loc[promoters.index].iterrows()
+]
 promoters["strand"] = (genes["strand"] + "1").astype(int)
 promoters["positive_strand"] = (promoters["strand"] == 1).astype(int)
 promoters["negative_strand"] = (promoters["strand"] == -1).astype(int)
@@ -226,11 +248,21 @@ promoters["chr"] = genes.loc[promoters.index, "chr"]
 # %%
 padding_positive = 2000
 padding_negative = 4000
-promoters["start"] = promoters["tss"] - padding_negative * promoters["positive_strand"] - padding_positive * promoters["negative_strand"]
-promoters["end"] = promoters["tss"] + padding_negative * promoters["negative_strand"] + padding_positive * promoters["positive_strand"]
+promoters["start"] = (
+    promoters["tss"]
+    - padding_negative * promoters["positive_strand"]
+    - padding_positive * promoters["negative_strand"]
+)
+promoters["end"] = (
+    promoters["tss"]
+    + padding_negative * promoters["negative_strand"]
+    + padding_positive * promoters["positive_strand"]
+)
 
 # %%
-promoters = promoters.drop(columns = ["positive_strand", "negative_strand"], errors = "ignore")
+promoters = promoters.drop(
+    columns=["positive_strand", "negative_strand"], errors="ignore"
+)
 
 # %%
 promoters
@@ -242,7 +274,7 @@ promoters.to_csv(folder_data_preproc / "promoters.csv")
 # #### Create fragments
 
 # %%
-var = pd.DataFrame(index = promoters.index)
+var = pd.DataFrame(index=promoters.index)
 var["ix"] = np.arange(var.shape[0])
 
 n_genes = var.shape[0]
@@ -267,31 +299,31 @@ fragment_mappings_raw = []
 for i, (gene, promoter_info) in tqdm.tqdm(enumerate(promoters.iterrows())):
     gene_ix = var.loc[gene, "ix"]
     fragments_promoter = fragments_tabix.query(*promoter_info[["chr", "start", "end"]])
-    
+
     for fragment in fragments_promoter:
         cell = fragment[3]
-        
+
         # only store the fragment if the cell is actually of interest
         if cell in cell_to_cell_ix:
             # add raw data of fragment relative to tss
-            fragments_raw.append([
-                (int(fragment[1]) - promoter_info["tss"]) * promoter_info["strand"],
-                (int(fragment[2]) - promoter_info["tss"]) * promoter_info["strand"]
-            ][::promoter_info["strand"]])
+            fragments_raw.append(
+                [
+                    (int(fragment[1]) - promoter_info["tss"]) * promoter_info["strand"],
+                    (int(fragment[2]) - promoter_info["tss"]) * promoter_info["strand"],
+                ][:: promoter_info["strand"]]
+            )
 
             # add mapping of cell/gene
-            fragment_mappings_raw.append([
-                cell_to_cell_ix[fragment[3]],
-                gene_ix
-            ])
+            fragment_mappings_raw.append([cell_to_cell_ix[fragment[3]], gene_ix])
 
 # %%
 import torch
 
 # %%
 import pathlib
-import peakfreeatac.fragments
-fragments = pfa.fragments.Fragments(pathlib.Path("./"))
+import chromatinhd.fragments
+
+fragments = chd.fragments.Fragments(pathlib.Path("./"))
 
 # %%
 fragments.var = var
@@ -303,11 +335,11 @@ fragments.obs = obs
 # %%
 # we use int32 for smaller memory usage
 # will have to be converted to floats anyway...
-coordinates = torch.tensor(np.array(fragments_raw, dtype = np.int32))
+coordinates = torch.tensor(np.array(fragments_raw, dtype=np.int32))
 
 # %%
 # int64 is needed for torch_scatter
-mapping = torch.tensor(np.array(fragment_mappings_raw), dtype = torch.int64)
+mapping = torch.tensor(np.array(fragment_mappings_raw), dtype=torch.int64)
 
 # %% [markdown]
 # Sort `coordinates` and `mapping` according to `mapping`
@@ -358,7 +390,7 @@ np.isnan(sizes).sum()
 
 # %%
 fig, ax = plt.subplots()
-ax.hist(sizes, range = (0, 1000), bins = 100)
+ax.hist(sizes, range=(0, 1000), bins=100)
 ax.set_xlim(0, 1000)
 
 # %%

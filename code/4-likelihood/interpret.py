@@ -1,14 +1,14 @@
 import pandas as pd
 import numpy as np
 
-import peakfreeatac as pfa
-import peakfreeatac.scorer
+import chromatinhd as chd
+import chromatinhd.scorer
 
 import pickle
 
 device = "cuda:0"
 
-folder_root = pfa.get_output()
+folder_root = chd.get_output()
 folder_data = folder_root / "data"
 
 for dataset_name in [
@@ -30,15 +30,13 @@ for dataset_name in [
     )
     window_width = window[1] - window[0]
 
-    fragments = pfa.data.Fragments(
-        folder_data_preproc / "fragments" / promoter_name
-    )
+    fragments = chd.data.Fragments(folder_data_preproc / "fragments" / promoter_name)
     fragments.window = window
 
     # create design to run
     from design import get_design, get_folds_inference
 
-    class Prediction(pfa.flow.Flow):
+    class Prediction(chd.flow.Flow):
         pass
 
     # folds & minibatching
@@ -48,27 +46,31 @@ for dataset_name in [
     for latent_name in ["leiden_1"]:
         # create design to run
         from design import get_design, get_folds_inference
+
         design = get_design(dataset_name, latent_name, fragments)
-        design = {k:design[k] for k in [
-            "v2",
-            "v2_baseline",
-            "v2_64c",
-            "v2_64c_baseline",
-            # "v4",
-            # "v4_baseline",
-            # "v4_64",
-            # "v4_64_baseline",
-            # "v4_32",
-            # "v4_32_baseline",
-            # "v4_16",
-            # "v4_16_baseline",
-            # "v4_32-16",
-            # "v4_32-16_baseline",
-            # "v4_64_1l",
-            # "v4_64_1l_baseline",
-            # "v4_64_2l",
-            # "v4_64_2l_baseline",
-        ]}
+        design = {
+            k: design[k]
+            for k in [
+                "v2",
+                "v2_baseline",
+                "v2_64c",
+                "v2_64c_baseline",
+                # "v4",
+                # "v4_baseline",
+                # "v4_64",
+                # "v4_64_baseline",
+                # "v4_32",
+                # "v4_32_baseline",
+                # "v4_16",
+                # "v4_16_baseline",
+                # "v4_32-16",
+                # "v4_32-16_baseline",
+                # "v4_64_1l",
+                # "v4_64_1l_baseline",
+                # "v4_64_2l",
+                # "v4_64_2l_baseline",
+            ]
+        }
         fold_slice = slice(0, 1)
 
         # folds & minibatching
@@ -77,32 +79,51 @@ for dataset_name in [
 
         for prediction_name, design_row in design.items():
             print(f"{dataset_name=} {promoter_name=} {prediction_name=}")
-            prediction = Prediction(pfa.get_output() / "prediction_likelihood" / dataset_name / promoter_name / latent_name / prediction_name)
+            prediction = Prediction(
+                chd.get_output()
+                / "prediction_likelihood"
+                / dataset_name
+                / promoter_name
+                / latent_name
+                / prediction_name
+            )
 
             # loaders
-            if "loaders" in globals():  
+            if "loaders" in globals():
                 loaders.terminate()
                 del loaders
                 import gc
+
                 gc.collect()
 
-            loaders = pfa.loaders.LoaderPool(
+            loaders = chd.loaders.LoaderPool(
                 design_row["loader_cls"],
                 design_row["loader_parameters"],
-                n_workers = 10,
-                shuffle_on_iter = False
+                n_workers=10,
+                shuffle_on_iter=False,
             )
 
             # load all models
-            models = [pickle.load(open(prediction.path / ("model_" + str(fold_ix) + ".pkl"), "rb")) for fold_ix, fold in enumerate(folds[fold_slice])]
+            models = [
+                pickle.load(
+                    open(prediction.path / ("model_" + str(fold_ix) + ".pkl"), "rb")
+                )
+                for fold_ix, fold in enumerate(folds[fold_slice])
+            ]
 
             # score
-            scorer = pfa.scoring.likelihood.Scorer(models, folds[:len(models)], loaders = loaders, device = device, gene_ids = fragments.var.index, cell_ids = fragments.obs.index)
+            scorer = chd.scoring.likelihood.Scorer(
+                models,
+                folds[: len(models)],
+                loaders=loaders,
+                device=device,
+                gene_ids=fragments.var.index,
+                cell_ids=fragments.obs.index,
+            )
             scores, genescores = scorer.score()
 
-            scores_dir = (prediction.path / "scoring" / "overall")
-            scores_dir.mkdir(parents = True, exist_ok = True)
+            scores_dir = prediction.path / "scoring" / "overall"
+            scores_dir.mkdir(parents=True, exist_ok=True)
 
             scores.to_pickle(scores_dir / "scores.pkl")
             genescores.to_pickle(scores_dir / "genescores.pkl")
-

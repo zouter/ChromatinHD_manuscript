@@ -1,9 +1,9 @@
 import pandas as pd
 import numpy as np
 
-import peakfreeatac as pfa
-import peakfreeatac.scorer
-import peakfreeatac.peakcounts
+import chromatinhd as chd
+import chromatinhd.scorer
+import chromatinhd.peakcounts
 
 import pickle
 
@@ -13,28 +13,32 @@ import tqdm.auto as tqdm
 
 device = "cuda:1"
 
-folder_root = pfa.get_output()
+folder_root = chd.get_output()
 folder_data = folder_root / "data"
 
 import itertools
-design = pd.DataFrame.from_records(itertools.chain(
-    itertools.product(
-        [
-            # "lymphoma",
-            # "pbmc10k",
-            # "e18brain",
-            "brain",
-            "alzheimer",
-        ], 
-        [
-            "cellranger",
-            "macs2",
-            "rolling_500",
-            "macs2_improved",
-            # "genrich",
-        ], 
-    )
-), columns = ["dataset", "peaks"])
+
+design = pd.DataFrame.from_records(
+    itertools.chain(
+        itertools.product(
+            [
+                # "lymphoma",
+                # "pbmc10k",
+                # "e18brain",
+                "brain",
+                "alzheimer",
+            ],
+            [
+                "cellranger",
+                "macs2",
+                "rolling_500",
+                "macs2_improved",
+                # "genrich",
+            ],
+        )
+    ),
+    columns=["dataset", "peaks"],
+)
 design["force"] = True
 print(design)
 
@@ -52,17 +56,21 @@ for dataset_name, design_dataset in design.groupby("dataset"):
     )
     window_width = window[1] - window[0]
 
-    onehot_promoters = pickle.load((folder_data_preproc / ("onehot_promoters_" + promoter_name + ".pkl")).open("rb")).flatten(0, 1)
+    onehot_promoters = pickle.load(
+        (folder_data_preproc / ("onehot_promoters_" + promoter_name + ".pkl")).open(
+            "rb"
+        )
+    ).flatten(0, 1)
 
-    fragments = pfa.data.Fragments(
-        folder_data_preproc / "fragments" / promoter_name
-    )
+    fragments = chd.data.Fragments(folder_data_preproc / "fragments" / promoter_name)
     fragments.window = window
 
     print(design_dataset)
     for peaks_name, design_peaks in design_dataset.groupby("peaks"):
         print(peaks_name)
-        peakcounts = pfa.peakcounts.FullPeak(folder = pfa.get_output() / "peakcounts" / dataset_name / peaks_name)
+        peakcounts = chd.peakcounts.FullPeak(
+            folder=chd.get_output() / "peakcounts" / dataset_name / peaks_name
+        )
 
         design_row = design_peaks.iloc[0]
 
@@ -79,23 +87,43 @@ for dataset_name, design_dataset in design.groupby("dataset"):
                 step_size = int(peaks_name.split("_")[1])
                 peaks = []
                 for gene, promoter in promoters.iterrows():
-                    starts = np.arange(promoter["start"], promoter["end"], step = step_size)
+                    starts = np.arange(
+                        promoter["start"], promoter["end"], step=step_size
+                    )
                     ends = np.hstack([starts[1:], [promoter["end"]]])
-                    peaks.append(pd.DataFrame({"chrom":promoter["chr"], "start":starts, "ends":ends, "gene":gene}))
+                    peaks.append(
+                        pd.DataFrame(
+                            {
+                                "chrom": promoter["chr"],
+                                "start": starts,
+                                "ends": ends,
+                                "gene": gene,
+                            }
+                        )
+                    )
                 peaks = pd.concat(peaks)
-                
+
                 peaks_folder = folder_root / "peaks" / dataset_name / peaks_name
-                peaks_folder.mkdir(exist_ok = True, parents = True)
-                peaks.to_csv(peaks_folder / "peaks.bed", index = False, header = False, sep = "\t")
+                peaks_folder.mkdir(exist_ok=True, parents=True)
+                peaks.to_csv(
+                    peaks_folder / "peaks.bed", index=False, header=False, sep="\t"
+                )
             else:
                 peaks_folder = folder_root / "peaks" / dataset_name / peaks_name
-                peaks = pd.read_table(peaks_folder / "peaks.bed", names = ["chrom", "start", "end"], usecols = [0, 1, 2])
+                peaks = pd.read_table(
+                    peaks_folder / "peaks.bed",
+                    names=["chrom", "start", "end"],
+                    usecols=[0, 1, 2],
+                )
 
                 if peaks_name == "genrich":
                     peaks["start"] += 1
 
             import pybedtools
-            promoters_bed = pybedtools.BedTool.from_dataframe(promoters.reset_index()[["chr", "start", "end", "gene"]])
+
+            promoters_bed = pybedtools.BedTool.from_dataframe(
+                promoters.reset_index()[["chr", "start", "end", "gene"]]
+            )
             peaks_bed = pybedtools.BedTool.from_dataframe(peaks)
 
             # create peaks dataframe
@@ -107,13 +135,34 @@ for dataset_name, design_dataset in design.groupby("dataset"):
                 peaks = intersect
             peaks.columns = ["chrom", "start", "end", "gene"]
             peaks = peaks.loc[peaks["start"] != -1]
-            peaks.index = pd.Index(peaks.chrom + ":" + peaks.start.astype(str) + "-" + peaks.end.astype(str), name = "peak")
+            peaks.index = pd.Index(
+                peaks.chrom
+                + ":"
+                + peaks.start.astype(str)
+                + "-"
+                + peaks.end.astype(str),
+                name="peak",
+            )
 
-            peaks["relative_begin"] = (peaks["start"] - promoters.loc[peaks["gene"], "start"].values + window[0])
-            peaks["relative_stop"] = (peaks["end"] - promoters.loc[peaks["gene"], "start"].values + window[0])
+            peaks["relative_begin"] = (
+                peaks["start"]
+                - promoters.loc[peaks["gene"], "start"].values
+                + window[0]
+            )
+            peaks["relative_stop"] = (
+                peaks["end"] - promoters.loc[peaks["gene"], "start"].values + window[0]
+            )
 
-            peaks["relative_start"] = np.where(promoters.loc[peaks["gene"], "strand"] == 1, peaks["relative_begin"], -peaks["relative_stop"])
-            peaks["relative_end"] = np.where(promoters.loc[peaks["gene"], "strand"] == -1, -peaks["relative_begin"], peaks["relative_stop"])
+            peaks["relative_start"] = np.where(
+                promoters.loc[peaks["gene"], "strand"] == 1,
+                peaks["relative_begin"],
+                -peaks["relative_stop"],
+            )
+            peaks["relative_end"] = np.where(
+                promoters.loc[peaks["gene"], "strand"] == -1,
+                -peaks["relative_begin"],
+                peaks["relative_stop"],
+            )
 
             peaks["gene_ix"] = fragments.var["ix"][peaks["gene"]].values
 
@@ -126,4 +175,6 @@ for dataset_name, design_dataset in design.groupby("dataset"):
 
             # count
             fragments.obs["ix"] = np.arange(fragments.obs.shape[0])
-            peakcounts.count_peaks(folder_data_preproc / "atac_fragments.tsv.gz", fragments.obs.index)
+            peakcounts.count_peaks(
+                folder_data_preproc / "atac_fragments.tsv.gz", fragments.obs.index
+            )

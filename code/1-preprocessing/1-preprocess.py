@@ -39,13 +39,13 @@ import tqdm.auto as tqdm
 import io
 
 # %%
-import peakfreeatac as pfa
+import chromatinhd as chd
 
 # %%
 # https://cf.10xgenomics.com/samples/cell-arc/2.0.1/Multiome_RNA_ATAC_Mouse_Brain_Alzheimers_AppNote/Multiome_RNA_ATAC_Mouse_Brain_Alzheimers_AppNote_filtered_feature_bc_matrix.h5
 
 # %%
-folder_root = pfa.get_output()
+folder_root = chd.get_output()
 folder_data = folder_root / "data"
 
 # dataset_name = "pbmc10k"; main_url = "https://cf.10xgenomics.com/samples/cell-arc/2.0.0/pbmc_granulocyte_sorted_10k/pbmc_granulocyte_sorted_10k"; genome = "GRCh38.107"; organism = "hs"
@@ -270,10 +270,10 @@ genes.to_csv(folder_data_preproc / "genes.csv")
 genes = pd.read_csv(folder_data_preproc / "genes.csv", index_col = 0)
 
 # %%
-import peakfreeatac.data
+import chromatinhd.data
 
 # %%
-transcriptome = peakfreeatac.data.Transcriptome(folder_data_preproc / "transcriptome")
+transcriptome = chromatinhd.data.Transcriptome(folder_data_preproc / "transcriptome")
 
 # %% [markdown]
 # ### Read and process
@@ -605,7 +605,7 @@ transcriptome.adata = adata
 # ## Create cell type pseudobulk dataset
 
 # %%
-import peakfreeatac.transcriptome
+import chromatinhd.transcriptome
 
 # %%
 dataset_name_original = "pbmc10k"
@@ -615,11 +615,11 @@ dataset_name = dataset_name_original + "_clustered"
 folder_data_preproc_original = folder_data_preproc.parent / (dataset_name_original)
 
 # %%
-transcriptome_original = peakfreeatac.transcriptome.Transcriptome(folder_data_preproc_original / "transcriptome")
+transcriptome_original = chromatinhd.transcriptome.Transcriptome(folder_data_preproc_original / "transcriptome")
 
 # %%
 folder_data_preproc = folder_data_preproc.parent / dataset_name
-transcriptome = peakfreeatac.transcriptome.Transcriptome(folder_data_preproc / "transcriptome")
+transcriptome = chromatinhd.transcriptome.Transcriptome(folder_data_preproc / "transcriptome")
 
 # %%
 sc.tl.leiden(transcriptome_original.adata, resolution = 100)
@@ -719,12 +719,12 @@ promoters.to_csv(folder_data_preproc / ("promoters_" + promoter_name + ".csv"))
 promoters = pd.read_csv(folder_data_preproc / ("promoters_" + promoter_name + ".csv"), index_col = 0)
 
 # %%
-transcriptome = peakfreeatac.data.Transcriptome(folder_data_preproc / "transcriptome")
+transcriptome = chromatinhd.data.Transcriptome(folder_data_preproc / "transcriptome")
 
 # %%
 import pathlib
-import peakfreeatac.data
-fragments = pfa.data.Fragments(folder_data_preproc / "fragments" / promoter_name)
+import chromatinhd.data
+fragments = chd.data.Fragments(folder_data_preproc / "fragments" / promoter_name)
 
 # %%
 var = pd.DataFrame(index = promoters.index)
@@ -971,10 +971,10 @@ ax.set_ylabel("# fragments", rotation = 0, ha = "right", va = "center")
 # ## Create latent space
 
 # %%
-import peakfreeatac.data
+import chromatinhd.data
 
 # %%
-transcriptome = peakfreeatac.data.Transcriptome(folder_data_preproc / "transcriptome")
+transcriptome = chromatinhd.data.Transcriptome(folder_data_preproc / "transcriptome")
 
 # %%
 sc.pp.neighbors(transcriptome.adata)

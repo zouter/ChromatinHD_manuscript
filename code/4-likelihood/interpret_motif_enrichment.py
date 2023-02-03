@@ -1,9 +1,9 @@
 import pandas as pd
 import numpy as np
 
-import peakfreeatac as pfa
-import peakfreeatac.scorer
-import peakfreeatac.peakcounts
+import chromatinhd as chd
+import chromatinhd.scorer
+import chromatinhd.peakcounts
 
 import pickle
 
@@ -13,7 +13,7 @@ import tqdm.auto as tqdm
 
 device = "cuda:1"
 
-folder_root = pfa.get_output()
+folder_root = chd.get_output()
 folder_data = folder_root / "data"
 
 
@@ -197,13 +197,13 @@ for dataset_name, design_dataset in design.groupby("dataset"):
         )
     ).flatten(0, 1)
 
-    fragments = pfa.data.Fragments(folder_data_preproc / "fragments" / promoter_name)
+    fragments = chd.data.Fragments(folder_data_preproc / "fragments" / promoter_name)
     fragments.window = window
 
     # create design to run
     from design import get_design, get_folds_inference
 
-    class Prediction(pfa.flow.Flow):
+    class Prediction(chd.flow.Flow):
         pass
 
     # folds & minibatching
@@ -223,7 +223,7 @@ for dataset_name, design_dataset in design.groupby("dataset"):
         for method_name, design_method in design_latent.groupby("method"):
             print(f"{dataset_name=} {promoter_name=} {method_name=}")
             prediction = Prediction(
-                pfa.get_output()
+                chd.get_output()
                 / "prediction_likelihood"
                 / dataset_name
                 / promoter_name
@@ -240,15 +240,19 @@ for dataset_name, design_dataset in design.groupby("dataset"):
             # model = models[0]
 
             probs = pickle.load((prediction.path / "ranking_probs.pkl").open("rb"))
-            rho_deltas = pickle.load((prediction.path / "ranking_rho_deltas.pkl").open("rb"))
+            rho_deltas = pickle.load(
+                (prediction.path / "ranking_rho_deltas.pkl").open("rb")
+            )
             rhos = pickle.load((prediction.path / "ranking_rhos.pkl").open("rb"))
             design = pickle.load((prediction.path / "ranking_design.pkl").open("rb"))
 
             # calculate the score we're gonna use: how much does the likelihood of a cut in a window change compared to the "mean"?
-            probs_diff = probs - probs.mean(-2, keepdims = True) + rho_deltas# - rho_deltas.mean(-2, keepdims = True)
+            probs_diff = (
+                probs - probs.mean(-2, keepdims=True) + rho_deltas
+            )  # - rho_deltas.mean(-2, keepdims = True)
 
             # apply a mask to regions with very low likelihood of a cut
-            rho_cutoff = np.log(1.)
+            rho_cutoff = np.log(1.0)
             mask = rhos >= rho_cutoff
 
             probs_diff_masked = probs_diff.copy()
@@ -257,27 +261,41 @@ for dataset_name, design_dataset in design.groupby("dataset"):
             ## Single base-pair resolution
             # interpolate the scoring from above but now at single base pairs
             # we may have to smooth this in the future, particularly for very detailed models that already look at base pair resolution
-            x = (design["coord"].astype(int).values).reshape((len(design["gene_ix"].cat.categories), len(design["active_latent"].cat.categories), len(design["coord"].cat.categories)))
+            x = (design["coord"].astype(int).values).reshape(
+                (
+                    len(design["gene_ix"].cat.categories),
+                    len(design["active_latent"].cat.categories),
+                    len(design["coord"].cat.categories),
+                )
+            )
 
-            def interpolate(x: torch.Tensor, xp: torch.Tensor, fp: torch.Tensor) -> torch.Tensor:
-                a = (fp[...,1:] - fp[...,:-1]) / (xp[...,1:] - xp[...,:-1])
-                b = fp[..., :-1] - (a.mul(xp[..., :-1]) )
+            def interpolate(
+                x: torch.Tensor, xp: torch.Tensor, fp: torch.Tensor
+            ) -> torch.Tensor:
+                a = (fp[..., 1:] - fp[..., :-1]) / (xp[..., 1:] - xp[..., :-1])
+                b = fp[..., :-1] - (a.mul(xp[..., :-1]))
 
-                indices = torch.searchsorted(xp.contiguous(), x.contiguous(), right=False) - 1
+                indices = (
+                    torch.searchsorted(xp.contiguous(), x.contiguous(), right=False) - 1
+                )
                 indices = torch.clamp(indices, 0, a.shape[-1] - 1)
-                slope = a.index_select(a.ndim-1, indices)
-                intercept = b.index_select(a.ndim-1, indices)
+                slope = a.index_select(a.ndim - 1, indices)
+                intercept = b.index_select(a.ndim - 1, indices)
                 return x * slope + intercept
 
             desired_x = torch.arange(*window)
 
-            probs_diff_interpolated = interpolate(desired_x, torch.from_numpy(x)[0][0], torch.from_numpy(probs_diff)).numpy()
-            rhos_interpolated = interpolate(desired_x, torch.from_numpy(x)[0][0], torch.from_numpy(rhos)).numpy()
+            probs_diff_interpolated = interpolate(
+                desired_x, torch.from_numpy(x)[0][0], torch.from_numpy(probs_diff)
+            ).numpy()
+            rhos_interpolated = interpolate(
+                desired_x, torch.from_numpy(x)[0][0], torch.from_numpy(rhos)
+            ).numpy()
 
             # again apply a mask
-            rho_cutoff = np.log(1.)
+            rho_cutoff = np.log(1.0)
             probs_diff_interpolated_masked = probs_diff_interpolated.copy()
-            mask_interpolated = (rhos_interpolated >= rho_cutoff)
+            mask_interpolated = rhos_interpolated >= rho_cutoff
             probs_diff_interpolated_masked[~mask_interpolated] = -np.inf
 
             basepair_ranking = probs_diff_interpolated_masked
@@ -293,8 +311,8 @@ for dataset_name, design_dataset in design.groupby("dataset"):
                         f"{dataset_name=} {promoter_name=} {method_name=} {peaks_name=}"
                     )
                     # get differential peaks for each latent dimension
-                    peakcounts = pfa.peakcounts.FullPeak(
-                        folder=pfa.get_output()
+                    peakcounts = chd.peakcounts.FullPeak(
+                        folder=chd.get_output()
                         / "peakcounts"
                         / dataset_name
                         / peaks_name
@@ -320,13 +338,13 @@ for dataset_name, design_dataset in design.groupby("dataset"):
                             f"{dataset_name=} {promoter_name=} {method_name=} {peaks_name=} {motifscan_name=}"
                         )
                         motifscan_folder = (
-                            pfa.get_output()
+                            chd.get_output()
                             / "motifscans"
                             / dataset_name
                             / promoter_name
                             / motifscan_name
                         )
-                        motifscan = pfa.data.Motifscan(motifscan_folder)
+                        motifscan = chd.data.Motifscan(motifscan_folder)
                         motifs = pickle.load(
                             (motifscan_folder / "motifs.pkl").open("rb")
                         )
@@ -366,22 +384,22 @@ for dataset_name, design_dataset in design.groupby("dataset"):
                             # gene_ixs_slices = np.random.permutation(gene_ixs_slices)
 
                             motifscores_peak = (
-                                pfa.differential.enrichment.enrich_windows(
+                                chd.differential.enrichment.enrich_windows(
                                     motifscan,
                                     position_slices,
                                     gene_ixs_slices,
                                     onehot_promoters,
-                                    n_genes = fragments.n_genes,
-                                    window = window,
+                                    n_genes=fragments.n_genes,
+                                    window=window,
                                 )
                             )
                             genemotifscores_peak = (
-                                pfa.differential.enrichment.detect_windows(
+                                chd.differential.enrichment.detect_windows(
                                     motifscan,
                                     position_slices,
                                     gene_ixs_slices,
                                     fragments.var.index,
-                                    window = window
+                                    window=window,
                                 )
                             )
 
@@ -423,22 +441,22 @@ for dataset_name, design_dataset in design.groupby("dataset"):
                             # gene_ixs_slices = np.random.permutation(gene_ixs_slices)
 
                             motifscores_region = (
-                                pfa.differential.enrichment.enrich_windows(
+                                chd.differential.enrichment.enrich_windows(
                                     motifscan,
                                     position_slices,
                                     gene_ixs_slices,
                                     onehot_promoters,
                                     fragments.n_genes,
-                                    window
+                                    window,
                                 )
                             )
                             genemotifscores_region = (
-                                pfa.differential.enrichment.detect_windows(
+                                chd.differential.enrichment.detect_windows(
                                     motifscan,
                                     position_slices,
                                     gene_ixs_slices,
                                     fragments.var.index,
-                                    window
+                                    window,
                                 )
                             )
 
@@ -522,13 +540,13 @@ for dataset_name, design_dataset in design.groupby("dataset"):
                             f"{dataset_name=} {promoter_name=} {method_name=} significant_up {motifscan_name=}"
                         )
                         motifscan_folder = (
-                            pfa.get_output()
+                            chd.get_output()
                             / "motifscans"
                             / dataset_name
                             / promoter_name
                             / motifscan_name
                         )
-                        motifscan = pfa.data.Motifscan(motifscan_folder)
+                        motifscan = chd.data.Motifscan(motifscan_folder)
                         motifs = pickle.load(
                             (motifscan_folder / "motifs.pkl").open("rb")
                         )

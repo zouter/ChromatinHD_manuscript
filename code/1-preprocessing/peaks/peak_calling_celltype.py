@@ -31,10 +31,10 @@ import pickle
 import tqdm.auto as tqdm
 
 # %%
-import peakfreeatac as pfa
+import chromatinhd as chd
 
 # %%
-folder_root = pfa.get_output()
+folder_root = chd.get_output()
 folder_data = folder_root / "data"
 
 dataset_name = "pbmc10k"
@@ -47,7 +47,7 @@ folder_data_preproc = folder_data / dataset_name
 folder_data_preproc.mkdir(exist_ok = True, parents = True)
 
 # %%
-software_folder = pfa.get_git_root() / "software"
+software_folder = chd.get_git_root() / "software"
 
 # %% [markdown]
 # ## MACS2

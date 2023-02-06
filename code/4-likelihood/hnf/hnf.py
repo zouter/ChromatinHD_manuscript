@@ -46,24 +46,24 @@ import tempfile
 # os.environ["PYTORCH_CUDA_ALLOC_CONF"] = 'max_split_size_mb:128'
 
 # %%
-n_genes = 5000
+n_genes = 20
 n_latent = 2
 
 # %%
 design = chd.utils.crossing(
     # pd.DataFrame({"gene_ix":[2]}),
     pd.DataFrame({"gene_ix":np.arange(n_genes)}),
-    pd.DataFrame({"coord":np.linspace(0, 1, 1000)}),
+    pd.DataFrame({"coord":np.linspace(0, 1, 100)}),
     pd.DataFrame({"reflatent":[0, 1]})
 )
 
 # %%
-nbins = (8, 16, 32, 64, 128, 256, 512)
+nbins = (8, 16, 32, 64, 128, 256)
 # nbins = (8, )
 # nbins = (2, 2)
 
 # %%
-# dtype = torch.float32
+dtype = torch.float32
 dtype = torch.float64
 
 # %%

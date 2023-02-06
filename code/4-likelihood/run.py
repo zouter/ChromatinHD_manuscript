@@ -29,21 +29,23 @@ import itertools
 
 design = pd.DataFrame.from_records(
     itertools.chain(
-        # itertools.product(
-        #     ["lymphoma"],
-        #     ["celltype"],
-        #     ["v4_128-64-32_30_rep"]
-        # ),
+        itertools.product(
+            ["lymphoma"],
+            ["celltype"],
+            ["v9_128-64-32"],
+        ),
         itertools.product(
             [
-                "pbmc10k",
-                # "e18brain",
-                # "brain",
-                # "alzheimer"
+                # "pbmc10k",
+                "e18brain",
+                "brain",
+                "alzheimer",
             ],
             ["leiden_0.1"],
             # ["v4_128-64-32_30_rep"],
-            ["v5_128-64-32"],
+            # ["v5_128-64-32"],
+            # ["v8_128-64-32"],
+            ["v9_128-64-32"],
         ),
     ),
     columns=["dataset", "latent", "method"],
@@ -117,7 +119,6 @@ for dataset_name, design_dataset in design.groupby("dataset"):
                 shuffle_on_iter=True,
                 n_workers=10,
             )
-            print("haha!")
             loaders_validation = chd.loaders.LoaderPool(
                 method_info["loader_cls"], method_info["loader_parameters"], n_workers=5
             )
@@ -128,17 +129,13 @@ for dataset_name, design_dataset in design.groupby("dataset"):
                 (fold_ix, fold) for fold_ix, fold in enumerate(folds)
             ][fold_slice]:
                 # model
-                print(torch.cuda.memory_allocated(0))
-                model = method_info["model_cls"](
-                    **method_info["model_parameters"],
-                    # loader = loaders.loaders[0]
-                )
-                print(">>", torch.cuda.memory_allocated(0))
+                model = method_info["model_cls"](**method_info["model_parameters"])
+                # print(">>", torch.cuda.memory_allocated(0))
                 # model = pickle.load(open(prediction.path / ("model_" + str(fold_ix) + ".pkl"), "rb"))
 
                 # optimization
                 optimize_every_step = 1
-                lr = 1e-3
+                lr = 1e-2
                 optimizer = chd.optim.SparseDenseAdam(
                     model.parameters_sparse(),
                     model.parameters_dense(),

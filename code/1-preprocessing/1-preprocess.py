@@ -42,9 +42,6 @@ import io
 import chromatinhd as chd
 
 # %%
-# https://cf.10xgenomics.com/samples/cell-arc/2.0.1/Multiome_RNA_ATAC_Mouse_Brain_Alzheimers_AppNote/Multiome_RNA_ATAC_Mouse_Brain_Alzheimers_AppNote_filtered_feature_bc_matrix.h5
-
-# %%
 folder_root = chd.get_output()
 folder_data = folder_root / "data"
 
@@ -104,13 +101,13 @@ elif organism == "hs":
 # # !wget {main_url}_atac_cut_sites.bigwig -O {folder_data_preproc}/atac_cut_sites.bigwig
 
 # %%
-# !wget http://ftp.ensembl.org/pub/release-107/fasta/homo_sapiens/dna/Homo_sapiens.GRCh38.dna_rm.primary_assembly.fa.gz -O {folder_data_preproc}/dna.fa.gz
-
-# %%
 # !ls -lh {folder_data_preproc}/
 
 # %%
 # !ls -lh {folder_data_preproc}/../pbmc10k
+
+# %% [markdown]
+# Download gene annotation and chromosome sizes
 
 # %%
 if genome == "GRCh38.107":  
@@ -138,6 +135,9 @@ elif genome == "mm10":
 # %% [markdown]
 # ### Genome
 
+# %% [markdown]
+# Get the genome, just soft link it if we already downloaded it from another dataset
+
 # %%
 if (organism == "hs") and (dataset_name != "pbmc10k"):
     # !rm {folder_data_preproc}/fasta.fa
@@ -150,9 +150,8 @@ elif (organism == "mm") and (dataset_name != "e18brain"):
     # !ln -s {folder_data_preproc}/../e18brain/fasta.fa {folder_data_preproc}/
     # !ln -s {folder_data_preproc}/../e18brain/genome.pkl.gz {folder_data_preproc}/
 
-# %%
-# from operator import xor
-# y = lambda bp: 0b11 & xor((ord(bp) >> 2), (ord(bp) >> 1))
+# %% [markdown]
+# Store the genome as integers, which is much easier to work with. Bases are stored in alphabetic order ACTG
 
 # %%
 import gzip
@@ -176,7 +175,6 @@ for i, line in enumerate(gzip.GzipFile(folder_data_preproc / "dna.fa.gz")):
 
 # %%
 # to link between datasets with the same genome/organism
-# # !ln -s {folder_data_preproc}/../pbmc10k/genome.pkl.gz {folder_data_preproc}/
 
 pickle.dump(genome, gzip.GzipFile((folder_data_preproc / "genome.pkl.gz"), "wb", compresslevel = 3))
 
@@ -185,6 +183,9 @@ pickle.dump(genome, gzip.GzipFile((folder_data_preproc / "genome.pkl.gz"), "wb",
 
 # %% [markdown]
 # ### Genes
+
+# %% [markdown]
+# Get the gene annotaton from ensembl biomart
 
 # %%
 biomart_dataset_name = "mmusculus_gene_ensembl" if organism == "mm" else "hsapiens_gene_ensembl"
@@ -265,6 +266,9 @@ genes.to_csv(folder_data_preproc / "genes.csv")
 
 # %% [markdown]
 # ## Create transcriptome
+
+# %% [markdown]
+# Read in the transcriptome
 
 # %%
 genes = pd.read_csv(folder_data_preproc / "genes.csv", index_col = 0)
@@ -602,71 +606,13 @@ transcriptome.obs = adata.obs
 transcriptome.adata = adata
 
 # %% [markdown]
-# ## Create cell type pseudobulk dataset
-
-# %%
-import chromatinhd.transcriptome
-
-# %%
-dataset_name_original = "pbmc10k"
-dataset_name = dataset_name_original + "_clustered"
-
-# %%
-folder_data_preproc_original = folder_data_preproc.parent / (dataset_name_original)
-
-# %%
-transcriptome_original = chromatinhd.transcriptome.Transcriptome(folder_data_preproc_original / "transcriptome")
-
-# %%
-folder_data_preproc = folder_data_preproc.parent / dataset_name
-transcriptome = chromatinhd.transcriptome.Transcriptome(folder_data_preproc / "transcriptome")
-
-# %%
-sc.tl.leiden(transcriptome_original.adata, resolution = 100)
-
-# %%
-transcriptome_original.adata.obs.groupby("leiden").size().plot(kind = "hist")
-
-# %%
-# transcriptome_original.adata.obs["leiden"] = np.arange(transcriptome_original.adata.obs.shape[0])
-
-# %%
-groupby = transcriptome_original.adata.obs.reset_index().groupby("leiden")
-obs = groupby["cell"].apply(list).to_frame()
-obs.columns = ["cell_original"]
-obs.index.name = "cell"
-obs.index = obs.index.astype(str)
-
-# %%
-X = {}
-for celltype, group in groupby:
-    X[celltype] = np.array(transcriptome_original.adata[group.index].X.mean(0))[0]
-X = pd.DataFrame(X).T.values
-
-# %%
-transcriptome.var = transcriptome_original.var
-transcriptome.obs = obs
-
-# %%
-adata = sc.AnnData(X, obs = transcriptome.obs, var = transcriptome.var)
-
-# %%
-transcriptome.adata = adata
-
-# %%
-transcriptome.create_X()
-
-# %%
-# !ln -s {folder_data_preproc_original}/promoters_10k10k.csv {folder_data_preproc}/promoters_10k10k.csv
-
-# %%
-# !ln -s {folder_data_preproc_original}/genes.gff {folder_data_preproc}/genes.gff
-
-# %% [markdown]
 # ## Create windows
 
 # %% [markdown]
 # ### Creating promoters
+
+# %%
+# !zcat {folder_data_preproc}/atac_fragments.tsv.gz | head -n 100
 
 # %%
 import tabix
@@ -904,130 +850,3 @@ fig, ax = plt.subplots()
 ax.plot(xs, ys)
 ax.hist(sizes, range = (0, 1000), bins = 100, density = True)
 ax.set_xlim(0, 1000)
-
-# %% [markdown]
-# ## Fragment distributions across datasets
-
-# %%
-import gzip
-
-# %%
-dataset_names = ["pbmc10k_gran", "pbmc10k", "pbmc3k", "lymphoma", "e18brain"]
-
-# %%
-sizes = {}
-for dataset_name in dataset_names:
-    sizes_dataset = []
-    with gzip.GzipFile(folder_data / dataset_name / "atac_fragments.tsv.gz", "r") as fragment_file:
-        i = 0
-        for line in fragment_file:
-            line = line.decode("utf-8")
-            if line.startswith("#"):
-                continue
-            split = line.split("\t")
-            sizes_dataset.append(int(split[2]) - int(split[1]))
-            i += 1
-            if i > 1000000:
-                break
-    sizes[dataset_name] = sizes_dataset
-
-# %%
-bins = np.linspace(0, 1000, 100+1)
-
-# %%
-bincounts = {dataset_name:np.histogram(x, bins, density = True)[0] for dataset_name, x in sizes.items()}
-
-
-# %%
-def ecdf(a):
-    x = np.sort(a)
-    y = np.arange(len(x))/float(len(x))
-    return y
-
-
-# %%
-fig, ax = plt.subplots()
-for dataset_name, bincounts_dataset in bincounts.items():
-    x = np.sort(sizes[dataset_name])
-    x_ecdf = ecdf(x)
-    ax.plot(x, x_ecdf, label = dataset_name)
-    ax.set_xscale("log")
-ax.legend()
-ax.set_xlabel("fragment length")
-ax.set_ylabel("ECDF", rotation = 0, ha = "right", va = "center")
-
-# %%
-fig, ax = plt.subplots()
-for dataset_name in sizes.keys():
-    ax.hist(sizes[dataset_name], range = (0, 1000), bins = 100, histtype = "step", label = dataset_name)
-    ax.set_xlim(0, 1000)
-plt.legend()
-ax.set_xlabel("fragment length")
-ax.set_ylabel("# fragments", rotation = 0, ha = "right", va = "center")
-
-# %%
-
-# %% [markdown]
-# ## Create latent space
-
-# %%
-import chromatinhd.data
-
-# %%
-transcriptome = chromatinhd.data.Transcriptome(folder_data_preproc / "transcriptome")
-
-# %%
-sc.pp.neighbors(transcriptome.adata)
-
-# %%
-resolution = 0.1
-
-# %%
-sc.tl.leiden(transcriptome.adata, resolution = resolution)
-
-# %%
-latent = pd.get_dummies(transcriptome.adata.obs["leiden"])
-latent.columns = pd.Series("leiden_" + latent.columns.astype(str))
-
-# %%
-latent_folder = folder_data_preproc / "latent"
-latent_folder.mkdir(exist_ok = True)
-
-# %%
-latent_name = "leiden_" + str(resolution)
-
-# %%
-latent.to_pickle(latent_folder / (latent_name + ".pkl"))
-
-# %% [markdown]
-# ## Store transcripts and exons
-
-# %%
-# !zcat {folder_data_preproc}/genes.gff.gz | grep -vE "^#" | awk '$3 == "exon"' > {folder_data_preproc}/exons.gff
-# !zcat {folder_data_preproc}/genes.gff.gz | grep -vE "^#" | awk '$3 == "protein_coding"' > {folder_data_preproc}/transcript.gff
-
-# %%
-transcripts = pd.read_table(folder_data_preproc / "transcript.gff", sep = "\t", names = ["chr", "type", "__", "start", "end", "dot", "strand", "dot2", "info"])
-
-# %%
-transcripts
-
-# %%
-# !zcat {folder_data_preproc}/genes.gff.gz
-
-# %%
-# !zcat {folder_data_preproc}/genes.gff.gz | grep -vE "^#" | head -n 100
-
-# %%
-transcripts
-
-# %%
-# !head {folder_data_preproc}/transcript.gff
-
-# %%
-gff = pd.read_table(folder_data_preproc / "genes.gff", sep = "\t", names = ["chr", "type", "__", "start", "end", "dot", "strand", "dot2", "info"])
-genes = gff.copy()
-genes["chr"] = "chr" + genes["chr"]
-genes["symbol"] = genes["info"].str.split(";").str[1].str[5:]
-genes["gene"] = genes["info"].str.split(";").str[0].str[8:]
-genes = genes.set_index("gene", drop = False)

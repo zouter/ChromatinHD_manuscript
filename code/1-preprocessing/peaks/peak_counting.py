@@ -59,12 +59,12 @@ dataset_name = "pbmc10k"
 # dataset_name = "PTF1A_4"
 
 # peaks_name = "cellranger"
-peaks_name = "genrich"
+# peaks_name = "genrich"
 # peaks_name = "macs2"
 # peaks_name = "macs2_improved"
 # peaks_name = "stack"
 # peaks_name = "rolling_500"; window_size = 500
-# peaks_name = "rolling_50"; window_size = 50
+peaks_name = "rolling_50"; window_size = 50
 
 # %%
 folder_data_preproc = chd.get_output() / "data" / dataset_name

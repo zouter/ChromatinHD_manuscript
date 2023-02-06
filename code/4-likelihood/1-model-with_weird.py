@@ -165,10 +165,9 @@ fragments_original = chd.data.Fragments(folder_data_preproc / "fragments" / prom
 
 # %%
 # one gene
-# symbols = ["IL1B"]
-# symbols = ["IL1B", "FOSB"]
+symbols = ["IL1B", "FOSB"]
 # symbols = ["FOSB", "IL1B"]
-symbols = transcriptome.var.symbol[:100].tolist()# + ["IL1B", "FOSB"]
+# symbols = transcriptome.var.symbol[:100].tolist()# + ["IL1B", "FOSB"]
 # symbol = "Neurod1"
 gene_ids = transcriptome.gene_id(symbols)
 gene_ixs = fragments_original.var.loc[gene_ids]["ix"]
@@ -270,15 +269,7 @@ loaders_validation = chromatinhd.loaders.pool.LoaderPool(
     {"fragments":fragments, "cellxgene_batch_size":n_cells_step * n_genes_step},
     n_workers = 5
 )
-minibatches_validation = chd.loaders.minibatching.create_bins_random(
-    cells_validation,
-    np.arange(fragments.n_genes),
-    fragments.n_genes,
-    n_genes_step = n_genes_step,
-    n_cells_step=n_cells_step,
-    use_all = True,
-    permute_genes = False
-)
+minibatches_validation = chd.loaders.minibatching.create_bins_random(cells_validation, np.arange(fragments.n_genes), fragments.n_genes, n_genes_step = n_genes_step, n_cells_step=n_cells_step, use_all = True, permute_genes = False)
 loaders_validation.initialize(minibatches_validation)
 
 # %%
@@ -346,9 +337,6 @@ reflatent_idx = torch.from_numpy(np.where(latent.values)[1])
 import chromatinhd.models.likelihood.v9 as vae_model
 model = vae_model.Decoding(fragments, torch.from_numpy(latent.values), nbins = (128, 64, 32, ))
 
-# import chromatinhd.models.likelihood.v11 as vae_model
-# model = vae_model.Decoding(fragments, torch.from_numpy(latent.values), nbins = (128, 64, 32, ))
-
 # model = pickle.load((chd.get_output() / "prediction_likelihood" / dataset_name / promoter_name / latent_name / "v2_baseline" / "model_0.pkl").open("rb"))
 # model = pickle.load((chd.get_output() / "prediction_likelihood" / dataset_name / promoter_name / latent_name / "v2" / "model_0.pkl").open("rb"))
 # model = pickle.load((chd.get_output() / "prediction_likelihood" / dataset_name / promoter_name / latent_name / "v4_64_1l" / "model_0.pkl").open("rb"))
@@ -359,10 +347,71 @@ model = vae_model.Decoding(fragments, torch.from_numpy(latent.values), nbins = (
 # model = pickle.load((chd.get_output() / "prediction_likelihood" / dataset_name / promoter_name / latent_name / "v4_256-128-64-32" / "model_0.pkl").open("rb"))
 # model = pickle.load((chd.get_output() / "prediction_likelihood" / dataset_name / promoter_name / latent_name / "v5_128-64-32" / "model_0.pkl").open("rb"))
 # model = pickle.load((chd.get_output() / "prediction_likelihood" / dataset_name / promoter_name / latent_name / "v8_128-64-32" / "model_0.pkl").open("rb"))
-# model = pickle.load((chd.get_output() / "prediction_likelihood" / dataset_name / promoter_name / latent_name / "v9_128-64-32" / "model_0.pkl").open("rb"))
 
 # %%
 # sns.heatmap((model.mixture.transform.unnormalized_heights.weight.data.cpu().numpy()))
+
+# %%
+sns.heatmap((model.mixture.transform.unnormalized_heights.data.cpu().numpy()))
+
+# %%
+floating = ((cut_coordinates + cut_local_gene_ix).to(torch.float64) / fragments.n_genes)
+
+# %%
+linspace = torch.linspace(0, 1, (window[1] - window[0]) * fragments.n_genes, dtype = torch.float64)
+# linspace = torch.linspace(0, 1, (window[1] - window[0]) * fragments.n_genes, dtype = torch.float32)
+linspace = torch.linspace(0, 100000, (window[1] - window[0]) * fragments.n_genes, dtype = torch.float32)
+
+# %%
+fig, ax = plt.subplots()
+plt.plot(torch.diff(linspace)[0*(window[1] - window[0]):1*(window[1] - window[0])])
+ax.set_ylim(0)
+
+# %%
+fig, ax = plt.subplots()
+plt.plot(torch.diff(linspace)[1*(window[1] - window[0]):2*(window[1] - window[0])])
+ax.set_ylim(0)
+
+# %%
+fig, ax = plt.subplots()
+plt.plot(torch.diff(linspace)[1995*(window[1] - window[0]):1996*(window[1] - window[0])])
+ax.set_ylim(0)
+
+# %%
+plt.plot(torch.diff(linspace))
+
+# %%
+cut_coordinates = fragments.cut_coordinates
+cut_local_gene_ix = fragments.cut_local_gene_ix
+
+# %%
+nbins.sum()
+
+# %%
+(model.mixture.transform.unnormalized_heights.data.cpu().numpy()[2000:2005])
+
+# %%
+sns.heatmap((model.mixture.transform.unnormalized_heights.data.cpu().numpy()))
+
+# %%
+sns.heatmap((model.mixture.transform.unnormalized_heights.data.cpu().numpy()))
+
+# %%
+design = chd.utils.crossing(
+    # pd.DataFrame({"gene_ix":[2]}),
+    pd.DataFrame({"gene_ix":np.arange(fragments.n_genes)}),
+    pd.DataFrame({"coord":np.linspace(0, 1, 1000)}),
+    pd.DataFrame({"reflatent":[0, 1]})
+)
+
+# %%
+sns.heatmap((model.mixture.transform.unnormalized_heights.data.cpu().numpy()))
+
+# %%
+device = "cpu"
+
+# %%
+import chromatinhd.models.likelihood.v5.quadratic
 
 # %% [markdown]
 # ### Prior distribution
@@ -375,10 +424,10 @@ model = model.to(device)
 fragments.create_cut_data()
 
 # %%
-gene_oi = 1
+# gene_oi = 1850
 gene_oi = symbols.index("CCL4")
-# gene_oi = int(transcriptome.gene_ix("CD74"));gene_id = transcriptome.var.index[gene_oi]
-# gene_oi = int(transcriptome.gene_ix("IL1B"));gene_id = transcriptome.var.index[gene_oi]
+# gene_oi = int(transcriptome.gene_ix("AAK1"));gene_id = transcriptome.var.index[gene_oi]
+# gene_oi = int(transcriptome.gene_ix("CCL4"));gene_id = transcriptome.var.index[gene_oi]
 # gene_oi = "ENSG00000005379";gene_ix = int(transcriptome.gene_ix(transcriptome.symbol(gene_oi)))
 
 # %%
@@ -386,7 +435,7 @@ model.n_genes = fragments.n_genes
 
 # %%
 bc = torch.bincount(fragments.genemapping)
-(bc / bc.sum())[gene_oi] * fragments.n_genes
+bc / bc.sum()
 
 # %%
 import torch
@@ -430,18 +479,16 @@ for i, ax in zip(range(latent.shape[1]), axes):
     
     # ax.set_ylabel(f"{cluster_info.iloc[i]['label']}\n# fragments={fragments_oi.sum()}\n {int(latent_torch[:, i].sum())}", rotation = 0, ha = "right", va = "center")
     ax.set_ylabel(f"{cluster_info.iloc[i]['label']}\n freq={fragments_oi.sum()/n_cells}", rotation = 0, ha = "right", va = "center")
-    ax.set_ylim(0, 40)
+    ax.set_ylim(0, 20)
     
     probs.append(prob)
+
+# %%
 probs = np.stack(probs)
 
 # %%
 fig, ax = plt.subplots(figsize = (20, 2))
-plt.plot(np.exp(probs[4] - probs.mean(0)))
-plt.plot(np.exp(probs[5] - probs.mean(0)))
-ax.set_yscale("log")
-ax.axhline(1)
-# ax.set_ylim(1, 10)
+plt.plot(np.exp(probs[7] - probs.mean(0)))
 
 # %%
 main = chd.grid.Grid(padding_height=0.1)
@@ -464,7 +511,7 @@ ax.set_ylabel("$h_0$", rotation = 0, ha = "right", va = "center")
 
 ax = main[1, 0] = chd.grid.Ax(dim = (10, n_latent_dimensions * 0.25))
 ax = ax.ax
-plotdata = (model.decoder.logit_weight.data[gene_oi].cpu().numpy())
+plotdata = (model.decoder.logit_weight[gene_oi].data.cpu().numpy())
 ax.imshow(plotdata, aspect = "auto", cmap = mpl.cm.RdBu_r, vmax = np.log(2), vmin = np.log(1/2))
 ax.set_yticks(range(len(cluster_info)))
 ax.set_yticklabels(cluster_info.index, rotation = 0, ha = "right")
@@ -483,15 +530,6 @@ ax.set_xlabel("Resolution")
 
 fig.plot()
 
-# %%
-plt.bar(np.arange(len(cluster_info)), model.decoder.rho_weight.data.detach().cpu().numpy().T[:, gene_oi])
-
-# %%
-torch.exp(model.rho_balance[gene_oi])
-
-# %%
-sns.heatmap(model.decoder.rho_weight.data.detach().cpu().numpy().T)
-
 # %% [markdown] tags=[]
 # ### Train
 
@@ -500,13 +538,13 @@ device = "cuda"
 # device = "cpu"
 
 # %%
-# model.mixture.transform.unnormalized_heights.data = model.mixture.transform.unnormalized_heights.data.to(torch.float64)
-# model.mixture.transform.unnormalized_widths.data = model.mixture.transform.unnormalized_widths.data.to(torch.float64)
-# model.decoder.logit_weight.data = model.decoder.logit_weight.data.to(torch.float64)
-# model.reflatent = model.reflatent.to(torch.float64)
+model.mixture.transform.unnormalized_heights.data = model.mixture.transform.unnormalized_heights.data.to(torch.float64)
+model.mixture.transform.unnormalized_widths.data = model.mixture.transform.unnormalized_widths.data.to(torch.float64)
+model.decoder.logit_weight.data = model.decoder.logit_weight.data.to(torch.float64)
+model.reflatent = model.reflatent.to(torch.float64)
 
 # %%
-optimizer = chd.optim.SparseDenseAdam(model.parameters_sparse(), model.parameters_dense(autoextend=True), lr = 1e-2)
+optimizer = chd.optim.SparseDenseAdam(model.parameters_sparse(), model.parameters_dense(), lr = 1e-2)
 
 # %%
 loaders_train.restart()
@@ -529,7 +567,7 @@ class GeneLikelihoodHook():
         return {}
         
     def run_individual(self, model, data):
-        self.likelihood_mixture_checkpoint[data.genes_oi] += torch_scatter.scatter_sum(model.track["likelihood"], data.cut_local_gene_ix, dim_size = data.n_genes).detach().cpu().numpy()
+        self.likelihood_mixture_checkpoint[data.genes_oi] += torch_scatter.scatter_sum(model.track["likelihood_mixture"], data.cut_local_gene_ix, dim_size = data.n_genes).detach().cpu().numpy()
         
     def finish(self):
         self.likelihood_mixture.append(self.likelihood_mixture_checkpoint)
@@ -545,7 +583,7 @@ hooks = [hook_genelikelihood]
 model = model.to(device).train()
 loaders_train.restart()
 loaders_validation.restart()
-trainer = chd.train.Trainer(model, loaders_train, loaders_validation, optimizer, n_epochs = 50, checkpoint_every_epoch=1, optimize_every_step = 1, hooks_checkpoint = hooks)
+trainer = chd.train.Trainer(model, loaders_train, loaders_validation, optimizer, n_epochs = 10, checkpoint_every_epoch=1, optimize_every_step = 1, hooks_checkpoint = hooks)
 trainer.train()
 
 # %%

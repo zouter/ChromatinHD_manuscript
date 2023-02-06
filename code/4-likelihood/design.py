@@ -3,6 +3,7 @@ import chromatinhd.models
 import chromatinhd.models.likelihood.v2
 import chromatinhd.models.likelihood.v4
 import chromatinhd.models.likelihood.v5
+import chromatinhd.models.likelihood.v8
 import chromatinhd as chd
 
 import pickle
@@ -37,315 +38,482 @@ def get_design(dataset_name, latent_name, fragments):
     fragments.create_cut_data()
 
     design = {}
-    design["v2"] = {
-        "model_cls": chromatinhd.models.likelihood.v2.Decoding,
-        "model_parameters": {
-            **general_model_parameters,
-            "cell_latent_space": cell_latent_space,
-        },
-        "loader_cls": chromatinhd.loaders.fragments.Fragments,
-        "loader_parameters": {
-            **{
-                k: general_loader_parameters[k]
-                for k in ["fragments", "cellxgene_batch_size"]
-            }
-        },
-    }
-    design["v2_baseline"] = {
-        "model_cls": chromatinhd.models.likelihood.v2.Decoding,
-        "model_parameters": {
-            **general_model_parameters,
-            "cell_latent_space": cell_latent_space,
-            "baseline": True,
-        },
-        "loader_cls": chromatinhd.loaders.fragments.Fragments,
-        "loader_parameters": {
-            **{
-                k: general_loader_parameters[k]
-                for k in ["fragments", "cellxgene_batch_size"]
-            }
-        },
-    }
 
-    design["v2_64c"] = {
-        "model_cls": chromatinhd.models.likelihood.v2.Decoding,
-        "model_parameters": {
-            **general_model_parameters,
-            "cell_latent_space": cell_latent_space,
-            "n_components": 64,
-        },
-        "loader_cls": chromatinhd.loaders.fragments.Fragments,
-        "loader_parameters": {
-            **{
-                k: general_loader_parameters[k]
-                for k in ["fragments", "cellxgene_batch_size"]
-            }
-        },
-    }
-    design["v2_64c_baseline"] = {
-        "model_cls": chromatinhd.models.likelihood.v2.Decoding,
-        "model_parameters": {
-            **general_model_parameters,
-            "cell_latent_space": cell_latent_space,
-            "n_components": 64,
-            "baseline": True,
-        },
-        "loader_cls": chromatinhd.loaders.fragments.Fragments,
-        "loader_parameters": {
-            **{
-                k: general_loader_parameters[k]
-                for k in ["fragments", "cellxgene_batch_size"]
-            }
-        },
-    }
-
-    # design["v2_64c_2l"] = {
-    #     "model_cls":chromatinhd.models.likelihood.v2.Decoding,
-    #     "model_parameters": {**general_model_parameters, "cell_latent_space":cell_latent_space, "n_components":64, "decoder_n_layers":2},
-    #     "loader_cls":chromatinhd.loaders.fragments.Fragments,
-    #     "loader_parameters": {**{k:general_loader_parameters[k] for k in ["fragments", "cellxgene_batch_size"]}}
+    # design["v2"] = {
+    #     "model_cls": chromatinhd.models.likelihood.v2.Decoding,
+    #     "model_parameters": {
+    #         **general_model_parameters,
+    #         "cell_latent_space": cell_latent_space,
+    #     },
+    #     "loader_cls": chromatinhd.loaders.fragments.Fragments,
+    #     "loader_parameters": {
+    #         **{
+    #             k: general_loader_parameters[k]
+    #             for k in ["fragments", "cellxgene_batch_size"]
+    #         }
+    #     },
+    # }
+    # design["v2_baseline"] = {
+    #     "model_cls": chromatinhd.models.likelihood.v2.Decoding,
+    #     "model_parameters": {
+    #         **general_model_parameters,
+    #         "cell_latent_space": cell_latent_space,
+    #         "baseline": True,
+    #     },
+    #     "loader_cls": chromatinhd.loaders.fragments.Fragments,
+    #     "loader_parameters": {
+    #         **{
+    #             k: general_loader_parameters[k]
+    #             for k in ["fragments", "cellxgene_batch_size"]
+    #         }
+    #     },
     # }
 
-    design["v4"] = {
-        "model_cls": chromatinhd.models.likelihood.v4.Decoding,
-        "model_parameters": {
-            **general_model_parameters,
-            "cell_latent_space": cell_latent_space,
-        },
-        "loader_cls": chromatinhd.loaders.fragments.Fragments,
-        "loader_parameters": {
-            **{
-                k: general_loader_parameters[k]
-                for k in ["fragments", "cellxgene_batch_size"]
-            }
-        },
-    }
-    design["v4_baseline"] = {
-        "model_cls": chromatinhd.models.likelihood.v4.Decoding,
-        "model_parameters": {
-            **general_model_parameters,
-            "cell_latent_space": cell_latent_space,
-            "baseline": True,
-        },
-        "loader_cls": chromatinhd.loaders.fragments.Fragments,
-        "loader_parameters": {
-            **{
-                k: general_loader_parameters[k]
-                for k in ["fragments", "cellxgene_batch_size"]
-            }
-        },
-    }
-    design["v4_256"] = {
-        "model_cls": chromatinhd.models.likelihood.v4.Decoding,
-        "model_parameters": {
-            **general_model_parameters,
-            "cell_latent_space": cell_latent_space,
-            "nbins": (256,),
-        },
-        "loader_cls": chromatinhd.loaders.fragments.Fragments,
-        "loader_parameters": {
-            **{
-                k: general_loader_parameters[k]
-                for k in ["fragments", "cellxgene_batch_size"]
-            }
-        },
-    }
-    design["v4_64"] = {
-        "model_cls": chromatinhd.models.likelihood.v4.Decoding,
-        "model_parameters": {
-            **general_model_parameters,
-            "cell_latent_space": cell_latent_space,
-            "nbins": (64,),
-        },
-        "loader_cls": chromatinhd.loaders.fragments.Fragments,
-        "loader_parameters": {
-            **{
-                k: general_loader_parameters[k]
-                for k in ["fragments", "cellxgene_batch_size"]
-            }
-        },
-    }
-    design["v4_64_baseline"] = {
-        "model_cls": chromatinhd.models.likelihood.v4.Decoding,
-        "model_parameters": {
-            **general_model_parameters,
-            "cell_latent_space": cell_latent_space,
-            "nbins": (64,),
-            "baseline": True,
-        },
-        "loader_cls": chromatinhd.loaders.fragments.Fragments,
-        "loader_parameters": {
-            **{
-                k: general_loader_parameters[k]
-                for k in ["fragments", "cellxgene_batch_size"]
-            }
-        },
-    }
-    design["v4_64_1l"] = {
-        "model_cls": chromatinhd.models.likelihood.v4.Decoding,
-        "model_parameters": {
-            **general_model_parameters,
-            "cell_latent_space": cell_latent_space,
-            "nbins": (64,),
-            "decoder_n_layers": 1,
-        },
-        "loader_cls": chromatinhd.loaders.fragments.Fragments,
-        "loader_parameters": {
-            **{
-                k: general_loader_parameters[k]
-                for k in ["fragments", "cellxgene_batch_size"]
-            }
-        },
-    }
-    design["v4_64_1l_baseline"] = {
-        "model_cls": chromatinhd.models.likelihood.v4.Decoding,
-        "model_parameters": {
-            **general_model_parameters,
-            "cell_latent_space": cell_latent_space,
-            "nbins": (64,),
-            "decoder_n_layers": 1,
-            "baseline": True,
-        },
-        "loader_cls": chromatinhd.loaders.fragments.Fragments,
-        "loader_parameters": {
-            **{
-                k: general_loader_parameters[k]
-                for k in ["fragments", "cellxgene_batch_size"]
-            }
-        },
-    }
-    design["v4_64_2l"] = {
-        "model_cls": chromatinhd.models.likelihood.v4.Decoding,
-        "model_parameters": {
-            **general_model_parameters,
-            "cell_latent_space": cell_latent_space,
-            "nbins": (64,),
-            "decoder_n_layers": 2,
-        },
-        "loader_cls": chromatinhd.loaders.fragments.Fragments,
-        "loader_parameters": {
-            **{
-                k: general_loader_parameters[k]
-                for k in ["fragments", "cellxgene_batch_size"]
-            }
-        },
-    }
-    design["v4_64_2l_baseline"] = {
-        "model_cls": chromatinhd.models.likelihood.v4.Decoding,
-        "model_parameters": {
-            **general_model_parameters,
-            "cell_latent_space": cell_latent_space,
-            "nbins": (64,),
-            "decoder_n_layers": 2,
-            "baseline": True,
-        },
-        "loader_cls": chromatinhd.loaders.fragments.Fragments,
-        "loader_parameters": {
-            **{
-                k: general_loader_parameters[k]
-                for k in ["fragments", "cellxgene_batch_size"]
-            }
-        },
-    }
-    design["v4_32"] = {
-        "model_cls": chromatinhd.models.likelihood.v4.Decoding,
-        "model_parameters": {
-            **general_model_parameters,
-            "cell_latent_space": cell_latent_space,
-            "nbins": (32,),
-        },
-        "loader_cls": chromatinhd.loaders.fragments.Fragments,
-        "loader_parameters": {
-            **{
-                k: general_loader_parameters[k]
-                for k in ["fragments", "cellxgene_batch_size"]
-            }
-        },
-    }
-    design["v4_32_baseline"] = {
-        "model_cls": chromatinhd.models.likelihood.v4.Decoding,
-        "model_parameters": {
-            **general_model_parameters,
-            "cell_latent_space": cell_latent_space,
-            "nbins": (32,),
-            "baseline": True,
-        },
-        "loader_cls": chromatinhd.loaders.fragments.Fragments,
-        "loader_parameters": {
-            **{
-                k: general_loader_parameters[k]
-                for k in ["fragments", "cellxgene_batch_size"]
-            }
-        },
-    }
-    design["v4_16"] = {
-        "model_cls": chromatinhd.models.likelihood.v4.Decoding,
-        "model_parameters": {
-            **general_model_parameters,
-            "cell_latent_space": cell_latent_space,
-            "nbins": (16,),
-        },
-        "loader_cls": chromatinhd.loaders.fragments.Fragments,
-        "loader_parameters": {
-            **{
-                k: general_loader_parameters[k]
-                for k in ["fragments", "cellxgene_batch_size"]
-            }
-        },
-    }
-    design["v4_16_baseline"] = {
-        "model_cls": chromatinhd.models.likelihood.v4.Decoding,
-        "model_parameters": {
-            **general_model_parameters,
-            "cell_latent_space": cell_latent_space,
-            "nbins": (16,),
-            "baseline": True,
-        },
-        "loader_cls": chromatinhd.loaders.fragments.Fragments,
-        "loader_parameters": {
-            **{
-                k: general_loader_parameters[k]
-                for k in ["fragments", "cellxgene_batch_size"]
-            }
-        },
-    }
-    design["v4_32-16"] = {
-        "model_cls": chromatinhd.models.likelihood.v4.Decoding,
-        "model_parameters": {
-            **general_model_parameters,
-            "cell_latent_space": cell_latent_space,
-            "nbins": (32, 16),
-        },
-        "loader_cls": chromatinhd.loaders.fragments.Fragments,
-        "loader_parameters": {
-            **{
-                k: general_loader_parameters[k]
-                for k in ["fragments", "cellxgene_batch_size"]
-            }
-        },
-    }
-    design["v4_32-16_baseline"] = {
-        "model_cls": chromatinhd.models.likelihood.v4.Decoding,
-        "model_parameters": {
-            **general_model_parameters,
-            "cell_latent_space": cell_latent_space,
-            "nbins": (32, 16),
-            "baseline": True,
-        },
-        "loader_cls": chromatinhd.loaders.fragments.Fragments,
-        "loader_parameters": {
-            **{
-                k: general_loader_parameters[k]
-                for k in ["fragments", "cellxgene_batch_size"]
-            }
-        },
-    }
+    # design["v2_64c"] = {
+    #     "model_cls": chromatinhd.models.likelihood.v2.Decoding,
+    #     "model_parameters": {
+    #         **general_model_parameters,
+    #         "cell_latent_space": cell_latent_space,
+    #         "n_components": 64,
+    #     },
+    #     "loader_cls": chromatinhd.loaders.fragments.Fragments,
+    #     "loader_parameters": {
+    #         **{
+    #             k: general_loader_parameters[k]
+    #             for k in ["fragments", "cellxgene_batch_size"]
+    #         }
+    #     },
+    # }
+    # design["v2_64c_baseline"] = {
+    #     "model_cls": chromatinhd.models.likelihood.v2.Decoding,
+    #     "model_parameters": {
+    #         **general_model_parameters,
+    #         "cell_latent_space": cell_latent_space,
+    #         "n_components": 64,
+    #         "baseline": True,
+    #     },
+    #     "loader_cls": chromatinhd.loaders.fragments.Fragments,
+    #     "loader_parameters": {
+    #         **{
+    #             k: general_loader_parameters[k]
+    #             for k in ["fragments", "cellxgene_batch_size"]
+    #         }
+    #     },
+    # }
 
-    design["v4_128-64-32"] = {
-        "model_cls": chromatinhd.models.likelihood.v4.Decoding,
+    # # design["v2_64c_2l"] = {
+    # #     "model_cls":chromatinhd.models.likelihood.v2.Decoding,
+    # #     "model_parameters": {**general_model_parameters, "cell_latent_space":cell_latent_space, "n_components":64, "decoder_n_layers":2},
+    # #     "loader_cls":chromatinhd.loaders.fragments.Fragments,
+    # #     "loader_parameters": {**{k:general_loader_parameters[k] for k in ["fragments", "cellxgene_batch_size"]}}
+    # # }
+
+    # design["v4"] = {
+    #     "model_cls": chromatinhd.models.likelihood.v4.Decoding,
+    #     "model_parameters": {
+    #         **general_model_parameters,
+    #         "cell_latent_space": cell_latent_space,
+    #     },
+    #     "loader_cls": chromatinhd.loaders.fragments.Fragments,
+    #     "loader_parameters": {
+    #         **{
+    #             k: general_loader_parameters[k]
+    #             for k in ["fragments", "cellxgene_batch_size"]
+    #         }
+    #     },
+    # }
+    # design["v4_baseline"] = {
+    #     "model_cls": chromatinhd.models.likelihood.v4.Decoding,
+    #     "model_parameters": {
+    #         **general_model_parameters,
+    #         "cell_latent_space": cell_latent_space,
+    #         "baseline": True,
+    #     },
+    #     "loader_cls": chromatinhd.loaders.fragments.Fragments,
+    #     "loader_parameters": {
+    #         **{
+    #             k: general_loader_parameters[k]
+    #             for k in ["fragments", "cellxgene_batch_size"]
+    #         }
+    #     },
+    # }
+    # design["v4_256"] = {
+    #     "model_cls": chromatinhd.models.likelihood.v4.Decoding,
+    #     "model_parameters": {
+    #         **general_model_parameters,
+    #         "cell_latent_space": cell_latent_space,
+    #         "nbins": (256,),
+    #     },
+    #     "loader_cls": chromatinhd.loaders.fragments.Fragments,
+    #     "loader_parameters": {
+    #         **{
+    #             k: general_loader_parameters[k]
+    #             for k in ["fragments", "cellxgene_batch_size"]
+    #         }
+    #     },
+    # }
+    # design["v4_64"] = {
+    #     "model_cls": chromatinhd.models.likelihood.v4.Decoding,
+    #     "model_parameters": {
+    #         **general_model_parameters,
+    #         "cell_latent_space": cell_latent_space,
+    #         "nbins": (64,),
+    #     },
+    #     "loader_cls": chromatinhd.loaders.fragments.Fragments,
+    #     "loader_parameters": {
+    #         **{
+    #             k: general_loader_parameters[k]
+    #             for k in ["fragments", "cellxgene_batch_size"]
+    #         }
+    #     },
+    # }
+    # design["v4_64_baseline"] = {
+    #     "model_cls": chromatinhd.models.likelihood.v4.Decoding,
+    #     "model_parameters": {
+    #         **general_model_parameters,
+    #         "cell_latent_space": cell_latent_space,
+    #         "nbins": (64,),
+    #         "baseline": True,
+    #     },
+    #     "loader_cls": chromatinhd.loaders.fragments.Fragments,
+    #     "loader_parameters": {
+    #         **{
+    #             k: general_loader_parameters[k]
+    #             for k in ["fragments", "cellxgene_batch_size"]
+    #         }
+    #     },
+    # }
+    # design["v4_64_1l"] = {
+    #     "model_cls": chromatinhd.models.likelihood.v4.Decoding,
+    #     "model_parameters": {
+    #         **general_model_parameters,
+    #         "cell_latent_space": cell_latent_space,
+    #         "nbins": (64,),
+    #         "decoder_n_layers": 1,
+    #     },
+    #     "loader_cls": chromatinhd.loaders.fragments.Fragments,
+    #     "loader_parameters": {
+    #         **{
+    #             k: general_loader_parameters[k]
+    #             for k in ["fragments", "cellxgene_batch_size"]
+    #         }
+    #     },
+    # }
+    # design["v4_64_1l_baseline"] = {
+    #     "model_cls": chromatinhd.models.likelihood.v4.Decoding,
+    #     "model_parameters": {
+    #         **general_model_parameters,
+    #         "cell_latent_space": cell_latent_space,
+    #         "nbins": (64,),
+    #         "decoder_n_layers": 1,
+    #         "baseline": True,
+    #     },
+    #     "loader_cls": chromatinhd.loaders.fragments.Fragments,
+    #     "loader_parameters": {
+    #         **{
+    #             k: general_loader_parameters[k]
+    #             for k in ["fragments", "cellxgene_batch_size"]
+    #         }
+    #     },
+    # }
+    # design["v4_64_2l"] = {
+    #     "model_cls": chromatinhd.models.likelihood.v4.Decoding,
+    #     "model_parameters": {
+    #         **general_model_parameters,
+    #         "cell_latent_space": cell_latent_space,
+    #         "nbins": (64,),
+    #         "decoder_n_layers": 2,
+    #     },
+    #     "loader_cls": chromatinhd.loaders.fragments.Fragments,
+    #     "loader_parameters": {
+    #         **{
+    #             k: general_loader_parameters[k]
+    #             for k in ["fragments", "cellxgene_batch_size"]
+    #         }
+    #     },
+    # }
+    # design["v4_64_2l_baseline"] = {
+    #     "model_cls": chromatinhd.models.likelihood.v4.Decoding,
+    #     "model_parameters": {
+    #         **general_model_parameters,
+    #         "cell_latent_space": cell_latent_space,
+    #         "nbins": (64,),
+    #         "decoder_n_layers": 2,
+    #         "baseline": True,
+    #     },
+    #     "loader_cls": chromatinhd.loaders.fragments.Fragments,
+    #     "loader_parameters": {
+    #         **{
+    #             k: general_loader_parameters[k]
+    #             for k in ["fragments", "cellxgene_batch_size"]
+    #         }
+    #     },
+    # }
+    # design["v4_32"] = {
+    #     "model_cls": chromatinhd.models.likelihood.v4.Decoding,
+    #     "model_parameters": {
+    #         **general_model_parameters,
+    #         "cell_latent_space": cell_latent_space,
+    #         "nbins": (32,),
+    #     },
+    #     "loader_cls": chromatinhd.loaders.fragments.Fragments,
+    #     "loader_parameters": {
+    #         **{
+    #             k: general_loader_parameters[k]
+    #             for k in ["fragments", "cellxgene_batch_size"]
+    #         }
+    #     },
+    # }
+    # design["v4_32_baseline"] = {
+    #     "model_cls": chromatinhd.models.likelihood.v4.Decoding,
+    #     "model_parameters": {
+    #         **general_model_parameters,
+    #         "cell_latent_space": cell_latent_space,
+    #         "nbins": (32,),
+    #         "baseline": True,
+    #     },
+    #     "loader_cls": chromatinhd.loaders.fragments.Fragments,
+    #     "loader_parameters": {
+    #         **{
+    #             k: general_loader_parameters[k]
+    #             for k in ["fragments", "cellxgene_batch_size"]
+    #         }
+    #     },
+    # }
+    # design["v4_16"] = {
+    #     "model_cls": chromatinhd.models.likelihood.v4.Decoding,
+    #     "model_parameters": {
+    #         **general_model_parameters,
+    #         "cell_latent_space": cell_latent_space,
+    #         "nbins": (16,),
+    #     },
+    #     "loader_cls": chromatinhd.loaders.fragments.Fragments,
+    #     "loader_parameters": {
+    #         **{
+    #             k: general_loader_parameters[k]
+    #             for k in ["fragments", "cellxgene_batch_size"]
+    #         }
+    #     },
+    # }
+    # design["v4_16_baseline"] = {
+    #     "model_cls": chromatinhd.models.likelihood.v4.Decoding,
+    #     "model_parameters": {
+    #         **general_model_parameters,
+    #         "cell_latent_space": cell_latent_space,
+    #         "nbins": (16,),
+    #         "baseline": True,
+    #     },
+    #     "loader_cls": chromatinhd.loaders.fragments.Fragments,
+    #     "loader_parameters": {
+    #         **{
+    #             k: general_loader_parameters[k]
+    #             for k in ["fragments", "cellxgene_batch_size"]
+    #         }
+    #     },
+    # }
+    # design["v4_32-16"] = {
+    #     "model_cls": chromatinhd.models.likelihood.v4.Decoding,
+    #     "model_parameters": {
+    #         **general_model_parameters,
+    #         "cell_latent_space": cell_latent_space,
+    #         "nbins": (32, 16),
+    #     },
+    #     "loader_cls": chromatinhd.loaders.fragments.Fragments,
+    #     "loader_parameters": {
+    #         **{
+    #             k: general_loader_parameters[k]
+    #             for k in ["fragments", "cellxgene_batch_size"]
+    #         }
+    #     },
+    # }
+    # design["v4_32-16_baseline"] = {
+    #     "model_cls": chromatinhd.models.likelihood.v4.Decoding,
+    #     "model_parameters": {
+    #         **general_model_parameters,
+    #         "cell_latent_space": cell_latent_space,
+    #         "nbins": (32, 16),
+    #         "baseline": True,
+    #     },
+    #     "loader_cls": chromatinhd.loaders.fragments.Fragments,
+    #     "loader_parameters": {
+    #         **{
+    #             k: general_loader_parameters[k]
+    #             for k in ["fragments", "cellxgene_batch_size"]
+    #         }
+    #     },
+    # }
+
+    # design["v4_128-64-32"] = {
+    #     "model_cls": chromatinhd.models.likelihood.v4.Decoding,
+    #     "model_parameters": {
+    #         **general_model_parameters,
+    #         "cell_latent_space": cell_latent_space,
+    #         "nbins": (
+    #             128,
+    #             64,
+    #             32,
+    #         ),
+    #     },
+    #     "loader_cls": chromatinhd.loaders.fragments.Fragments,
+    #     "loader_parameters": {
+    #         **{
+    #             k: general_loader_parameters[k]
+    #             for k in ["fragments", "cellxgene_batch_size"]
+    #         }
+    #     },
+    # }
+
+    # design["v4_256-128-64-32"] = copy.deepcopy(design["v4_128-64-32"])
+    # design["v4_256-128-64-32"]["model_parameters"].update({"nbins": (256, 128, 64, 32)})
+
+    # design["v4_64-32"] = copy.deepcopy(design["v4_128-64-32"])
+    # design["v4_64-32"]["model_parameters"].update({"nbins": (256, 128, 64, 32)})
+
+    # design["v4_32"] = copy.deepcopy(design["v4_128-64-32"])
+    # design["v4_32"]["model_parameters"].update({"nbins": (32,)})
+
+    # design["v4_64"] = copy.deepcopy(design["v4_128-64-32"])
+    # design["v4_64"]["model_parameters"].update({"nbins": (64,)})
+
+    # design["v4_128"] = copy.deepcopy(design["v4_128-64-32"])
+    # design["v4_128"]["model_parameters"].update({"nbins": (128,)})
+
+    # design["v4_128-64-32_30"] = copy.deepcopy(design["v4_128-64-32"])
+    # design["v4_128-64-32_30"]["n_epoch"] = 30
+
+    # design["v4_128-64-32_rep"] = copy.deepcopy(design["v4_128-64-32"])
+
+    # design["v4_128-64-32_30_freescale"] = copy.deepcopy(design["v4_128-64-32_30"])
+    # design["v4_128-64-32_30_freescale"]["model_parameters"].update(
+    #     {"mixture_delta_p_scale_free": True, "rho_delta_p_scale_free": True}
+    # )
+
+    # design["v4_128-64-32_30_freescale_laplace"] = copy.deepcopy(
+    #     design["v4_128-64-32_30"]
+    # )
+    # design["v4_128-64-32_30_freescale_laplace"]["model_parameters"].update(
+    #     {
+    #         "mixture_delta_p_scale_free": True,
+    #         "rho_delta_p_scale_free": True,
+    #         "mixture_delta_p_scale_dist": "laplace",
+    #     }
+    # )
+
+    # design["v4_128-64-32_30_scalelik"] = copy.deepcopy(design["v4_128-64-32_30"])
+    # design["v4_128-64-32_30_scalelik"]["model_parameters"].update(
+    #     {"scale_likelihood": True}
+    # )
+
+    # design["v4_128-64-32_30_freescale_scalelik"] = copy.deepcopy(
+    #     design["v4_128-64-32_30"]
+    # )
+    # design["v4_128-64-32_30_freescale_scalelik"]["model_parameters"].update(
+    #     {
+    #         "mixture_delta_p_scale_free": True,
+    #         "rho_delta_p_scale_free": True,
+    #         "scale_likelihood": True,
+    #     }
+    # )
+
+    # design["v4_128-64-32_30_freescale_scalelik_laplace"] = copy.deepcopy(
+    #     design["v4_128-64-32_30"]
+    # )
+    # design["v4_128-64-32_30_freescale_scalelik_laplace"]["model_parameters"].update(
+    #     {
+    #         "mixture_delta_p_scale_free": True,
+    #         "rho_delta_p_scale_free": True,
+    #         "scale_likelihood": True,
+    #         "mixture_delta_p_scale_dist": "laplace",
+    #     }
+    # )
+
+    # design["v4_128-64-32_30_laplace0.05"] = copy.deepcopy(design["v4_128-64-32_30"])
+    # design["v4_128-64-32_30_laplace0.05"]["model_parameters"].update(
+    #     {
+    #         "scale_likelihood": True,
+    #         "mixture_delta_p_scale_dist": "laplace",
+    #         "mixture_delta_p_scale": 0.05,
+    #     }
+    # )
+
+    # design["v4_128-64-32_30_laplace0.1"] = copy.deepcopy(design["v4_128-64-32_30"])
+    # design["v4_128-64-32_30_laplace0.1"]["model_parameters"].update(
+    #     {
+    #         "scale_likelihood": True,
+    #         "mixture_delta_p_scale_dist": "laplace",
+    #         "mixture_delta_p_scale": 0.1,
+    #     }
+    # )
+
+    # design["v4_128-64-32_30_laplace1.0"] = copy.deepcopy(design["v4_128-64-32_30"])
+    # design["v4_128-64-32_30_laplace1.0"]["model_parameters"].update(
+    #     {
+    #         "scale_likelihood": True,
+    #         "mixture_delta_p_scale_dist": "laplace",
+    #         "mixture_delta_p_scale": 1.0,
+    #     }
+    # )
+
+    # design["v4_128-64-32_30_normal0.05"] = copy.deepcopy(design["v4_128-64-32_30"])
+    # design["v4_128-64-32_30_normal0.05"]["model_parameters"].update(
+    #     {
+    #         "scale_likelihood": True,
+    #         "mixture_delta_p_scale_dist": "normal",
+    #         "mixture_delta_p_scale": 0.05,
+    #     }
+    # )
+
+    # design["v4_128-64-32_30_rep"] = copy.deepcopy(design["v4_128-64-32_30"])
+    # design["v4_128-64-32_30_rep"]["model_parameters"].update({})
+
+    # design["v5_128-64-32_30_rep"] = copy.deepcopy(design["v4_128-64-32_30"])
+    # design["v5_128-64-32_30_rep"][
+    #     "model_cls"
+    # ] = chromatinhd.models.likelihood.v5.Decoding
+    # design["v5_128-64-32_30_rep"]["model_parameters"].update({})
+
+    # design["v5_128-64-32"] = copy.deepcopy(design["v4_128-64-32"])
+    # design["v5_128-64-32"]["model_cls"] = chromatinhd.models.likelihood.v5.Decoding
+    # design["v5_128-64-32"]["model_parameters"].update({})
+
+    # design["v5_128-64-32"] = copy.deepcopy(design["v4_128-64-32"])
+    # design["v5_128-64-32"]["model_cls"] = chromatinhd.models.likelihood.v5.Decoding
+    # design["v5_128-64-32"]["model_parameters"].update({})
+
+    # n_latent_dimensions = cell_latent_space.shape[1]
+    # print(cell_latent_space.shape)
+    # reflatent = torch.eye(n_latent_dimensions).to(torch.float64)
+    # reflatent_idx = torch.from_numpy(np.where(cell_latent_space)[1])
+
+    # design["v8_128-64-32"] = {
+    #     "model_cls": chromatinhd.models.likelihood.v8.Decoding,
+    #     "model_parameters": {
+    #         **general_model_parameters,
+    #         "reflatent": reflatent,
+    #         "reflatent_idx": reflatent_idx,
+    #         "nbins": (
+    #             128,
+    #             64,
+    #             32,
+    #         ),
+    #     },
+    #     "loader_cls": chromatinhd.loaders.fragments.Fragments,
+    #     "loader_parameters": {
+    #         **{
+    #             k: general_loader_parameters[k]
+    #             for k in ["fragments", "cellxgene_batch_size"]
+    #         }
+    #     },
+    #     "n_epoch": 50,
+    # }
+
+    import chromatinhd.models.likelihood.v9
+
+    design["v9_128-64-32"] = {
+        "model_cls": chromatinhd.models.likelihood.v9.Decoding,
         "model_parameters": {
             **general_model_parameters,
-            "cell_latent_space": cell_latent_space,
+            "latent": cell_latent_space,
             "nbins": (
                 128,
                 64,
@@ -359,120 +527,34 @@ def get_design(dataset_name, latent_name, fragments):
                 for k in ["fragments", "cellxgene_batch_size"]
             }
         },
+        "n_epoch": 50,
     }
 
-    design["v4_256-128-64-32"] = copy.deepcopy(design["v4_128-64-32"])
-    design["v4_256-128-64-32"]["model_parameters"].update({"nbins": (256, 128, 64, 32)})
+    import chromatinhd.models.likelihood.v11
 
-    design["v4_64-32"] = copy.deepcopy(design["v4_128-64-32"])
-    design["v4_64-32"]["model_parameters"].update({"nbins": (256, 128, 64, 32)})
+    reflatent = torch.eye(cell_latent_space.shape[1]).to(torch.float64)
+    reflatent_idx = torch.from_numpy(np.where(cell_latent_space)[1])
 
-    design["v4_32"] = copy.deepcopy(design["v4_128-64-32"])
-    design["v4_32"]["model_parameters"].update({"nbins": (32,)})
-
-    design["v4_64"] = copy.deepcopy(design["v4_128-64-32"])
-    design["v4_64"]["model_parameters"].update({"nbins": (64,)})
-
-    design["v4_128"] = copy.deepcopy(design["v4_128-64-32"])
-    design["v4_128"]["model_parameters"].update({"nbins": (128,)})
-
-    design["v4_128-64-32_30"] = copy.deepcopy(design["v4_128-64-32"])
-    design["v4_128-64-32_30"]["n_epoch"] = 30
-
-    design["v4_128-64-32_rep"] = copy.deepcopy(design["v4_128-64-32"])
-
-    design["v4_128-64-32_30_freescale"] = copy.deepcopy(design["v4_128-64-32_30"])
-    design["v4_128-64-32_30_freescale"]["model_parameters"].update(
-        {"mixture_delta_p_scale_free": True, "rho_delta_p_scale_free": True}
-    )
-
-    design["v4_128-64-32_30_freescale_laplace"] = copy.deepcopy(
-        design["v4_128-64-32_30"]
-    )
-    design["v4_128-64-32_30_freescale_laplace"]["model_parameters"].update(
-        {
-            "mixture_delta_p_scale_free": True,
-            "rho_delta_p_scale_free": True,
-            "mixture_delta_p_scale_dist": "laplace",
-        }
-    )
-
-    design["v4_128-64-32_30_scalelik"] = copy.deepcopy(design["v4_128-64-32_30"])
-    design["v4_128-64-32_30_scalelik"]["model_parameters"].update(
-        {"scale_likelihood": True}
-    )
-
-    design["v4_128-64-32_30_freescale_scalelik"] = copy.deepcopy(
-        design["v4_128-64-32_30"]
-    )
-    design["v4_128-64-32_30_freescale_scalelik"]["model_parameters"].update(
-        {
-            "mixture_delta_p_scale_free": True,
-            "rho_delta_p_scale_free": True,
-            "scale_likelihood": True,
-        }
-    )
-
-    design["v4_128-64-32_30_freescale_scalelik_laplace"] = copy.deepcopy(
-        design["v4_128-64-32_30"]
-    )
-    design["v4_128-64-32_30_freescale_scalelik_laplace"]["model_parameters"].update(
-        {
-            "mixture_delta_p_scale_free": True,
-            "rho_delta_p_scale_free": True,
-            "scale_likelihood": True,
-            "mixture_delta_p_scale_dist": "laplace",
-        }
-    )
-
-    design["v4_128-64-32_30_laplace0.05"] = copy.deepcopy(design["v4_128-64-32_30"])
-    design["v4_128-64-32_30_laplace0.05"]["model_parameters"].update(
-        {
-            "scale_likelihood": True,
-            "mixture_delta_p_scale_dist": "laplace",
-            "mixture_delta_p_scale": 0.05,
-        }
-    )
-
-    design["v4_128-64-32_30_laplace0.1"] = copy.deepcopy(design["v4_128-64-32_30"])
-    design["v4_128-64-32_30_laplace0.1"]["model_parameters"].update(
-        {
-            "scale_likelihood": True,
-            "mixture_delta_p_scale_dist": "laplace",
-            "mixture_delta_p_scale": 0.1,
-        }
-    )
-
-    design["v4_128-64-32_30_laplace1.0"] = copy.deepcopy(design["v4_128-64-32_30"])
-    design["v4_128-64-32_30_laplace1.0"]["model_parameters"].update(
-        {
-            "scale_likelihood": True,
-            "mixture_delta_p_scale_dist": "laplace",
-            "mixture_delta_p_scale": 1.0,
-        }
-    )
-
-    design["v4_128-64-32_30_normal0.05"] = copy.deepcopy(design["v4_128-64-32_30"])
-    design["v4_128-64-32_30_normal0.05"]["model_parameters"].update(
-        {
-            "scale_likelihood": True,
-            "mixture_delta_p_scale_dist": "normal",
-            "mixture_delta_p_scale": 0.05,
-        }
-    )
-
-    design["v4_128-64-32_30_rep"] = copy.deepcopy(design["v4_128-64-32_30"])
-    design["v4_128-64-32_30_rep"]["model_parameters"].update({})
-
-    design["v5_128-64-32_30_rep"] = copy.deepcopy(design["v4_128-64-32_30"])
-    design["v5_128-64-32_30_rep"][
-        "model_cls"
-    ] = chromatinhd.models.likelihood.v5.Decoding
-    design["v5_128-64-32_30_rep"]["model_parameters"].update({})
-
-    design["v5_128-64-32"] = copy.deepcopy(design["v4_128-64-32"])
-    design["v5_128-64-32"]["model_cls"] = chromatinhd.models.likelihood.v5.Decoding
-    design["v5_128-64-32"]["model_parameters"].update({})
+    design["v11_128-64-32"] = {
+        "model_cls": chromatinhd.models.likelihood.v11.Decoding,
+        "model_parameters": {
+            **general_model_parameters,
+            "latent": cell_latent_space,
+            "nbins": (
+                128,
+                64,
+                32,
+            ),
+        },
+        "loader_cls": chromatinhd.loaders.fragments.Fragments,
+        "loader_parameters": {
+            **{
+                k: general_loader_parameters[k]
+                for k in ["fragments", "cellxgene_batch_size"]
+            }
+        },
+        "n_epoch": 50,
+    }
 
     return design
 
@@ -503,7 +585,7 @@ def get_folds_training(fragments, folds):
         minibatches_train_sets = [
             {
                 "tasks": minibatcher.create_minibatches(
-                    use_all=True, rg=np.random.RandomState(i)
+                    use_all=True, rg=np.random.RandomState(i), permute_genes=False
                 )
             }
             for i in range(10)
@@ -518,6 +600,7 @@ def get_folds_training(fragments, folds):
             n_genes_step=n_genes_step,
             n_genes_total=fragments.n_genes,
             use_all=True,
+            permute_genes=False,
             rg=rg,
         )
         fold["minibatches_validation_trace"] = fold["minibatches_validation"][:8]

@@ -38,7 +38,8 @@ design = pd.DataFrame.from_records(
             ],
             ["leiden_0.1"],
             # ["v4_128-64-32_30_rep"],
-            ["v5_128-64-32"],
+            # ["v5_128-64-32"],
+            ["v8_128-64-32"],
         ),
     ),
     columns=["dataset", "latent", "method"],
@@ -104,6 +105,7 @@ for dataset_name, design_dataset in design.groupby("dataset"):
                 if (prediction.path / "probs2.pkl").exists():
                     force = force or False
 
+                # for visualization
                 if force:
                     model = pickle.load(
                         (prediction.path / f"model_{fold_ix}.pkl").open("rb")

@@ -24,17 +24,17 @@ import itertools
 
 design = pd.DataFrame.from_records(
     itertools.chain(
-        itertools.product(
-            ["lymphoma"],
-            ["celltype"],
-            ["v9_128-64-32"],
-        ),
+        # itertools.product(
+        #     ["lymphoma"],
+        #     ["celltype"],
+        #     ["v9_128-64-32"],
+        # ),
         itertools.product(
             [
-                # "pbmc10k",
-                "e18brain",
-                "brain",
-                "alzheimer",
+                "pbmc10k",
+                # "e18brain",
+                # "brain",
+                # "alzheimer",
             ],
             ["leiden_0.1"],
             # ["v4_128-64-32_30_rep"],
@@ -106,8 +106,6 @@ for dataset_name, design_dataset in design.groupby("dataset"):
                 if not (prediction.path / "probs.pkl").exists():
                     force = True
 
-                # for visualization
-                print(force)
                 if force:
                     model = pickle.load(
                         (prediction.path / f"model_{fold_ix}.pkl").open("rb")

@@ -2,7 +2,6 @@ import pandas as pd
 import numpy as np
 
 import chromatinhd as chd
-import chromatinhd.scorer
 import chromatinhd.peakcounts
 
 import pickle
@@ -18,28 +17,43 @@ folder_data = folder_root / "data"
 
 import itertools
 
+from designs
+
 design = pd.DataFrame.from_records(
     itertools.chain(
         itertools.product(
             [
-                # "lymphoma",
                 # "pbmc10k",
+                # "lymphoma",
                 # "e18brain",
-                "brain",
-                "alzheimer",
+                # "brain",
+                # "alzheimer",
+                # "pbmc10k_gran"
+                # "pbmc3k-pbmc10k",
+                # "pbmc3k-pbmc10k",
+                # "pbmc3k-pbmc10k",
             ],
             [
                 "cellranger",
                 "macs2",
+                "rolling_50",
+                "rolling_100",
                 "rolling_500",
                 "macs2_improved",
                 # "genrich",
+                "macs2_leiden_0.1_merged",
+                "macs2_leiden_0.1",
+                "stack",
+                "encode_screen",
             ],
         )
     ),
-    columns=["dataset", "peaks"],
+    columns=["dataset", "peakcaller"],
 )
-design["force"] = True
+# design = design.loc[
+#     ~((design["dataset"] == "alzheimer") & (design["peakcaller"] == "genrich"))
+# ]
+design["force"] = False
 print(design)
 
 for dataset_name, design_dataset in design.groupby("dataset"):
@@ -56,20 +70,14 @@ for dataset_name, design_dataset in design.groupby("dataset"):
     )
     window_width = window[1] - window[0]
 
-    onehot_promoters = pickle.load(
-        (folder_data_preproc / ("onehot_promoters_" + promoter_name + ".pkl")).open(
-            "rb"
-        )
-    ).flatten(0, 1)
-
     fragments = chd.data.Fragments(folder_data_preproc / "fragments" / promoter_name)
     fragments.window = window
 
     print(design_dataset)
-    for peaks_name, design_peaks in design_dataset.groupby("peaks"):
-        print(peaks_name)
+    for peakcaller, design_peaks in design_dataset.groupby("peakcaller"):
+        print(peakcaller)
         peakcounts = chd.peakcounts.FullPeak(
-            folder=chd.get_output() / "peakcounts" / dataset_name / peaks_name
+            folder=chd.get_output() / "peakcounts" / dataset_name / peakcaller
         )
 
         design_row = design_peaks.iloc[0]
@@ -81,10 +89,10 @@ for dataset_name, design_dataset in design.groupby("dataset"):
             force = True or force
 
         if force:
-            if peaks_name == "stack":
+            if peakcaller == "stack":
                 peaks = promoters.reset_index()[["chr", "start", "end", "gene"]]
-            elif peaks_name.startswith("rolling"):
-                step_size = int(peaks_name.split("_")[1])
+            elif peakcaller.startswith("rolling"):
+                step_size = int(peakcaller.split("_")[1])
                 peaks = []
                 for gene, promoter in promoters.iterrows():
                     starts = np.arange(
@@ -103,20 +111,20 @@ for dataset_name, design_dataset in design.groupby("dataset"):
                     )
                 peaks = pd.concat(peaks)
 
-                peaks_folder = folder_root / "peaks" / dataset_name / peaks_name
+                peaks_folder = folder_root / "peaks" / dataset_name / peakcaller
                 peaks_folder.mkdir(exist_ok=True, parents=True)
                 peaks.to_csv(
                     peaks_folder / "peaks.bed", index=False, header=False, sep="\t"
                 )
             else:
-                peaks_folder = folder_root / "peaks" / dataset_name / peaks_name
+                peaks_folder = folder_root / "peaks" / dataset_name / peakcaller
                 peaks = pd.read_table(
                     peaks_folder / "peaks.bed",
                     names=["chrom", "start", "end"],
                     usecols=[0, 1, 2],
                 )
 
-                if peaks_name == "genrich":
+                if peakcaller == "genrich":
                     peaks["start"] += 1
 
             import pybedtools
@@ -127,7 +135,7 @@ for dataset_name, design_dataset in design.groupby("dataset"):
             peaks_bed = pybedtools.BedTool.from_dataframe(peaks)
 
             # create peaks dataframe
-            if peaks_name != "stack":
+            if peakcaller != "stack":
                 intersect = promoters_bed.intersect(peaks_bed)
                 intersect = intersect.to_dataframe()
 

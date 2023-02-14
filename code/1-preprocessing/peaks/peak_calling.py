@@ -38,11 +38,12 @@ import chromatinhd as chd
 folder_root = chd.get_output()
 folder_data = folder_root / "data"
 
-# dataset_name = "pbmc10k"
-# dataset_name = "e18brain"
-# dataset_name = "lymphoma"
-# dataset_name = "alzheimer"
-dataset_name = "brain"
+dataset_name = "pbmc10k"; genome = "GRCh38.107"
+dataset_name = "pbmc10k_gran"; genome = "GRCh38.107"
+dataset_name = "e18brain"; genome = "mm10"
+dataset_name = "lymphoma"; genome = "GRCh38.107"
+dataset_name = "alzheimer"; genome = "mm10"
+dataset_name = "brain"; genome = "GRCh38.107"
 
 # dataset_name = "FLI1_7"
 # dataset_name = "PAX2_7"
@@ -142,7 +143,7 @@ peaks_folder
 # # !echo 'cd {peaks_folder} && macs2 callpeak -t {folder_data_preproc}/bam/atac_possorted_bam.bam -f BAMPE'
 
 # if BAM is not available
-# !echo 'cd {peaks_folder} && macs2 callpeak -t {folder_data_preproc}/bam/atac_fragments.tsv.gz -f BEDPE'
+# !echo 'cd {peaks_folder} && macs2 callpeak -t {folder_data_preproc}/atac_fragments.tsv.gz -f BEDPE && cp {peaks_folder}/NA_peaks.narrowPeak {peaks_folder}/peaks.bed'
 
 # if BAM is not available
 # alternative for other datasets
@@ -211,5 +212,30 @@ peaks_folder
 # from updeplasrv7
 # !echo 'mkdir -p {peaks_folder}'
 # !echo 'rsync wsaelens@updeplasrv6.epfl.ch:{peaks_folder}/peaks.bed {peaks_folder}/peaks.bed -v'
+
+# %% [markdown]
+# ## ENCODE Screen
+
+# %% [markdown]
+# https://screen.encodeproject.org/
+
+# %%
+assert genome == "GRCh38.107"
+
+# %%
+# # !wget https://downloads.wenglab.org/V3/GRCh38-cCREs.bed -O {chd.get_output()}/GRCh38-cCREs.bed
+# # !wget https://downloads.wenglab.org/Registry-V3/mm10-cCREs.bed -O {chd.get_output()}/mm10-cCREs.bed
+
+# %%
+# !head  {chd.get_output()}/GRCh38-cCREs.bed
+
+# %%
+peaks_folder = folder_root / "peaks" / dataset_name / "encode_screen"
+peaks_folder.mkdir(exist_ok=True, parents=True)
+
+# %%
+# !cp {chd.get_output()}/GRCh38-cCREs.bed {peaks_folder}/peaks.bed
+
+# %%
 
 # %%

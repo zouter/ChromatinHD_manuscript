@@ -45,18 +45,19 @@ import chromatinhd as chd
 folder_root = chd.get_output()
 folder_data = folder_root / "data"
 
-# dataset_name = "FLI1_7"; organism = "hs"; genome = "GRCh38.107"
-# dataset_name = "PAX2_7"; organism = "hs"; genome = "GRCh38.107"
-# dataset_name = "NHLH1_7"; organism = "hs"; genome = "GRCh38.107"
-# dataset_name = "CDX2_7"; organism = "hs"; genome = "GRCh38.107"
-dataset_name = "CDX1_7"
 organism = "hs"
 genome = "GRCh38.107"
-# dataset_name = "MSGN1_7"; organism = "hs"; genome = "GRCh38.107"
-# dataset_name = "KLF4_7"; organism = "hs"; genome = "GRCh38.107"
-# dataset_name = "KLF5_7"; organism = "hs"; genome = "GRCh38.107"
-# dataset_name = "PTF1A_4"; organism = "hs"; genome = "GRCh38.107"
-# dataset_name = "morf_20"; organism = "hs"; genome = "GRCh38.107"
+
+# dataset_name = "FLI1_7"
+# dataset_name = "PAX2_7"
+# dataset_name = "NHLH1_7"
+# dataset_name = "CDX2_7"
+# dataset_name = "CDX1_7"
+# dataset_name = "MSGN1_7"
+# dataset_name = "KLF4_7"
+# dataset_name = "KLF5_7"
+# dataset_name = "PTF1A_4"
+dataset_name = "morf_20"
 
 folder_data_preproc = folder_data / dataset_name
 folder_data_preproc.mkdir(exist_ok=True, parents=True)
@@ -81,6 +82,11 @@ folder_dataset_remote = (
     / dataset_name
 )
 
+# folder_dataset_remote = (
+#     pathlib.Path("/home/wsaelens/projects/latenta_manuscript/data/")
+#     / dataset_name
+# )
+
 # %%
 # !rsync -av wsaelens@updeplasrv6.epfl.ch:{folder_dataset_remote}/* {folder_data_preproc}/
 
@@ -89,10 +95,10 @@ folder_dataset_remote = (
 
 # %%
 # to reuse from lymphoma
-# !ln -s {folder_data_preproc}/../lymphoma/chromosome.sizes {folder_data_preproc}/chromosome.sizes
-# !ln -s {folder_data_preproc}/../lymphoma/genes.gff.gz {folder_data_preproc}/genes.gff.gz
-# !ln -s {folder_data_preproc}/../lymphoma/dna.fa.gz {folder_data_preproc}/dna.fa.gz
-# !ln -s {folder_data_preproc}/../lymphoma/genome.pkl.gz {folder_data_preproc}/genome.pkl.gz
+# !ln -s {folder_data_preproc}/../pbmc10k/chromosome.sizes {folder_data_preproc}/chromosome.sizes
+# !ln -s {folder_data_preproc}/../pbmc10k/genes.gff.gz {folder_data_preproc}/genes.gff.gz
+# !ln -s {folder_data_preproc}/../pbmc10k/dna.fa.gz {folder_data_preproc}/dna.fa.gz
+# !ln -s {folder_data_preproc}/../pbmc10k/genome.pkl.gz {folder_data_preproc}/genome.pkl.gz
 
 # %% [markdown]
 # ### Genes
@@ -256,6 +262,7 @@ import pysam
 fragments_tabix = tabix.open(str(folder_data_preproc / "fragments.tsv.gz"))
 
 # %%
+# create tabix index
 if not (folder_data_preproc / "fragments.tsv.gz.tbi").exists():
     pysam.tabix_index(
         str(folder_data_preproc / "fragments.tsv.gz"),
@@ -264,20 +271,6 @@ if not (folder_data_preproc / "fragments.tsv.gz.tbi").exists():
         end_col=2,
         force=True,
     )
-
-# %%
-# zippedf =folder_data_preproc / "fragments.tsv.gz"
-# def tabix_index(zippedf):
-#     from subprocess import Popen,PIPE
-#     import shlex
-#     p = Popen(['tabix','-f', zippedf], stdout= PIPE)
-#     # or : cmd = "tabix -f " + zippedf
-#     # p = Popen(shlex.split(cmd), stdout=PIPE)
-#     #(shlex splits the cmd in spaces)
-#     p.wait()
-
-# %%
-# tabix_index(zippedf)
 
 # %% [markdown]
 # #### Define promoters
@@ -409,15 +402,6 @@ mapping = mapping[sorted_idx]
 coordinates = coordinates[sorted_idx]
 
 # %% [markdown]
-# Check size
-
-# %%
-np.product(mapping.size()) * 64 / 8 / 1024 / 1024
-
-# %%
-np.product(coordinates.size()) * 64 / 8 / 1024 / 1024
-
-# %% [markdown]
 # Store
 
 # %%
@@ -429,59 +413,6 @@ fragments.coordinates = coordinates
 
 # %%
 fragments.create_cellxgene_indptr()
-
-# %% [markdown]
-# #### Create training folds
-
-# %%
-n_bins = 5
-
-# %%
-# train/test split
-cells_all = np.arange(fragments.n_cells)
-genes_all = np.arange(fragments.n_genes)
-
-cell_bins = np.floor((np.arange(len(cells_all)) / (len(cells_all) / n_bins)))
-
-chromosome_gene_counts = (
-    transcriptome.var.groupby("chr").size().sort_values(ascending=False)
-)
-chromosome_bins = np.cumsum(
-    (
-        (
-            np.cumsum(chromosome_gene_counts)
-            % (chromosome_gene_counts.sum() / n_bins + 1)
-        ).diff()
-        < 0
-    )
-)
-
-gene_bins = chromosome_bins[transcriptome.var["chr"]].values
-
-n_folds = 5
-folds = []
-for i in range(n_folds):
-    cells_train = cells_all[cell_bins != i]
-    cells_validation = cells_all[cell_bins == i]
-
-    chromosomes_train = chromosome_bins.index[~(chromosome_bins == i)]
-    chromosomes_validation = chromosome_bins.index[chromosome_bins == i]
-    genes_train = fragments.var["ix"][
-        transcriptome.var.index[transcriptome.var["chr"].isin(chromosomes_train)]
-    ].values
-    genes_validation = fragments.var["ix"][
-        transcriptome.var.index[transcriptome.var["chr"].isin(chromosomes_validation)]
-    ].values
-
-    folds.append(
-        {
-            "cells_train": cells_train,
-            "cells_validation": cells_validation,
-            "genes_train": genes_train,
-            "genes_validation": genes_validation,
-        }
-    )
-pickle.dump(folds, (fragments.path / "folds.pkl").open("wb"))
 
 # %% [markdown]
 # ## Fragment distribution

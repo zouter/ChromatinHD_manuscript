@@ -46,12 +46,12 @@ folder_root = chd.get_output()
 folder_data = folder_root / "data"
 
 # dataset_name = "pbmc10k"; main_url = "https://cf.10xgenomics.com/samples/cell-arc/2.0.0/pbmc_granulocyte_sorted_10k/pbmc_granulocyte_sorted_10k"; genome = "GRCh38.107"; organism = "hs"
-# dataset_name = "pbmc10k_gran"; main_url = "https://cf.10xgenomics.com/samples/cell-arc/2.0.0/pbmc_unsorted_10k/pbmc_unsorted_10k"; genome = "GRCh38.107"; organism = "hs"
+dataset_name = "pbmc10k_gran"; main_url = "https://cf.10xgenomics.com/samples/cell-arc/2.0.0/pbmc_unsorted_10k/pbmc_unsorted_10k"; genome = "GRCh38.107"; organism = "hs"
 # dataset_name = "pbmc3k"; main_url = "https://cf.10xgenomics.com/samples/cell-arc/2.0.0/pbmc_granulocyte_sorted_3k/pbmc_granulocyte_sorted_3k"; genome = "GRCh38.107"; organism = "hs"
 # dataset_name = "lymphoma"; main_url = "https://cf.10xgenomics.com/samples/cell-arc/2.0.0/lymph_node_lymphoma_14k/lymph_node_lymphoma_14k"; genome = "GRCh38.107"; organism = "hs"
 # dataset_name = "e18brain"; main_url = "https://cf.10xgenomics.com/samples/cell-arc/2.0.0/e18_mouse_brain_fresh_5k/e18_mouse_brain_fresh_5k";  genome = "mm10"; organism = "mm"
 # dataset_name = "alzheimer"; main_url = "https://cf.10xgenomics.com/samples/cell-arc/2.0.1/Multiome_RNA_ATAC_Mouse_Brain_Alzheimers_AppNote/Multiome_RNA_ATAC_Mouse_Brain_Alzheimers_AppNote";  genome = "mm10"; organism = "mm"
-dataset_name = "brain"; main_url = "https://s3-us-west-2.amazonaws.com/10x.files/samples/cell-arc/2.0.0/human_brain_3k/human_brain_3k"; genome = "GRCh38.107"; organism = "hs"
+# dataset_name = "brain"; main_url = "https://s3-us-west-2.amazonaws.com/10x.files/samples/cell-arc/2.0.0/human_brain_3k/human_brain_3k"; genome = "GRCh38.107"; organism = "hs"
 
 folder_data_preproc = folder_data / dataset_name
 folder_data_preproc.mkdir(exist_ok = True, parents = True)
@@ -100,26 +100,21 @@ elif organism == "hs":
 # %%
 # # !wget {main_url}_atac_cut_sites.bigwig -O {folder_data_preproc}/atac_cut_sites.bigwig
 
-# %%
-# !ls -lh {folder_data_preproc}/
-
-# %%
-# !ls -lh {folder_data_preproc}/../pbmc10k
-
 # %% [markdown]
 # Download gene annotation and chromosome sizes
 
 # %%
 if genome == "GRCh38.107":  
-    # !wget http://ftp.ensembl.org/pub/release-107/gff3/homo_sapiens/Homo_sapiens.GRCh38.107.gff3.gz -O {folder_data_preproc}/genes.gff.gz
+    # # !wget http://ftp.ensembl.org/pub/release-107/gff3/homo_sapiens/Homo_sapiens.GRCh38.107.gff3.gz -O {folder_data_preproc}/genes.gff.gz
     # !wget http://hgdownload.soe.ucsc.edu/goldenPath/hg38/bigZips/hg38.chrom.sizes -O  {folder_data_preproc}/chromosome.sizes
     
-    # to reuse from lymphoma
-    # !ln -s {folder_data_preproc}/../lymphoma/dna.fa.gz {folder_data_preproc}/dna.fa.gz
-    # !ln -s {folder_data_preproc}/../lymphoma/genome.pkl.gz {folder_data_preproc}/genome.pkl.gz
+    # to reuse from pbmc10k
+    # !ln -s -r {folder_data_preproc}/../pbmc10k/dna.fa.gz {folder_data_preproc}/dna.fa.gz
+    # !ln -s -r {folder_data_preproc}/../pbmc10k/genome.pkl.gz {folder_data_preproc}/genome.pkl.gz
     
     # # !wget http://ftp.ensembl.org/pub/release-107/fasta/homo_sapiens/dna/Homo_sapiens.GRCh38.dna_sm.toplevel.fa.gz -O {folder_data_preproc}/dna.fa.gz
 elif genome == "mm10":
+    pass
     # # !wget http://ftp.ensembl.org/pub/release-98/gff3/mus_musculus/Mus_musculus.GRCm38.98.gff3.gz -O {folder_data_preproc}/genes.gff.gz
     # # !wget http://hgdownload.soe.ucsc.edu/goldenPath/mm10/bigZips/mm10.chrom.sizes -O  {folder_data_preproc}/chromosome.sizes
     
@@ -130,7 +125,7 @@ elif genome == "mm10":
     # # !wget http://ftp.ensembl.org/pub/release-98/fasta/mus_musculus/dna/Mus_musculus.GRCm38.dna_sm.toplevel.fa.gz -O {folder_data_preproc}/dna.fa.gz
 
 # %%
-# !zcat {folder_data_preproc}/genes.gff.gz | grep -vE "^#" | awk '$3 == "gene"' > {folder_data_preproc}/genes.gff
+# !ls -lh /home/wsaelens/projects/chromatinhd/chromatinhd_manuscript/output/data/brain
 
 # %% [markdown]
 # ### Genome
@@ -583,8 +578,8 @@ def evaluate_partition(anndata, marker_dict, gene_symbol_key=None, partition_key
 cluster_celltypes = evaluate_partition(adata, marker_annotation["symbols"].to_dict(), "symbol", partition_key="leiden").idxmax()
 
 # %%
-adata.obs["celltype"] = cluster_celltypes[adata.obs["leiden"]].values
-adata.obs["celltype"] = adata.obs["celltype"].astype(str)
+transcriptome.adata.obs["celltype"] = adata.obs["celltype"] = cluster_celltypes[adata.obs["leiden"]].values
+transcriptome.adata.obs["celltype"] = adata.obs["celltype"] = adata.obs["celltype"].astype(str)
 # adata.obs.loc[adata.obs["leiden"] == "4", "celltype"] = "NKT"
 
 # %%
@@ -592,11 +587,11 @@ transcriptome.adata.obs["log_n_counts"] = np.log(transcriptome.adata.obs["n_coun
 
 # %%
 sc.pl.umap(
-    adata,
+    transcriptome.adata,
     color = ["celltype", "log_n_counts", "leiden"]
 )
 sc.pl.umap(
-    adata,
+    transcriptome.adata,
     color = transcriptome.gene_id(marker_annotation["symbols"].explode()),
     title = marker_annotation["symbols"].explode()
 )
@@ -610,9 +605,6 @@ transcriptome.adata = adata
 
 # %% [markdown]
 # ### Creating promoters
-
-# %%
-# !zcat {folder_data_preproc}/atac_fragments.tsv.gz | head -n 100
 
 # %%
 import tabix
@@ -764,8 +756,11 @@ fragments.coordinates = coordinates
 # %%
 fragments.create_cellxgene_indptr()
 
+# %% [markdown] jp-MarkdownHeadingCollapsed=true tags=[]
+# ## Create training folds
+
 # %% [markdown]
-# #### Create training folds
+# ### Default
 
 # %%
 n_bins = 5
@@ -800,6 +795,43 @@ for i in range(n_folds):
         "genes_validation":genes_validation
     })
 pickle.dump(folds, (fragments.path / "folds.pkl").open("wb"))
+
+# %% [markdown]
+# ### Random cells with train/validation/test
+
+# %%
+n_bins = 5
+
+# %%
+promoter_name = "10k10k"
+
+# %%
+transcriptome = chd.data.Transcriptome(folder_data_preproc / "transcriptome")
+fragments = chd.data.Fragments(folder_data_preproc / "fragments" / promoter_name)
+
+# %%
+(fragments.path / "folds").mkdir(exist_ok = True)
+
+# %%
+# train/test split
+cells_all = np.arange(fragments.n_cells)
+
+cell_bins = np.floor((np.arange(len(cells_all))/(len(cells_all)/n_bins)))
+
+n_folds = 5
+folds = []
+for i in range(n_folds):
+    cells_train = cells_all[cell_bins != i]
+    cells_validation_test = cells_all[cell_bins == i]
+    cells_validation = cells_validation_test[:(len(cells_validation_test)//2)]
+    cells_test = cells_validation_test[(len(cells_validation_test)//2):]
+    
+    folds.append({
+        "cells_train":cells_train,
+        "cells_validation":cells_validation,
+        "cells_test":cells_test,
+    })
+pickle.dump(folds, (fragments.path / "folds" / "random_5fold.pkl").open("wb"))
 
 # %% [markdown]
 # ## Fragment distribution

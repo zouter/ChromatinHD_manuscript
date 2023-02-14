@@ -37,11 +37,12 @@ import chromatinhd as chd
 folder_root = chd.get_output()
 folder_data = folder_root / "data"
 
-dataset_name = "pbmc10k"
+dataset_name = "pbmc10k_gran"
+# dataset_name = "pbmc10k"
 # dataset_name = "lymphoma"
 # dataset_name = "e18brain"
 # dataset_name = "alzheimer"
-dataset_name = "brain"
+# dataset_name = "brain"
 
 folder_data_preproc = folder_data / dataset_name
 folder_data_preproc.mkdir(exist_ok = True, parents = True)
@@ -108,6 +109,9 @@ with (peaks_folder / "peaks.bed").open("w") as outfile:
 
 # %%
 # !head -n 20 {(peaks_folder / "peaks.bed")}
+
+# %%
+# !rm -r {peaks_folder}/tmp
 
 # %% [markdown]
 # ## Merged

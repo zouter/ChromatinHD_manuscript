@@ -22,31 +22,10 @@ class Prediction(chd.flow.Flow):
 
 import itertools
 
-design = pd.DataFrame.from_records(
-    itertools.chain(
-        # itertools.product(
-        #     ["lymphoma"],
-        #     ["celltype"],
-        #     ["v9_128-64-32"],
-        # ),
-        itertools.product(
-            [
-                "pbmc10k",
-                # "e18brain",
-                # "brain",
-                # "alzheimer",
-            ],
-            ["leiden_0.1"],
-            # ["v4_128-64-32_30_rep"],
-            # ["v5_128-64-32"],
-            # ["v8_128-64-32"],
-            ["v9_128-64-32"],
-        ),
-    ),
-    columns=["dataset", "latent", "method"],
-)
+from designs import dataset_latent_method_combinations as design
+
 print(design)
-design["force"] = True
+design["force"] = False
 
 for dataset_name, design_dataset in design.groupby("dataset"):
     print(f"{dataset_name=}")
@@ -105,6 +84,7 @@ for dataset_name, design_dataset in design.groupby("dataset"):
             ][fold_slice]:
                 if not (prediction.path / "probs.pkl").exists():
                     force = True
+                print(prediction.path)
 
                 if force:
                     model = pickle.load(

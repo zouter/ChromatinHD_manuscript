@@ -565,16 +565,6 @@ import chromatinhd.loaders.minibatching
 
 def get_folds_training(fragments, folds):
     for fold in folds:
-        # rg = np.random.RandomState(0)
-        # fold["minibatches_train"] = chd.loaders.minibatching.create_bins_random(
-        #     fold["cells_train"],
-        #     list(fold["genes_train"]) + list(fold["genes_validation"]),
-        #     n_cells_step=n_cells_step,
-        #     n_genes_step=n_genes_step,
-        #     n_genes_total=fragments.n_genes,
-        #     use_all = True,
-        #     rg=rg,
-        # )
         minibatcher = chd.loaders.minibatching.Minibatcher(
             fold["cells_train"],
             np.arange(fragments.n_genes),

@@ -17,39 +17,17 @@ folder_data = folder_root / "data"
 
 import itertools
 
-from designs
-
-design = pd.DataFrame.from_records(
-    itertools.chain(
-        itertools.product(
-            [
-                # "pbmc10k",
-                # "lymphoma",
-                # "e18brain",
-                # "brain",
-                # "alzheimer",
-                # "pbmc10k_gran"
-                # "pbmc3k-pbmc10k",
-                # "pbmc3k-pbmc10k",
-                # "pbmc3k-pbmc10k",
-            ],
-            [
-                "cellranger",
-                "macs2",
-                "rolling_50",
-                "rolling_100",
-                "rolling_500",
-                "macs2_improved",
-                # "genrich",
-                "macs2_leiden_0.1_merged",
-                "macs2_leiden_0.1",
-                "stack",
-                "encode_screen",
-            ],
-        )
-    ),
-    columns=["dataset", "peakcaller"],
+from chromatinhd_manuscript.designs import dataset_peakcaller_combinations as design_1
+from chromatinhd_manuscript.designs import (
+    traindataset_testdataset_peakcaller_combinations as design_2,
 )
+
+design_2["dataset"] = design_2["testdataset"]
+
+design = pd.concat([design_1, design_2])
+design.index = np.arange(len(design))
+
+design = design.loc[design["peakcaller"] == "stack"].copy()
 # design = design.loc[
 #     ~((design["dataset"] == "alzheimer") & (design["peakcaller"] == "genrich"))
 # ]
@@ -57,7 +35,6 @@ design["force"] = False
 print(design)
 
 for dataset_name, design_dataset in design.groupby("dataset"):
-    print(f"{dataset_name=}")
     # transcriptome
     folder_data_preproc = folder_data / dataset_name
 
@@ -65,30 +42,27 @@ for dataset_name, design_dataset in design.groupby("dataset"):
     # promoter_name, window = "1k1k", np.array([-1000, 1000])
     promoter_name, window = "10k10k", np.array([-10000, 10000])
     # promoter_name, window = "20kpromoter", np.array([-10000, 0])
-    promoters = pd.read_csv(
-        folder_data_preproc / ("promoters_" + promoter_name + ".csv"), index_col=0
-    )
-    window_width = window[1] - window[0]
 
     fragments = chd.data.Fragments(folder_data_preproc / "fragments" / promoter_name)
     fragments.window = window
 
-    print(design_dataset)
-    for peakcaller, design_peaks in design_dataset.groupby("peakcaller"):
-        print(peakcaller)
+    for peakcaller, subdesign in design_dataset.groupby("peakcaller"):
         peakcounts = chd.peakcounts.FullPeak(
             folder=chd.get_output() / "peakcounts" / dataset_name / peakcaller
         )
 
-        design_row = design_peaks.iloc[0]
-
-        force = design_row["force"]
-        try:
-            peakcounts.counts
-        except BaseException:
-            force = True or force
+        desired_outputs = [peakcounts.path / ("counts.pkl")]
+        force = subdesign["force"].iloc[0]
+        if not all([desired_output.exists() for desired_output in desired_outputs]):
+            force = True
 
         if force:
+            print(subdesign)
+            promoters = pd.read_csv(
+                folder_data_preproc / ("promoters_" + promoter_name + ".csv"),
+                index_col=0,
+            )
+
             if peakcaller == "stack":
                 peaks = promoters.reset_index()[["chr", "start", "end", "gene"]]
             elif peakcaller.startswith("rolling"):
@@ -116,13 +90,21 @@ for dataset_name, design_dataset in design.groupby("dataset"):
                 peaks.to_csv(
                     peaks_folder / "peaks.bed", index=False, header=False, sep="\t"
                 )
+            elif peakcaller == "1k1k":
+                peaks = promoters.copy().reset_index()[["chr", "start", "end", "gene"]]
+                peaks["start"] = peaks["start"] - window[0] - 1000
+                peaks["end"] = peaks["start"] - window[0] + 1000
             else:
                 peaks_folder = folder_root / "peaks" / dataset_name / peakcaller
-                peaks = pd.read_table(
-                    peaks_folder / "peaks.bed",
-                    names=["chrom", "start", "end"],
-                    usecols=[0, 1, 2],
-                )
+                try:
+                    peaks = pd.read_table(
+                        peaks_folder / "peaks.bed",
+                        names=["chrom", "start", "end"],
+                        usecols=[0, 1, 2],
+                    )
+                except FileNotFoundError as e:
+                    print(e)
+                    continue
 
                 if peakcaller == "genrich":
                     peaks["start"] += 1
@@ -183,6 +165,11 @@ for dataset_name, design_dataset in design.groupby("dataset"):
 
             # count
             fragments.obs["ix"] = np.arange(fragments.obs.shape[0])
-            peakcounts.count_peaks(
-                folder_data_preproc / "atac_fragments.tsv.gz", fragments.obs.index
-            )
+
+            fragments_location = folder_data_preproc / "atac_fragments.tsv.gz"
+            if not fragments_location.exists():
+                fragments_location = folder_data_preproc / "fragments.tsv.gz"
+                if not fragments_location.exists():
+                    print("No atac fragments found")
+                    continue
+            peakcounts.count_peaks(fragments_location, fragments.obs.index)

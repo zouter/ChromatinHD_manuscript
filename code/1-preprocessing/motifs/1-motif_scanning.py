@@ -49,10 +49,9 @@ folder_data = folder_root / "data"
 
 # dataset_name = "lymphoma"; organism = "hs"
 # dataset_name = "pbmc10k"; organism = "hs"
-dataset_name = "e18brain"
-organism = "mm"
-# dataset_name = "alzheimer"
-# dataset_name = "brain"
+# dataset_name = "e18brain"; organism = "mm"
+dataset_name = "alzheimer"; organism = "mm"
+# dataset_name = "brain"; organism = "hs"
 
 # dataset_name = "FLI1_7"
 # dataset_name = "PAX2_7"
@@ -84,6 +83,7 @@ folder_motifs.mkdir(parents=True, exist_ok=True)
 # %%
 # !wget https://hocomoco11.autosome.org/final_bundle/hocomoco11/core/MOUSE/mono/HOCOMOCOv11_core_standard_thresholds_MOUSE_mono.txt -O {folder_motifs}/pwm_cutoffs.txt
 # !wget https://hocomoco11.autosome.org/final_bundle/hocomoco11/core/MOUSE/mono/HOCOMOCOv11_core_pwms_MOUSE_mono.txt -O {folder_motifs}/pwms.txt
+# !wget https://hocomoco11.autosome.org/final_bundle/hocomoco11/core/MOUSE/mono/HOCOMOCOv11_core_annotation_MOUSE_mono.tsv -O {folder_motifs}/annot.txt
 
 # %%
 pwms = {}
@@ -196,7 +196,6 @@ onehot_promoters = pickle.load(
 pwms = pickle.load((folder_motifs / "pwms.pkl").open("rb"))
 motifs = pd.read_pickle(folder_motifs / "motifs.pkl")
 
-# %%
 # motifs_oi = motifs.loc[motifs["gene_label"].isin(["TCF7", "GATA3", "IRF4"])]
 # motifs_oi = motifs.iloc[:20]
 # motifs_oi = motifs.loc[motifs["gene_label"].isin(["TCF7", ])]
@@ -409,7 +408,7 @@ ax_scorerev.scatter(
 ax_scorerev.set_ylabel("Reverse scores", rotation=0, ha="right", va="center")
 
 # %% [markdown]
-# ### Save
+# ### Create motifscan
 
 # %%
 motifscan_name = cutoff_col
@@ -422,6 +421,9 @@ motifscan = chd.data.Motifscan(
     chd.get_output() / "motifscans" / dataset_name / promoter_name / motifscan_name
 )
 
+# %% [markdown]
+# ### Save motif indices
+
 # %%
 motifscan.indices = motifscores.indices
 motifscan.indptr = motifscores.indptr
@@ -429,17 +431,54 @@ motifscan.data = motifscores.data
 motifscan.shape = motifscores.shape
 
 # %%
-motifscan
-
-# %%
 # motifscan_folder = chd.get_output() / "motifscans" / dataset_name / promoter_name
 # motifscan_folder.mkdir(parents=True, exist_ok=True)
+
+# %% [markdown] tags=[]
+# ### Save motifs (with gene info)
+
+# %%
+biomart_dataset_name = "mmusculus_gene_ensembl" if organism == "mm" else "hsapiens_gene_ensembl"
+
+# %%
+query = f"""<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE Query>
+<Query  virtualSchemaName = "default" formatter = "TSV" header = "1" uniqueRows = "0" count = "" datasetConfigVersion = "0.6" >
+
+    <Dataset name = "{biomart_dataset_name}" interface = "default" >
+        <Attribute name = "ensembl_gene_id" />
+        <Attribute name = "entrezgene_id" />
+    </Dataset>
+</Query>"""
+url = "http://www.ensembl.org/biomart/martservice?query=" + query.replace("\t", "").replace("\n", "")
+from io import StringIO
+import requests
+session = requests.Session()
+session.headers.update({'User-Agent': 'Custom user agent'})
+r = session.get(url)
+result = pd.read_table(StringIO(r.content.decode("utf-8")))
+
+# %%
+result = result.rename(columns = {"NCBI gene (formerly Entrezgene) ID":"EntrezGene", "Gene stable ID":"gene"})
+result = result.dropna()
+result = result.reset_index()
+result["EntrezGene"] = result["EntrezGene"].astype(int).astype(str)
+result = result.groupby("EntrezGene").first()
+
+# %%
+motifs_oi["gene"] = result.reindex(motifs_oi["EntrezGene"])["gene"].tolist()
+
+# %%
+pd.isnull(motifs_oi["gene"]).sum()
 
 # %%
 pickle.dump(motifs_oi, open(motifscan.path / "motifs.pkl", "wb"))
 
 # %%
 # !ls -lh {motifscan.path}
+
+# %%
+motifscan.n_motifs = len(motifs_oi)
 
 # %% [markdown]
 # ## Motif scanning with convolutions

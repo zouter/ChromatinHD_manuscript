@@ -32,3 +32,12 @@ pip install -e ~/projects/peakcheck/package
 ln -s /data/peak_free_atac/output
 ln -s /data/peak_free_atac/software
 ```
+
+What was done for Victor:
+```
+sudo chgrp -R peak_free_atac /data/peak_free_atac
+sudo chmod -R g+w /data/peak_free_atac
+sudo chmod -R g+s /data/peak_free_atac
+sudo setfacl -d -m group:peak_free_atac:rwx /data/peak_free_atac
+sudo usermod -a -G peak_free_atac vifernan
+```

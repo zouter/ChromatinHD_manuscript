@@ -39,7 +39,6 @@ import pathlib
 
 # export LD_LIBRARY_PATH=/data/peak_free_atac/software/peak_free_atac/lib
 import torch
-import torch_sparse
 
 import tqdm.auto as tqdm
 
@@ -67,6 +66,7 @@ window_width = window[1] - window[0]
 # %%
 transcriptome = chd.data.Transcriptome(folder_data_preproc / "transcriptome")
 fragments = chd.data.Fragments(folder_data_preproc / "fragments" / promoter_name)
+fragments.window = window
 
 # %%
 folds = pickle.load((fragments.path / "folds.pkl").open("rb"))
@@ -110,7 +110,7 @@ import chromatinhd.loaders.extraction.fragments
 n_cells = 1000
 n_genes = 100
 cutwindow = np.array([-150, 150])
-loader = chromatinhd.loaders.fragments.Fragments(fragments, n_cells * n_genes, window)
+loader = chromatinhd.loaders.fragments.Fragments(fragments, n_cells * n_genes)
 
 # %%
 cells_oi = np.arange(0, n_cells)
@@ -141,7 +141,7 @@ n_cells = 1000
 n_genes = 100
 cutwindow = np.array([-150, 150])
 loader = chromatinhd.loaders.fragments.FragmentsCounting(
-    fragments, n_cells * n_genes, window
+    fragments, n_cells * n_genes
 )
 
 # %%
@@ -196,8 +196,7 @@ loaders = chromatinhd.loaders.pool.LoaderPool(
     chromatinhd.loaders.fragments.Fragments,
     {
         "fragments": fragments,
-        "cellxgene_batch_size": n_cells * n_genes,
-        "window": window,
+        "cellxgene_batch_size": n_cells * n_genes
     },
     n_workers=2,
 )
@@ -226,17 +225,17 @@ loaders.initialize(data)
 for i, data in enumerate(tqdm.tqdm(loaders)):
     print(i)
     data
-    # loaders.submit_next()
+    loaders.submit_next()
 
 # %% [markdown]
 # ## Positional encoding
 
 # %%
-import chromatinhd.models.positional.v14
+import chromatinhd.models.positional.v20
 
 # %%
 n_frequencies = 20
-encoder = chromatinhd.models.positional.v14.SineEncoding(n_frequencies)
+encoder = chromatinhd.models.positional.v20.SineEncoding(n_frequencies)
 
 # %%
 x = torch.arange(-10000, 10000)
@@ -288,21 +287,14 @@ pd.Series(counts).plot(kind="hist", range=(0, 10), bins=10)
 # ## Fragment embedder
 
 # %%
-import chromatinhd.models.positional.v14
+import chromatinhd.models.positional.v20
 
 # %%
-embedder = chromatinhd.models.positional.v14.FragmentEmbedder(fragments.n_genes)
+embedder = chromatinhd.models.positional.v20.FragmentEmbedder(fragments.n_genes)
 
 # %%
 # %%timeit
 embedder.forward(data.coordinates, data.genemapping)
-
-# %%
-# # %%timeit
-# embedder.forward(data.coordinates, data.genemapping)
-
-# %%
-# embedder.forward(data.coordinates, data.genemapping, data.n)[data.n]
 
 # %%
 embedder.forward(data.coordinates, data.genemapping, data.n)[data.n]
@@ -327,27 +319,26 @@ plt.plot(coordinates[:100, 0], encoding[:100, i])
 # ## Model
 
 # %%
-import chromatinhd.models.positional.v14
+import chromatinhd.models.positional.v20
 
 # %%
 mean_gene_expression = transcriptome.X.dense().mean(0)
 
 # %%
-model = chromatinhd.models.positional.v14.Model(
-    loader,
+model = chromatinhd.models.positional.v20.Model(
     fragments.n_genes,
     mean_gene_expression,
     n_frequencies=50,
     nonlinear="sigmoid",
     reduce="sum",
 )
-model = pickle.load(
-    (
-        chd.get_output()
-        / ".."
-        / "output/prediction_positional/pbmc10k/10k10k/v14_50freq_sum_sigmoid_initdefault/model_0.pkl"
-    ).open("rb")
-)
+# model = pickle.load(
+#     (
+#         chd.get_output()
+#         / ".."
+#         / "output/prediction_positional/pbmc10k/10k10k/v14_50freq_sum_sigmoid_initdefault/model_0.pkl"
+#     ).open("rb")
+# )
 
 # %%
 effect = model.forward(data)
@@ -356,22 +347,6 @@ effect = effect - mean_gene_expression[data.genes_oi]
 # %%
 # %%timeit
 embedder.forward(data.coordinates, data.genemapping)
-
-# %%
-# # %%timeit
-# embedder.forward(data.coordinates, data.genemapping)
-
-# %%
-# embedder.forward(data.coordinates, data.genemapping, data.n)[data.n]
-
-# %%
-embedder.forward(data.coordinates, data.genemapping, data.n)[data.n]
-
-# %%
-1 / (10000 ** (2 * 0 / 50))
-
-# %%
-sns.heatmap(encoding.numpy())
 
 # %%
 i = 0
@@ -392,16 +367,10 @@ transcriptome.X
 mean_gene_expression = transcriptome.X.dense().mean(0)
 
 # %%
-from chromatinhd.models.positional.v14 import Model
+from chromatinhd.models.positional.v20 import Model
 
 # %%
-model = Model(loaders.loaders[0], fragments.n_genes, mean_gene_expression)
-
-# %%
-data.genes_oi
-
-# %%
-data.coordinates.shape
+model = Model(fragments.n_genes, mean_gene_expression)
 
 # %%
 model.forward(data)
@@ -421,14 +390,11 @@ import chromatinhd.loaders.fragmentmotif
 from design import get_design, get_folds_training
 
 # %%
-design = get_design(dataset_name, transcriptome, motifscores, fragments, window)
+design = get_design(transcriptome, fragments)
 
 # %%
-# prediction_name = "v4_10-10"
-# prediction_name = "v4_1-1"
-# prediction_name = "v4_1k-1k"
-# prediction_name = "v4"
-prediction_name = "v4_baseline"
+prediction_name = "v20"
+prediction_name = "counter"
 design_row = design[prediction_name]
 
 # %%
@@ -467,14 +433,12 @@ folds = get_folds_training(fragments, folds)
 # cos = torch.nn.CosineSimilarity(dim = 0)
 # loss = lambda x_1, x_2: -cos(x_1, x_2).mean()
 
-
 def paircor(x, y, dim=0, eps=0.1):
     divisor = (y.std(dim) * x.std(dim)) + eps
     cor = ((x - x.mean(dim, keepdims=True)) * (y - y.mean(dim, keepdims=True))).mean(
         dim
     ) / divisor
     return cor
-
 
 loss = lambda x, y: -paircor(x, y).mean() * 100
 
@@ -490,11 +454,10 @@ loss = lambda x, y: -paircor(x, y).mean() * 100
 class Prediction(chd.flow.Flow):
     pass
 
-
 print(prediction_name)
 prediction = Prediction(
     chd.get_output()
-    / "prediction_sequence"
+    / "prediction_positional"
     / dataset_name
     / promoter_name
     / prediction_name
@@ -505,44 +468,33 @@ fold_ix = 0
 fold = folds[0]
 
 # %%
-# initialize loaders
-loaders.initialize(fold["minibatches_train"])
-loaders_validation.initialize(fold["minibatches_validation_trace"])
+# new_minibatch_sets = []
+# for minibatch_set in fold["minibatches_train_sets"]:
+#     tasks = [minibatch.filter_genes(improved) for minibatch in minibatch_set["tasks"]]
+#     new_minibatch_sets.append({"tasks":tasks})
 
 # %%
-# data = loaders.pull()
-# data.motifcounts.sum()
-
-# motifs["total"] = np.array((motifscores > 0).sum(0))[0]
-# motifs["n"] = np.array((data.motifcounts > 0).sum(0))
-# motifs["score"] = np.log(motifs["n"] / motifs["total"])
-# motifs["score"] .sort_values().plot(kind = "hist")
-
-# %%
-n_epochs = 150
-checkpoint_every_epoch = 100
-
-# n_epochs = 10
-# checkpoint_every_epoch = 30
+n_epochs = 20
+checkpoint_every_epoch = 1
 
 # %%
 # model
 model = design_row["model_cls"](**design_row["model_parameters"])
 
 # %%
-## optimizer
-params = model.get_parameters()
+from chromatinhd.models.positional.trainer import Trainer
 
+# %% tags=[]
 # optimization
 optimize_every_step = 1
-lr = 1e-2  # / optimize_every_step
-optim = torch.optim.Adam(params, lr=lr)
+lr = 1e-3  # / optimize_every_step
+optim = chd.optim.SparseDenseAdam(model.parameters_sparse(), model.parameters_dense(autoextend = False), lr = lr, weight_decay = lr / 2)
 
 # train
 import chromatinhd.train
 
 outcome = transcriptome.X.dense()
-trainer = chd.train.Trainer(
+trainer = Trainer(
     model,
     loaders,
     loaders_validation,
@@ -554,21 +506,19 @@ trainer = chd.train.Trainer(
     n_epochs=n_epochs,
     device="cuda",
 )
-trainer.train()
+trainer.train(fold["minibatches_train_sets"], fold["minibatches_validation_trace"])
 
 # %%
 pd.DataFrame(trainer.trace.validation_steps).groupby("checkpoint").mean()["loss"].plot(
     label="validation"
 )
-
-# %%
 pd.DataFrame(trainer.trace.train_steps).groupby("checkpoint").mean()["loss"].plot(
     label="train"
 )
 
 # %%
 # model = model.to("cpu")
-pickle.dump(model, open("../../" + dataset_name + "_" + "baseline_model.pkl", "wb"))
+# pickle.dump(model, open("../../" + dataset_name + "_" + "baseline_model.pkl", "wb"))
 
 # %%
 model = model.to("cpu")
@@ -657,8 +607,6 @@ exp = pd.DataFrame(
     index=transcriptome.adata.obs.index,
     columns=motifs_oi.index,
 )
-
-# %%
 
 # %%
 sc.get.obs_df(

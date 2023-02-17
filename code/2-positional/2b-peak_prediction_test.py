@@ -7,15 +7,16 @@ from chromatinhd_manuscript.designs import (
     traindataset_testdataset_splitter_peakcaller_predictor_combinations as design,
 )
 
-design["force"] = False
+design["force"] = True
 
 predictors = {
     "linear": chromatinhd.models.positional.peak.prediction_test.PeaksGeneLinear,
 }
 
-design = design.loc[(design["peakcaller"].str.startswith("cellranger"))]
+# design = design.loc[~(design["peakcaller"].str.startswith("rolling"))]
+# design = design.loc[(design["peakcaller"].str.startswith("macs2_leiden_0.1"))]
 design = design.loc[(design["predictor"] == "linear")]
-# design = design.loc[(design["dataset"] == "pbmc10k")]
+# design = design.loc[(design["testdataset"] != "pbmc3k-pbmc10k")]
 design = design.loc[(design["splitter"] == "random_5fold")]
 
 
@@ -56,6 +57,12 @@ for _, design_row in design.iterrows():
         testpeakcounts = chd.peakcounts.FullPeak(
             folder=chd.get_output() / "peakcounts" / testdataset_name / peakcaller
         )
+
+        try:
+            testpeakcounts.peaks
+        except FileNotFoundError as e:
+            print(e)
+            continue
 
         peaks = trainpeakcounts.peaks
         gene_peak_links = peaks.reset_index()

@@ -33,6 +33,12 @@ from chromatinhd_manuscript.designs import (
 # design = design.loc[design["splitter"].isin(["leiden_0.1", "celltype"])]
 # design = design.query("method == 'counter'")
 
+
+design = design.query("method == 'v20_initdefault'")
+design = design.query("dataset == 'pbmc10k'")
+design = design.query("splitter == 'random_5fold'")
+
+
 design["force"] = False
 
 for dataset_name, subdesign in design.groupby("dataset"):

@@ -66,9 +66,13 @@ design.index = np.arange(len(design))
 design.index.name = "design_ix"
 
 # %%
-# design = design.query("dataset == 'e18brain'").copy()
+# design = design.query("dataset == 'pbmc10k'").copy()
 # design = design.query("dataset == 'pbmc10k_gran-pbmc10k'").copy()
-# design = design.query("dataset == 'pbmc3k-pbmc10k'").copy()
+# design = design.query("dataset == 'pbmc10k_gran-pbmc10k'").copy()
+
+# %%
+design = design.query("splitter in ['random_5fold', 'all']").copy()
+design = design.query("method != 'v20_initdefault'").copy()
 
 # %%
 design["traindataset"] = [x["dataset"] if pd.isnull(x["traindataset"]) else x["traindataset"] for _, x in design.iterrows()]
@@ -138,6 +142,7 @@ method_info.loc[pd.isnull(method_info["color"]), "color"] = "#DDDDDD"
 dataset_info = pd.DataFrame(index = design.groupby(["dataset", "promoter", "splitter"]).first().index)
 dataset_info["label"] = dataset_info.index.get_level_values("dataset")
 dataset_info["ix"] = np.arange(len(dataset_info))
+dataset_info["label"] = dataset_info["label"].str.replace("-", "→\n")
 
 # %%
 dummy_method = "counter"
@@ -292,8 +297,9 @@ for i, ax in enumerate(axes[1]):
 
 for ax in fig.axes:
     ax.legend([], [], frameon=False)
-# ax_all.set_xlim(
-# ax_cor_all.set_yticklabels(method_info.loc[[tick._text for tick in ax_cor_all.get_yticklabels()]]["label"])
+
+# %%
+meanscores.loc["cellranger/linear"].loc["lymphoma-pbmc10k"]
 
 # %% [markdown]
 # ## Dependency on # of cells and predictive power

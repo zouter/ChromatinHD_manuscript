@@ -47,6 +47,15 @@ def get_design(transcriptome, fragments):
         "loader_cls": chromatinhd.loaders.fragments.Fragments,
         "loader_parameters": general_loader_parameters,
     }
+    design["v20_initdefault"] = {
+        "model_cls": chromatinhd.models.positional.v20.Model,
+        "model_parameters": {
+            **general_model_parameters,
+            "embedding_to_expression_initialization": "default",
+        },
+        "loader_cls": chromatinhd.loaders.fragments.Fragments,
+        "loader_parameters": general_loader_parameters,
+    }
     return design
 
 

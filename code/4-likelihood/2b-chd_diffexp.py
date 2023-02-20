@@ -20,9 +20,10 @@ class Prediction(chd.flow.Flow):
     pass
 
 
-from designs import dataset_latent_combinations as design
+from chromatinhd_manuscript.designs import dataset_latent_method_combinations as design
 
-design = chd.utils.crossing(design, pd.DataFrame({"method": ["v9_128-64-32"]}))
+design = design.query("dataset == 'pbmc10k_gran'")
+
 design["force"] = False
 
 print(design)

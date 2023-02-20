@@ -20,37 +20,34 @@ class Prediction(chd.flow.Flow):
     pass
 
 
-from designs import dataset_latent_peakcaller_combinations as design
-
-design = chd.utils.crossing(
-    design,
-    pd.DataFrame({"method": ["v9_128-64-32"]}),
-    pd.DataFrame({"diffexp": ["scanpy"]}),
-    pd.DataFrame(
-        {
-            "motifscan": ["cutoff_0001"],
-        }
-    ),
-    pd.DataFrame(
-        {
-            "enricher": [
-                "cluster_vs_clusters",
-                "cluster_vs_background",
-                "cluster_vs_background_gc",
-            ],
-        }
-    ),
+## MOTIF
+from chromatinhd_manuscript.designs import (
+    dataset_latent_peakcaller_diffexp_method_motifscan_enricher_combinations as design,
 )
 
-# design = design.query("dataset == 'lymphoma'")
+# design = design.query("dataset == 'pbmc10k_gran'")
+
+design = design.query("dataset != 'alzheimer'")
+# design = design.query("dataset == 'morf_20'")
+# design = design.query("peakcaller in ['1k1k', 'stack']")
+design = design.query("diffexp in ['signac']")
 
 # design = design.query("dataset in ['lymphoma', 'e18brain']")
 # design = design.query("dataset == 'brain'")
-# design = design.query("dataset == 'alzheimer'")
-# design = design.query("peakcaller == 'cellranger'")
-design = design.query("enricher == 'cluster_vs_background'")
+# design = design.query("enricher == 'cluster_vs_background'")
 
-design["force"] = True
+## QTL
+# from chromatinhd_manuscript.designs import (
+#     dataset_latent_peakcaller_diffexp_method_qtl_enricher_combinations as design,
+# )
+
+# design = design.query("dataset == 'pbmc10k_gran'")
+# design = design.query("peakcaller == 'cellranger'")
+# design = design.query("motifscan == 'gwas_immune'")
+# design = design.query("motifscan == 'onek1k_0.2'")
+##
+
+design["force"] = False
 print(design)
 
 for dataset_name, design_dataset in design.groupby("dataset"):
@@ -110,7 +107,6 @@ for dataset_name, design_dataset in design.groupby("dataset"):
                             / enricher
                         )
                         scores_dir.mkdir(parents=True, exist_ok=True)
-                        print(scores_dir)
 
                         desired_outputs = [
                             (scores_dir / "scores_peaks.pkl"),
@@ -149,9 +145,13 @@ for dataset_name, design_dataset in design.groupby("dataset"):
                                 / diffexp
                                 / peakcaller
                             )
-                            peakresult = pickle.load(
-                                (peak_scores_dir / "slices.pkl").open("rb")
-                            )
+                            try:
+                                peakresult = pickle.load(
+                                    (peak_scores_dir / "slices.pkl").open("rb")
+                                )
+                            except FileNotFoundError as e:
+                                print(e)
+                                continue
 
                             region_scores_dir = (
                                 prediction.path / "scoring" / peakcaller / diffexp
@@ -199,6 +199,18 @@ for dataset_name, design_dataset in design.groupby("dataset"):
                                     fragments.n_genes,
                                     onehot_promoters=onehot_promoters,
                                 )
+                            elif enricher in ["cluster_vs_all"]:
+                                enrichmentscores = (
+                                    chd.differential.enrichment.enrich_cluster_vs_all(
+                                        motifscan,
+                                        window,
+                                        regions,
+                                        "cluster",
+                                        fragments.n_genes,
+                                        gene_ids=fragments.var.index,
+                                    )
+                                )
+
                             pickle.dump(
                                 enrichmentscores,
                                 (scores_dir / "scores_peaks.pkl").open("wb"),
@@ -231,6 +243,17 @@ for dataset_name, design_dataset in design.groupby("dataset"):
                                     "cluster",
                                     fragments.n_genes,
                                     onehot_promoters=onehot_promoters,
+                                )
+                            elif enricher in ["cluster_vs_all"]:
+                                enrichmentscores = (
+                                    chd.differential.enrichment.enrich_cluster_vs_all(
+                                        motifscan,
+                                        window,
+                                        regions,
+                                        "cluster",
+                                        fragments.n_genes,
+                                        gene_ids=fragments.var.index,
+                                    )
                                 )
                             pickle.dump(
                                 enrichmentscores,

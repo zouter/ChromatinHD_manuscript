@@ -14,11 +14,16 @@ import pickle
 
 import itertools
 
-from designs import dataset_latent_peakcaller_combinations as design
+from chromatinhd_manuscript.designs import (
+    dataset_latent_peakcaller_diffexp_combinations as design,
+)
 
-# design = design.query("dataset == 'pbmc10k'")
-# design = design.query("dataset == 'brain'")
-design = design.query("dataset == 'alzheimer'")
+design = design.query("diffexp == 'scanpy'")  #!
+
+# design = design.query("dataset != 'alzheimer'")
+# design = design.query("dataset == 'morf_20'")
+design = design.query("peakcaller == 'encode_screen'")
+# design = design.query("dataset == 'alzheimer'")
 
 design["force"] = False
 
@@ -75,7 +80,7 @@ for dataset_name, design_dataset in design.groupby("dataset"):
                         latent.columns[np.where(latent.values)[1]],
                         categories=latent.columns,
                     )
-                    sc.tl.rank_genes_groups(adata_atac, "cluster")
+                    sc.tl.rank_genes_groups(adata_atac, "cluster", method="t-test")
 
                     peakscores = []
                     for cluster_oi in cluster_info.index:
@@ -102,5 +107,8 @@ for dataset_name, design_dataset in design.groupby("dataset"):
                     )
 
                     pickle.dump(peakresult, (scores_dir / "slices.pkl").open("wb"))
+
+                except KeyboardInterrupt as e:
+                    raise e
                 except BaseException as e:
                     print(e)

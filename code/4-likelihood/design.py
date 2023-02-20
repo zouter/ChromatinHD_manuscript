@@ -585,7 +585,7 @@ def get_folds_training(fragments, folds):
         rg = np.random.RandomState(0)
         fold["minibatches_validation"] = chd.loaders.minibatching.create_bins_ordered(
             fold["cells_validation"],
-            list(fold["genes_train"]) + list(fold["genes_validation"]),
+            np.arange(fragments.n_genes),
             n_cells_step=n_cells_step,
             n_genes_step=n_genes_step,
             n_genes_total=fragments.n_genes,
@@ -594,53 +594,4 @@ def get_folds_training(fragments, folds):
             rg=rg,
         )
         fold["minibatches_validation_trace"] = fold["minibatches_validation"][:8]
-    return folds
-
-
-def get_folds_inference(fragments, folds):
-    for fold in folds:
-        cells_train = list(fold["cells_train"])[:200]
-        genes_train = list(fold["genes_train"])
-        cells_validation = list(fold["cells_validation"])
-        # genes_validation = list(fold["genes_validation"])
-
-        rg = np.random.RandomState(0)
-
-        minibatches = chd.loaders.minibatching.create_bins_ordered(
-            cells_train + cells_validation,
-            genes_train,
-            n_cells_step=n_cells_step,
-            n_genes_step=n_genes_step,
-            n_genes_total=fragments.n_genes,
-            use_all=True,
-            rg=rg,
-        )
-        fold["minibatches"] = minibatches
-
-        fold["phases"] = {
-            "train": [cells_train, genes_train],
-            "validation": [cells_validation, genes_train],
-        }
-    return folds
-
-
-def get_folds_test(fragments, folds):
-    for fold in folds:
-        cells_test = list(fold["cells_test"])
-        genes_test = list(fold["genes_test"])
-
-        rg = np.random.RandomState(0)
-
-        minibatches = chd.loaders.minibatching.create_bins_ordered(
-            cells_test,
-            genes_test,
-            n_cells_step=n_cells_step,
-            n_genes_step=n_genes_step,
-            n_genes_total=fragments.n_genes,
-            use_all=True,
-            rg=rg,
-        )
-        fold["minibatches"] = minibatches
-
-        fold["phases"] = {"test": [cells_test, genes_test]}
     return folds

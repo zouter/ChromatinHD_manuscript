@@ -15,15 +15,19 @@ import pickle
 import itertools
 import pathlib
 
-from designs import dataset_latent_peakcaller_combinations as design
+from chromatinhd_manuscript.designs import (
+    dataset_latent_peakcaller_diffexp_combinations as design,
+)
 
-design = design.query("dataset == 'pbmc10k'")
-design = design.query("peakcaller == 'cellranger'")
+design = design.query("diffexp == 'signac'")  #!
+
+design = design.query("dataset != 'alzheimer'")
+# design = design.query("dataset == 'pbmc10k'")
 
 R_location = "/data/peak_free_atac/software/R-4.2.2/bin/"
 signac_script_location = chd.get_code() / "1-preprocessing" / "peaks" / "run_signac.R"
 
-design["force"] = True
+design["force"] = False
 
 test = False
 # test = True

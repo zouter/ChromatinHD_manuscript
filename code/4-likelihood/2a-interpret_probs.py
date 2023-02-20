@@ -20,9 +20,9 @@ class Prediction(chd.flow.Flow):
     pass
 
 
-import itertools
+from chromatinhd_manuscript.designs import dataset_latent_method_combinations as design
 
-from designs import dataset_latent_method_combinations as design
+design = design.query("dataset == 'morf_20'")
 
 print(design)
 design["force"] = False

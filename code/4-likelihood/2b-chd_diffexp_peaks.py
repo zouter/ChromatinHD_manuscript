@@ -20,18 +20,20 @@ class Prediction(chd.flow.Flow):
     pass
 
 
-from designs import dataset_latent_peakcaller_combinations as design
-
-design = chd.utils.crossing(
-    design,
-    pd.DataFrame({"method": ["v9_128-64-32"]}),
-    pd.DataFrame({"diffexp": ["scanpy"]}),
+from chromatinhd_manuscript.designs import (
+    dataset_latent_peakcaller_diffexp_method_combinations as design,
 )
 
+# design = design.query("dataset == 'morf_20'")
+# design = design.query("dataset != 'alzheimer'")
+# design = design.query("peakcaller == 'macs2_leiden_0.1'")
+# design = design.query("dataset == 'pbmc10k_gran'")
 # design = design.query("dataset == 'pbmc10k'")
-design = design.query("dataset == 'alzheimer'")
+# design = design.query("dataset == 'alzheimer'")
 # design = design.query("dataset in ['lymphoma', 'e18brain']")
-# design = design.query("peakcaller == 'cellranger'")
+# design = design.query("peakcaller in ['stack', '1k1k']")
+design = design.query("diffexp in ['signac']")
+# design = design.query("peakcaller == 'encode_screen'")
 
 design["force"] = False
 print(design)
@@ -71,8 +73,12 @@ for dataset_name, design_dataset in design.groupby("dataset"):
 
             models = []
             for fold_ix in [0]:
-                probs = pickle.load((prediction.path / "probs.pkl").open("rb"))
-                design = pickle.load((prediction.path / "design.pkl").open("rb"))
+                try:
+                    probs = pickle.load((prediction.path / "probs.pkl").open("rb"))
+                    design = pickle.load((prediction.path / "design.pkl").open("rb"))
+                except FileNotFoundError as e:
+                    print(e)
+                    continue
 
                 basepair_ranking = None
 
@@ -105,9 +111,14 @@ for dataset_name, design_dataset in design.groupby("dataset"):
                             / diffexp
                             / peakcaller
                         )
-                        peakresult = pickle.load(
-                            (peak_scores_dir / "slices.pkl").open("rb")
-                        )
+
+                        try:
+                            peakresult = pickle.load(
+                                (peak_scores_dir / "slices.pkl").open("rb")
+                            )
+                        except FileNotFoundError as e:
+                            print(e)
+                            continue
 
                         # create base pair ranking if not done yet
                         if basepair_ranking is None:

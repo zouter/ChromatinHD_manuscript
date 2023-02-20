@@ -25,7 +25,9 @@ class Prediction(chd.flow.Flow):
 
 print(torch.cuda.memory_allocated(0))
 
-from designs import dataset_latent_method_combinations as design
+from chromatinhd_manuscript.designs import dataset_latent_method_combinations as design
+
+design = design.query("dataset == 'pbmc10k_gran'")
 
 design["force"] = False
 

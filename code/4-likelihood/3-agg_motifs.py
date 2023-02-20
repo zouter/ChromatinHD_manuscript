@@ -45,27 +45,29 @@ import itertools
 # ### Method info
 
 # %%
-from designs import dataset_latent_peakcaller_combinations as design
+from chromatinhd_manuscript.designs import dataset_latent_peakcaller_diffexp_method_motifscan_enricher_combinations as design
 
-design = chd.utils.crossing(
-    design,
-    pd.DataFrame({"method": ["v9_128-64-32"]}),
-    pd.DataFrame({"diffexp": ["scanpy"]}),
-    pd.DataFrame(
-        {
-            "motifscan": ["cutoff_0001"],
-        }
-    ),
-    pd.DataFrame(
-        {
-            "enricher": [
-                "cluster_vs_clusters",
-                "cluster_vs_background",
-                "cluster_vs_background_gc",
-            ],
-        }
-    ),
-)
+# %%
+# from designs import dataset_latent_peakcaller_combinations as design
+
+# design = chd.utils.crossing(
+#     design,
+#     pd.DataFrame({"method": ["v9_128-64-32"]}),
+#     pd.DataFrame({"diffexp": ["scanpy"]}),
+#     pd.DataFrame(
+#         {
+#             "motifscan": ["cutoff_0001"],
+#         }
+#     ),
+#     pd.DataFrame(
+#         {
+#             "enricher": [
+#                 "cluster_vs_clusters",
+#                 "cluster_vs_background",
+#             ],
+#         }
+#     ),
+# )
 
 # %%
 promoter_name = "10k10k"
@@ -87,12 +89,10 @@ design_row = (
     # .query("dataset == 'e18brain'")
     # .query("dataset == 'alzheimer'")
     # .query("dataset == 'brain'")
-    # .query("dataset == 'alzheimer'")
     
-    .query("peakcaller == 'macs2_improved'")
-    # .query("enricher == 'cluster_vs_background_gc'")
-    # .query("enricher == 'cluster_vs_background'")
-    .query("enricher == 'cluster_vs_clusters'")
+    .query("peakcaller == 'cellranger'")
+    .query("enricher == 'cluster_vs_background'")
+    # .query("enricher == 'cluster_vs_clusters'")
     .iloc[0]
 )
 score_folder = design_row["score_folder"]
@@ -230,12 +230,15 @@ for cluster_oi in cluster_info.index:
     linreg_peakslope = scipy.stats.linregress(motifscores_all["logodds_region"], motifscores_all["logodds_peak"])
     slope_logodds_all = 1/linreg_peakslope.slope
     
-    # if cluster_oi == "Monocytes":
-    #     fig, ax = plt.subplots()
-    #     ax.scatter(motifscores_all["logodds_region"], motifscores_all["logodds_peak"])
-    #     break
+#     if cluster_oi == "Monocytes":
+#         fig, ax = plt.subplots()
+#         ax.scatter(motifscores_all["logodds_peak"], motifscores_all["logodds_region"])
+#         break
     
     score.update({"slope_logodds_diffexp":slope_logodds_diffexp, "slope_logodds_all":slope_logodds_all})
+    
+    score.update({"logodds_ratio_diffexp":np.exp(motifscores_significant["logodds_region"].abs().mean() - motifscores_significant["logodds_peak"].abs().mean())})
+    score.update({"logodds_ratio_all":np.exp(motifscores_all["logodds_region"].abs().mean() - motifscores_all["logodds_peak"].abs().mean())})
     
     score["cluster"] = cluster_oi
     score["n_cells"] = (transcriptome.adata.obs["cluster"] == cluster_oi).sum()
@@ -246,7 +249,13 @@ for cluster_oi in cluster_info.index:
 scores = pd.DataFrame(scores)
 
 # %%
-pd.DataFrame(scores).query("n_cells > 100")["cor_diff_all"].mean()
+pd.DataFrame(scores).query("n_cells > 100")["slope_logodds_diffexp"].mean()
+
+# %%
+np.exp(np.log(scores.sort_values("n_cells").query("n_cells > 100").query("slope_logodds_all > 0")["slope_logodds_all"]).mean())
+
+# %%
+np.exp(np.log(scores.sort_values("n_cells").query("n_cells > 100")["logodds_ratio_all"]).mean())
 
 # %%
 scores.sort_values("n_cells").query("n_cells > 100").style.bar()

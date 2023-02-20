@@ -43,6 +43,7 @@ dataset_name = "pbmc10k_gran"
 # dataset_name = "e18brain"
 # dataset_name = "alzheimer"
 # dataset_name = "brain"
+dataset_name = "morf_20"
 
 folder_data_preproc = folder_data / dataset_name
 folder_data_preproc.mkdir(exist_ok = True, parents = True)
@@ -88,10 +89,12 @@ for l in gzip.GzipFile((folder_data_preproc / "atac_fragments.tsv.gz"), "r"):
     l = l.decode("utf-8")
     if l.startswith("#"):
         continue
-    cell = l.split("\t")[3]
+    cell = l.split("\t")[3].strip()
     
     if cell in cell_to_cluster:
         cluster_fragments[cell_to_cluster[cell]].write(l)
+    else:
+        print("wat")
 
 # %%
 # !ls {peaks_folder}/tmp

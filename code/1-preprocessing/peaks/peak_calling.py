@@ -55,7 +55,7 @@ dataset_name = "pbmc10k_gran"; genome = "GRCh38.107"
 # dataset_name = "KLF5_7"
 # dataset_name = "PTF1A_4"
 
-# dataset_name = "morf_20"
+dataset_name = "morf_20"; genome = "GRCh38.107"
 
 folder_data_preproc = folder_data / dataset_name
 folder_data_preproc.mkdir(exist_ok=True, parents=True)
@@ -169,6 +169,7 @@ peaks_folder.mkdir(exist_ok=True, parents=True)
 
 # %%
 # !echo 'cd {peaks_folder} && macs2 callpeak -t {folder_data_preproc}/atac_fragments.tsv.gz -f BEDPE -q 0.20 && cp {peaks_folder}/NA_peaks.narrowPeak {peaks_folder}/peaks.bed'
+# !echo 'cd {peaks_folder} && macs2 callpeak -t {folder_data_preproc}/fragments.tsv.gz -f BEDPE -q 0.20 && cp {peaks_folder}/NA_peaks.narrowPeak {peaks_folder}/peaks.bed'
 
 # %%
 peaks_folder = folder_root / "peaks" / dataset_name / "macs2_q0.50"
@@ -200,7 +201,7 @@ peaks_folder
 
 # if BAM is not available
 # alternative for other datasets
-# # !echo 'cd {peaks_folder} && macs2 callpeak -t {folder_data_preproc}/fragments.tsv.gz -f BEDPE && cp {peaks_folder}/NA_peaks.narrowPeak {peaks_folder}/peaks.bed'
+# !echo 'cd {peaks_folder} && macs2 callpeak -t {folder_data_preproc}/fragments.tsv.gz -f BEDPE && cp {peaks_folder}/NA_peaks.narrowPeak {peaks_folder}/peaks.bed'
 
 # %%
 # !echo 'ls {peaks_folder}'

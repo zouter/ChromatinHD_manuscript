@@ -55,14 +55,13 @@ DefaultAssay(pbmc) <- 'peaks'
 
 pbmc$peak_region_fragments <-  colSums(pbmc@assays$peaks@counts)
 
-# as described in the documentation, it is necessary to lower this min.pct 
+# As described in the documentation, it is necessary to lower this min.pct 
 # https://stuartlab.org/signac/articles/pbmc_vignette.html#find-differentially-accessible-peaks-between-clusters
 # However, it is not described to what level
 # Sadly, this is not even described in the original Signac paper...
 # So we set it here to 0
 # This really slows everything down though
 # We also do not set the logfc threshold, because we will filter later anyway
-
 
 # also, another bug is present in signac, which
 # discussed in issues:
@@ -71,7 +70,7 @@ pbmc$peak_region_fragments <-  colSums(pbmc@assays$peaks@counts)
 # As of 2023-02-09, in Signac 1.9 and Seurat 4.3.0 this bug was not fixed
 # The cutoff for log-fold change is adjusted accordingly in the python script
 
-results <- furrr::future_map_dfr(clusters[1:8], function(cluster){
+results <- furrr::future_map_dfr(clusters, function(cluster){
     set.seed(1)
 # results <- map_dfr(clusters[1:2], function(cluster){
     da_peaks <- FindMarkers(
@@ -80,7 +79,7 @@ results <- furrr::future_map_dfr(clusters[1:8], function(cluster){
         test.use = 'LR',
         latent.vars = 'peak_region_fragments',
         group.by = "cluster",
-        min.pct = 0.0, 
+        min.pct = 0.000001,
         logfc.threshold = 0.
     )
 

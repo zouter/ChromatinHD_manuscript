@@ -27,7 +27,10 @@ design_2["dataset"] = design_2["testdataset"]
 design = pd.concat([design_1, design_2])
 design.index = np.arange(len(design))
 
-design = design.loc[design["peakcaller"] == "stack"].copy()
+# design = design.loc[~design["peakcaller"].str.startswith("rolling")].copy()
+# design = design.query("dataset == 'morf_20'").copy()
+# design = design.query("peakcaller == '1k1k'").copy()
+# design = design.query("peakcaller == 'stack'").copy()
 # design = design.loc[
 #     ~((design["dataset"] == "alzheimer") & (design["peakcaller"] == "genrich"))
 # ]

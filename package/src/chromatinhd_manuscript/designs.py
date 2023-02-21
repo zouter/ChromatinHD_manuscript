@@ -36,7 +36,7 @@ dataset_peakcaller_combinations = pd.DataFrame.from_records(
                 "brain",
                 # "alzheimer", # No bam file available, so no genrich
                 "pbmc10k_gran",
-                "morf_20",
+                # "morf_20",
             ],
             ["genrich"],
         ),
@@ -52,19 +52,19 @@ dataset_peakcaller_combinations = pd.DataFrame.from_records(
             ],
             ["cellranger"],
         ),
-        itertools.product(
-            ["morf_20"],
-            [
-                "rolling_100",
-                "rolling_500",
-                "rolling_50",
-                "macs2_improved",
-                "encode_screen",
-                "1k1k",
-                "gene_body",
-                "stack",
-            ],
-        ),
+        # itertools.product(
+        #     ["morf_20"],
+        #     [
+        #         "rolling_100",
+        #         "rolling_500",
+        #         "rolling_50",
+        #         "macs2_improved",
+        #         "encode_screen",
+        #         "1k1k",
+        #         "gene_body",
+        #         "stack",
+        #     ],
+        # ),
     ),
     columns=["dataset", "peakcaller"],
 )
@@ -77,7 +77,7 @@ dataset_splitter_combinations = pd.DataFrame.from_records(
             ["random_5fold", "celltype"],
         ),
         itertools.product(
-            ["morf_20"],
+            # ["morf_20"],
             ["random_5fold", "overexpression"],
         ),
         itertools.product(
@@ -107,11 +107,19 @@ dataset_splitter_method_combinations = pd.concat(
                         "e18brain",
                         "brain",
                         "alzheimer",
-                        "morf_20",
+                        # "morf_20",
                     ]
                 )
             ],
-            pd.DataFrame({"method": ["v20", "counter"]}),
+            pd.DataFrame(
+                {
+                    "method": [
+                        "v20",
+                        "v20_initdefault",
+                        "counter",
+                    ]
+                }
+            ),
         ),
     ]
 )
@@ -199,7 +207,7 @@ dataset_latent_combinations = pd.DataFrame.from_records(
             ["leiden_0.1"],
         ),
         itertools.product(
-            ["morf_20"],
+            # ["morf_20"],
             ["overexpression"],
         ),
     ),
@@ -224,7 +232,7 @@ dataset_latent_method_combinations = pd.concat(
                         "brain",
                         "alzheimer",
                         "pbmc10k_gran",
-                        "morf_20",
+                        # "morf_20",
                     ]
                 )
             ],
@@ -232,6 +240,7 @@ dataset_latent_method_combinations = pd.concat(
         ),
     ]
 )
+dataset_latent_method_combinations["promoter"] = "10k10k"
 
 
 dataset_latent_peakcaller_diffexp_combinations = pd.concat(
@@ -284,7 +293,7 @@ dataset_qtl_combinations = pd.DataFrame(
         ["pbmc10k", "gtex_immune"],
         # ["brain", "gwas_cns"],
         # ["brain", "gtex_cerebellum"],
-        ["lymphoma", "gwas_lymphoma"],
+        # ["lymphoma", "gwas_lymphoma"],
     ],
     columns=["dataset", "motifscan"],
 )

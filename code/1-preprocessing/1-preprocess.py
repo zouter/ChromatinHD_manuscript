@@ -45,8 +45,8 @@ import chromatinhd as chd
 folder_root = chd.get_output()
 folder_data = folder_root / "data"
 
-# dataset_name = "pbmc10k"; main_url = "https://cf.10xgenomics.com/samples/cell-arc/2.0.0/pbmc_granulocyte_sorted_10k/pbmc_granulocyte_sorted_10k"; genome = "GRCh38.107"; organism = "hs"
-dataset_name = "pbmc10k_gran"; main_url = "https://cf.10xgenomics.com/samples/cell-arc/2.0.0/pbmc_unsorted_10k/pbmc_unsorted_10k"; genome = "GRCh38.107"; organism = "hs"
+dataset_name = "pbmc10k"; main_url = "https://cf.10xgenomics.com/samples/cell-arc/2.0.0/pbmc_granulocyte_sorted_10k/pbmc_granulocyte_sorted_10k"; genome = "GRCh38.107"; organism = "hs"
+# dataset_name = "pbmc10k_gran"; main_url = "https://cf.10xgenomics.com/samples/cell-arc/2.0.0/pbmc_unsorted_10k/pbmc_unsorted_10k"; genome = "GRCh38.107"; organism = "hs"
 # dataset_name = "pbmc3k"; main_url = "https://cf.10xgenomics.com/samples/cell-arc/2.0.0/pbmc_granulocyte_sorted_3k/pbmc_granulocyte_sorted_3k"; genome = "GRCh38.107"; organism = "hs"
 # dataset_name = "lymphoma"; main_url = "https://cf.10xgenomics.com/samples/cell-arc/2.0.0/lymph_node_lymphoma_14k/lymph_node_lymphoma_14k"; genome = "GRCh38.107"; organism = "hs"
 # dataset_name = "e18brain"; main_url = "https://cf.10xgenomics.com/samples/cell-arc/2.0.0/e18_mouse_brain_fresh_5k/e18_mouse_brain_fresh_5k";  genome = "mm10"; organism = "mm"
@@ -98,7 +98,7 @@ elif organism == "hs":
 # !wget {main_url}_atac_peak_annotation.tsv -O {folder_data_preproc}/peak_annot.tsv
 
 # %%
-# # !wget {main_url}_atac_cut_sites.bigwig -O {folder_data_preproc}/atac_cut_sites.bigwig
+# !wget {main_url}_atac_cut_sites.bigwig -O {folder_data_preproc}/atac_cut_sites.bigwig
 
 # %% [markdown]
 # Download gene annotation and chromosome sizes

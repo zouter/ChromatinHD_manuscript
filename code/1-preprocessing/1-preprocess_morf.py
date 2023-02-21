@@ -100,6 +100,10 @@ folder_dataset_remote = (
 # !ln -s {folder_data_preproc}/../pbmc10k/dna.fa.gz {folder_data_preproc}/dna.fa.gz
 # !ln -s {folder_data_preproc}/../pbmc10k/genome.pkl.gz {folder_data_preproc}/genome.pkl.gz
 
+# %%
+# !ln {folder_data_preproc}/fragments.tsv.gz {folder_data_preproc}/atac_fragments.tsv.gz
+# !ln {folder_data_preproc}/fragments.tsv.gz.tbi {folder_data_preproc}/atac_fragments.tsv.gz.tbi
+
 # %% [markdown]
 # ### Genes
 
@@ -172,6 +176,9 @@ import chromatinhd.data
 
 # %%
 adata = pickle.load((folder_data_preproc / "adata.pkl").open("rb"))
+
+# %%
+adata.obs.index = pd.Series(np.arange(len(adata.obs)), name = "cell", dtype = str)
 
 # %%
 transcriptome = chromatinhd.data.Transcriptome(folder_data_preproc / "transcriptome")

@@ -293,10 +293,6 @@ import chromatinhd.models.positional.v20
 embedder = chromatinhd.models.positional.v20.FragmentEmbedder(fragments.n_genes)
 
 # %%
-# %%timeit
-embedder.forward(data.coordinates, data.genemapping)
-
-# %%
 embedder.forward(data.coordinates, data.genemapping, data.n)[data.n]
 
 # %%
@@ -343,20 +339,6 @@ model = chromatinhd.models.positional.v20.Model(
 # %%
 effect = model.forward(data)
 effect = effect - mean_gene_expression[data.genes_oi]
-
-# %%
-# %%timeit
-embedder.forward(data.coordinates, data.genemapping)
-
-# %%
-i = 0
-plt.plot(coordinates[:100, 0], encoding[:100, i])
-i = 10
-plt.plot(coordinates[:100, 0], encoding[:100, i])
-i = 20
-plt.plot(coordinates[:100, 0], encoding[:100, i])
-i = 50
-plt.plot(coordinates[:100, 0], encoding[:100, i])
 
 # %% [markdown]
 # ## Single example
@@ -430,9 +412,6 @@ folds = get_folds_training(fragments, folds)
 
 # %%
 # loss
-# cos = torch.nn.CosineSimilarity(dim = 0)
-# loss = lambda x_1, x_2: -cos(x_1, x_2).mean()
-
 def paircor(x, y, dim=0, eps=0.1):
     divisor = (y.std(dim) * x.std(dim)) + eps
     cor = ((x - x.mean(dim, keepdims=True)) * (y - y.mean(dim, keepdims=True))).mean(
@@ -442,13 +421,6 @@ def paircor(x, y, dim=0, eps=0.1):
 
 loss = lambda x, y: -paircor(x, y).mean() * 100
 
-# mse_loss = torch.nn.MSELoss()
-# loss = lambda x, y: mse_loss(x, y) * 100
-
-# def zscore(x, dim = 0):
-#     return (x - x.mean(dim, keepdim = True)) / (x.std(dim, keepdim = True) + 1e-6)
-# mse_loss = torch.nn.MSELoss()
-# loss = lambda x, y: mse_loss(zscore(x), zscore(y)) * 10.
 
 # %%
 class Prediction(chd.flow.Flow):
@@ -523,103 +495,3 @@ pd.DataFrame(trainer.trace.train_steps).groupby("checkpoint").mean()["loss"].plo
 # %%
 model = model.to("cpu")
 pickle.dump(model, open(prediction.path / ("model_" + str(fold_ix) + ".pkl"), "wb"))
-
-# %% [markdown]
-# -----
-
-# %%
-model = model.to("cpu")
-pickle.open(open(prediction.path / ("model_" + str(fold_ix) + ".pkl"), "rb"))
-
-# %%
-folder_motifs = chd.get_output() / "data" / "motifs" / "hs" / "hocomoco"
-pwms = pickle.load((folder_motifs / "pwms.pkl").open("rb"))
-motifs = pickle.load((folder_data_preproc / "motifs_oi.pkl").open("rb"))
-
-# %%
-motif_linear_scores = pd.Series(
-    model.embedding_gene_pooler.nn1[0].weight.detach().cpu().numpy()[0],
-    # model.embedding_gene_pooler.motif_bias.detach().cpu().numpy(),
-    index=motifs.index,
-).sort_values(ascending=False)
-# motif_linear_scores = pd.Series(model.embedding_gene_pooler.linear_weight[0].detach().cpu().numpy(), index = motifs_oi.index).sort_values(ascending = False)
-
-# %%
-motif_linear_scores.plot(kind="hist")
-
-# %%
-motifs["n"] = pd.Series(data.motifcounts.sum(0).numpy(), motifs.index)
-motifs["n"] = np.array((motifscores > 0).sum(0))[0]
-
-# %%
-motif_linear_scores["E2F3_HUMAN.H11MO.0.A"]
-
-# %%
-motif_linear_scores.head(10)
-
-# %%
-motif_linear_scores.tail(10)
-
-# %%
-motif_linear_scores.loc[motif_linear_scores.index.str.startswith("CEBP")]
-
-# %%
-motif_oi = motifs.query("gene_label == 'CEBPA'").index[0]
-sns.heatmap(pwms[motif_oi].numpy())
-
-# %%
-sc.pl.umap(
-    transcriptome.adata,
-    color=transcriptome.gene_id(["ZNF329", "E2F5", "DBP", "BACH1", "FOXO4"]),
-)
-
-# %%
-motifs_oi = motifs.loc[motifs["gene_label"].isin(transcriptome.var["symbol"])]
-
-# %%
-plotdata = pd.DataFrame(
-    {
-        "is_variable": motifs["gene_label"].isin(transcriptome.var["symbol"]),
-        "linear_score": motif_linear_scores,
-    }
-)
-plotdata["dispersions_norm"] = pd.Series(
-    transcriptome.var["dispersions_norm"][
-        transcriptome.gene_id(motifs_oi["gene_label"]).values
-    ].values,
-    index=motifs_oi.index,
-)
-
-# %%
-plotdata.groupby("is_variable").std()
-
-# %%
-sns.scatterplot(plotdata.dropna(), y="linear_score", x="dispersions_norm")
-
-# %%
-sns.stripplot(plotdata, y="linear_score", x="is_variable")
-
-# %%
-exp = pd.DataFrame(
-    transcriptome.adata[
-        :, transcriptome.gene_id(motifs_oi["gene_label"].values).values
-    ].X.todense(),
-    index=transcriptome.adata.obs.index,
-    columns=motifs_oi.index,
-)
-
-# %%
-sc.get.obs_df(
-    transcriptome.adata, transcriptome.gene_id(motifs_oi["gene_label"].values).values
-)
-
-# %%
-transcriptome.var
-
-# %%
-sc.pl.umap(transcriptome.adata, color=transcriptome.gene_id(["PAX5", "BACH1"]))
-
-# %%
-sc.pl.umap(transcriptome.adata, color=transcriptome.gene_id(["STAT2"]))
-
-# %%

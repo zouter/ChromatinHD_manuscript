@@ -22,7 +22,7 @@ class Prediction(chd.flow.Flow):
 
 from chromatinhd_manuscript.designs import dataset_latent_method_combinations as design
 
-design = design.query("dataset == 'pbmc10k_gran'")
+design = design.query("dataset == 'GSE198467_H3K27ac'")
 
 design["force"] = False
 

@@ -44,6 +44,7 @@ dataset_name = "pbmc10k_gran"; genome = "GRCh38.107"
 # dataset_name = "lymphoma"; genome = "GRCh38.107"
 # dataset_name = "alzheimer"; genome = "mm10"
 # dataset_name = "brain"; genome = "GRCh38.107"
+dataset_name = "GSE198467_H3K27ac"; organism = "mm"; genome = "mm10"
 
 # dataset_name = "FLI1_7"
 # dataset_name = "PAX2_7"
@@ -55,7 +56,7 @@ dataset_name = "pbmc10k_gran"; genome = "GRCh38.107"
 # dataset_name = "KLF5_7"
 # dataset_name = "PTF1A_4"
 
-dataset_name = "morf_20"; genome = "GRCh38.107"
+# dataset_name = "morf_20"; genome = "GRCh38.107"
 
 folder_data_preproc = folder_data / dataset_name
 folder_data_preproc.mkdir(exist_ok=True, parents=True)

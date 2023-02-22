@@ -27,9 +27,9 @@ print(torch.cuda.memory_allocated(0))
 
 from chromatinhd_manuscript.designs import dataset_latent_method_combinations as design
 
-design = design.query("dataset == 'pbmc10k_gran'")
+design = design.query("dataset == 'GSE198467_H3K27ac'")
 
-design["force"] = False
+design["force"] = True
 
 for dataset_name, design_dataset in design.groupby("dataset"):
     print(f"{dataset_name=}")
@@ -96,7 +96,7 @@ for dataset_name, design_dataset in design.groupby("dataset"):
                 method_info["loader_cls"],
                 method_info["loader_parameters"],
                 shuffle_on_iter=True,
-                n_workers=10,
+                n_workers=5,
             )
             loaders_validation = chd.loaders.LoaderPool(
                 method_info["loader_cls"], method_info["loader_parameters"], n_workers=5

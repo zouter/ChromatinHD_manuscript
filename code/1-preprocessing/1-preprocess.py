@@ -45,7 +45,7 @@ import chromatinhd as chd
 folder_root = chd.get_output()
 folder_data = folder_root / "data"
 
-dataset_name = "pbmc10k"; main_url = "https://cf.10xgenomics.com/samples/cell-arc/2.0.0/pbmc_granulocyte_sorted_10k/pbmc_granulocyte_sorted_10k"; genome = "GRCh38.107"; organism = "hs"
+# dataset_name = "pbmc10k"; main_url = "https://cf.10xgenomics.com/samples/cell-arc/2.0.0/pbmc_granulocyte_sorted_10k/pbmc_granulocyte_sorted_10k"; genome = "GRCh38.107"; organism = "hs"
 # dataset_name = "pbmc10k_gran"; main_url = "https://cf.10xgenomics.com/samples/cell-arc/2.0.0/pbmc_unsorted_10k/pbmc_unsorted_10k"; genome = "GRCh38.107"; organism = "hs"
 # dataset_name = "pbmc3k"; main_url = "https://cf.10xgenomics.com/samples/cell-arc/2.0.0/pbmc_granulocyte_sorted_3k/pbmc_granulocyte_sorted_3k"; genome = "GRCh38.107"; organism = "hs"
 # dataset_name = "lymphoma"; main_url = "https://cf.10xgenomics.com/samples/cell-arc/2.0.0/lymph_node_lymphoma_14k/lymph_node_lymphoma_14k"; genome = "GRCh38.107"; organism = "hs"
@@ -56,10 +56,9 @@ dataset_name = "pbmc10k"; main_url = "https://cf.10xgenomics.com/samples/cell-ar
 folder_data_preproc = folder_data / dataset_name
 folder_data_preproc.mkdir(exist_ok = True, parents = True)
 
-if organism == "mm":
-    chromosomes = ["chr" + str(i) for i in range(20)] + ["chrX", "chrY"]
-elif organism == "hs":
-    chromosomes = ["chr" + str(i) for i in range(24)] + ["chrX", "chrY"]
+if not (folder_data_preproc / "genome").exists():
+    genome_folder = chd.get_output() / "data" / "genomes" / genome
+    (folder_data_preproc / "genome").symlink_to(genome_folder)
 
 # %% [markdown]
 # ## Download
@@ -99,79 +98,6 @@ elif organism == "hs":
 
 # %%
 # !wget {main_url}_atac_cut_sites.bigwig -O {folder_data_preproc}/atac_cut_sites.bigwig
-
-# %% [markdown]
-# Download gene annotation and chromosome sizes
-
-# %%
-if genome == "GRCh38.107":  
-    # # !wget http://ftp.ensembl.org/pub/release-107/gff3/homo_sapiens/Homo_sapiens.GRCh38.107.gff3.gz -O {folder_data_preproc}/genes.gff.gz
-    # !wget http://hgdownload.soe.ucsc.edu/goldenPath/hg38/bigZips/hg38.chrom.sizes -O  {folder_data_preproc}/chromosome.sizes
-    
-    # to reuse from pbmc10k
-    # !ln -s -r {folder_data_preproc}/../pbmc10k/dna.fa.gz {folder_data_preproc}/dna.fa.gz
-    # !ln -s -r {folder_data_preproc}/../pbmc10k/genome.pkl.gz {folder_data_preproc}/genome.pkl.gz
-    
-    # # !wget http://ftp.ensembl.org/pub/release-107/fasta/homo_sapiens/dna/Homo_sapiens.GRCh38.dna_sm.toplevel.fa.gz -O {folder_data_preproc}/dna.fa.gz
-elif genome == "mm10":
-    pass
-    # # !wget http://ftp.ensembl.org/pub/release-98/gff3/mus_musculus/Mus_musculus.GRCm38.98.gff3.gz -O {folder_data_preproc}/genes.gff.gz
-    # # !wget http://hgdownload.soe.ucsc.edu/goldenPath/mm10/bigZips/mm10.chrom.sizes -O  {folder_data_preproc}/chromosome.sizes
-    
-    # to reuse from e18brain
-    # # !ln -s {folder_data_preproc}/../e18brain/dna.fa.gz {folder_data_preproc}/dna.fa.gz
-    # # !ln -s {folder_data_preproc}/../e18brain/genome.pkl.gz {folder_data_preproc}/genome.pkl.gz
-    
-    # # !wget http://ftp.ensembl.org/pub/release-98/fasta/mus_musculus/dna/Mus_musculus.GRCm38.dna_sm.toplevel.fa.gz -O {folder_data_preproc}/dna.fa.gz
-
-# %%
-# !ls -lh /home/wsaelens/projects/chromatinhd/chromatinhd_manuscript/output/data/brain
-
-# %% [markdown]
-# ### Genome
-
-# %% [markdown]
-# Get the genome, just soft link it if we already downloaded it from another dataset
-
-# %%
-if (organism == "hs") and (dataset_name != "pbmc10k"):
-    # !rm {folder_data_preproc}/fasta.fa
-    # !rm {folder_data_preproc}/genome.pkl.gz
-    # !ln -s {folder_data_preproc}/../pbmc10k/fasta.fa {folder_data_preproc}/
-    # !ln -s {folder_data_preproc}/../pbmc10k/genome.pkl.gz {folder_data_preproc}/
-elif (organism == "mm") and (dataset_name != "e18brain"):
-    # !rm {folder_data_preproc}/fasta.fa
-    # !rm {folder_data_preproc}/genome.pkl.gz
-    # !ln -s {folder_data_preproc}/../e18brain/fasta.fa {folder_data_preproc}/
-    # !ln -s {folder_data_preproc}/../e18brain/genome.pkl.gz {folder_data_preproc}/
-
-# %% [markdown]
-# Store the genome as integers, which is much easier to work with. Bases are stored in alphabetic order ACTG
-
-# %%
-import gzip
-genome = {}
-chromosome = None
-translate_table = {"A":0, "C":1, "G":2, "T":3, "N":4} # alphabetic order
-for i, line in enumerate(gzip.GzipFile(folder_data_preproc / "dna.fa.gz")):
-    line = str(line,'utf-8')
-    if line.startswith(">"):
-        if chromosome is not None:
-            genome[chromosome] = np.array(genome_chromosome, dtype = np.int8)
-        chromosome = "chr" + line[1:line.find(" ")]
-        genome_chromosome = []
-        
-        print(chromosome)
-        
-        if chromosome not in chromosomes:
-            break
-    else:
-        genome_chromosome += [translate_table[x] for x in line.strip("\n").upper()]
-
-# %%
-# to link between datasets with the same genome/organism
-
-pickle.dump(genome, gzip.GzipFile((folder_data_preproc / "genome.pkl.gz"), "wb", compresslevel = 3))
 
 # %%
 # !ls -lh {folder_data_preproc}

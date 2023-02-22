@@ -22,7 +22,7 @@ class Prediction(chd.flow.Flow):
 
 from chromatinhd_manuscript.designs import dataset_latent_method_combinations as design
 
-design = design.query("dataset == 'morf_20'")
+design = design.query("dataset == 'GSE198467_H3K27ac'")
 
 print(design)
 design["force"] = False
@@ -108,7 +108,8 @@ for dataset_name, design_dataset in design.groupby("dataset"):
                     design = chd.utils.crossing(
                         design_gene, design_latent, design_coord
                     )
-                    batch_size = 100000
+                    # batch_size = 100000
+                    batch_size = 5000
                     design["batch"] = np.floor(
                         np.arange(design.shape[0]) / batch_size
                     ).astype(int)

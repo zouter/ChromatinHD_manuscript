@@ -34,6 +34,8 @@ design.index = np.arange(len(design))
 # design = design.loc[
 #     ~((design["dataset"] == "alzheimer") & (design["peakcaller"] == "genrich"))
 # ]
+design = design.query("dataset == 'GSE198467_H3K27ac'")
+
 design["force"] = False
 print(design)
 

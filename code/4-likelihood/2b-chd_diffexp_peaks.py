@@ -24,15 +24,10 @@ from chromatinhd_manuscript.designs import (
     dataset_latent_peakcaller_diffexp_method_combinations as design,
 )
 
-# design = design.query("dataset == 'morf_20'")
-# design = design.query("dataset != 'alzheimer'")
-# design = design.query("peakcaller == 'macs2_leiden_0.1'")
-# design = design.query("dataset == 'pbmc10k_gran'")
-# design = design.query("dataset == 'pbmc10k'")
-# design = design.query("dataset == 'alzheimer'")
+design = design.query("dataset == 'GSE198467_H3K27ac'")
 # design = design.query("dataset in ['lymphoma', 'e18brain']")
 # design = design.query("peakcaller in ['stack', '1k1k']")
-design = design.query("diffexp in ['signac']")
+# design = design.query("diffexp in ['signac']")
 # design = design.query("peakcaller == 'encode_screen'")
 
 design["force"] = False

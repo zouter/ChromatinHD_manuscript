@@ -18,12 +18,13 @@ from chromatinhd_manuscript.designs import (
     dataset_latent_peakcaller_diffexp_combinations as design,
 )
 
-design = design.query("diffexp == 'scanpy'")  #!
+# design = design.query("diffexp == 'scanpy'")  #!
 
 # design = design.query("dataset != 'alzheimer'")
 # design = design.query("dataset == 'morf_20'")
-design = design.query("peakcaller == 'encode_screen'")
+# design = design.query("peakcaller == 'encode_screen'")
 # design = design.query("dataset == 'alzheimer'")
+design = design.query("dataset == 'GSE198467_H3K27ac'")
 
 design["force"] = False
 
@@ -35,7 +36,9 @@ for dataset_name, design_dataset in design.groupby("dataset"):
 
     promoter_name, window = "10k10k", np.array([-10000, 10000])
 
-    transcriptome = chd.data.Transcriptome(folder_data_preproc / "transcriptome")
+    promoters = pd.read_csv(
+        folder_data_preproc / ("promoters_" + promoter_name + ".csv"), index_col=0
+    )
 
     for latent_name, subdesign in design_dataset.groupby("latent"):
         latent_folder = folder_data_preproc / "latent"
@@ -102,7 +105,7 @@ for dataset_name, design_dataset in design.groupby("dataset"):
 
                     peakresult = (
                         chromatinhd.differential.DifferentialSlices.from_peakscores(
-                            peakscores, window, len(transcriptome.var)
+                            peakscores, window, len(promoters.index)
                         )
                     )
 

@@ -1,22 +1,16 @@
-import chromatinhd.loaders.fragments
 import chromatinhd.models
 import chromatinhd.models.likelihood.v2
 import chromatinhd.models.likelihood.v4
 import chromatinhd.models.likelihood.v5
 import chromatinhd.models.likelihood.v8
+import chromatinhd.models.likelihood.v9
 import chromatinhd as chd
 
 import pickle
 import numpy as np
 import torch
 
-import copy
-
-# n_cells_step = 1000
-# n_genes_step = 1000
-
 n_cells_step = 100
-n_genes_step = 5000
 
 
 def get_design(dataset_name, latent_name, fragments):
@@ -30,6 +24,8 @@ def get_design(dataset_name, latent_name, fragments):
 
     general_model_parameters = {"fragments": fragments}
 
+    n_genes_step = fragments.n_genes
+
     general_loader_parameters = {
         "fragments": fragments,
         "cellxgene_batch_size": n_cells_step * n_genes_step,
@@ -38,8 +34,6 @@ def get_design(dataset_name, latent_name, fragments):
     fragments.create_cut_data()
 
     design = {}
-
-    import chromatinhd.models.likelihood.v9
 
     design["v9_128-64-32"] = {
         "model_cls": chromatinhd.models.likelihood.v9.Decoding,
@@ -96,6 +90,8 @@ import chromatinhd.loaders.minibatching
 
 
 def get_folds_training(fragments, folds):
+    n_genes_step = fragments.n_genes
+
     for fold in folds:
         minibatcher = chd.loaders.minibatching.Minibatcher(
             fold["cells_train"],

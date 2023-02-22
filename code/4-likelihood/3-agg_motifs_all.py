@@ -54,7 +54,8 @@ def get_score_folder(x):
 design["score_folder"] = design.apply(get_score_folder, axis = 1)
 
 # %%
-design = design.query("dataset != 'alzheimer'")
+# design = design.query("dataset != 'alzheimer'")
+design = design.query("dataset == 'GSE198467_H3K27ac'")
 
 # %% [markdown]
 # ## Aggregate

@@ -27,14 +27,16 @@ from chromatinhd_manuscript.designs import (
 
 # design = design.query("dataset == 'pbmc10k_gran'")
 
-design = design.query("dataset != 'alzheimer'")
+# design = design.query("dataset != 'alzheimer'")
 # design = design.query("dataset == 'morf_20'")
 # design = design.query("peakcaller in ['1k1k', 'stack']")
-design = design.query("diffexp in ['signac']")
+# design = design.query("diffexp in ['signac']")
+design = design.query("dataset == 'GSE198467_H3K27ac'")
+
 
 # design = design.query("dataset in ['lymphoma', 'e18brain']")
 # design = design.query("dataset == 'brain'")
-# design = design.query("enricher == 'cluster_vs_background'")
+design = design.query("enricher == 'cluster_vs_clusters'")
 
 ## QTL
 # from chromatinhd_manuscript.designs import (

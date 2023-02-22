@@ -104,6 +104,13 @@ The spread and dominant position of TSSs in broad promoters are tightly linked t
 Low variable promoters (left) are frequently associated with high CpG content (CpG islands), multiple binding sites of ETS factors, and a highly flexible transcription initiation architecture arising from multiple redundant core promoters (decomposed promoters) in a permissive nucleosome positioning environment. These stabilizing features along with a less complex TF binding grammar likely also act to buffer transcriptional noise across single cells and cause ubiquitous expression across cell types. The flexibility in redundant core promoter activities confers a novel layer of mutational robustness to genes. Highly variable promoters (right), on the other hand, are associated with a highly versatile TF regulatory grammar, TATA boxes, and low flexibility in TSS usage. These features likely cause, in addition to high expression variability between individuals, a responsiveness to external stimuli, cell-type restricted activity, high transcriptional noise across single cells, and less tolerance for genetic variants.
 
 
+An interesting discussion on why it is hard, if not impossible, to use MACS2 differential mode for ATAC-seq
+https://www.biostars.org/p/297683/
+
+
+Overview of differential peak methods: https://hbctraining.github.io/Intro-to-ChIPseq/lessons/05_peak_calling_macs.html
+
+
 ### Why do we aggregate over peaks?
 
 

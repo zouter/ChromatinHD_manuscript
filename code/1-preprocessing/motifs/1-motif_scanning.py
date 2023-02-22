@@ -53,6 +53,7 @@ dataset_name = "lymphoma"; organism = "hs"
 # dataset_name = "alzheimer"; organism = "mm"
 # dataset_name = "brain"; organism = "hs"
 # dataset_name = "pbmc10k_gran"; organism = "hs"
+dataset_name = "GSE198467_H3K27ac"; organism = "mm"; genome = "mm10"
 
 # dataset_name = "FLI1_7"
 # dataset_name = "PAX2_7"
@@ -63,7 +64,7 @@ dataset_name = "lymphoma"; organism = "hs"
 # dataset_name = "KLF4_7"
 # dataset_name = "KLF5_7"
 # dataset_name = "PTF1A_4"
-dataset_name = "morf_20"; organism = "hs"
+# dataset_name = "morf_20"; organism = "hs"
 
 folder_data_preproc = folder_data / dataset_name
 
@@ -213,8 +214,8 @@ nucleotides["color"] = sns.color_palette(n_colors=4)
 # %%
 # motif_oi = "ZN250_HUMAN.H11MO.0.C"
 # motif_oi = "ZN250_HUMAN.H11MO.0.C"
-motif_oi = "SALL4_HUMAN.H11MO.0.B"
-# motif_oi = "CEBPA_MOUSE.H11MO.0.A"
+# motif_oi = "SALL4_HUMAN.H11MO.0.B"
+motif_oi = "CEBPA_MOUSE.H11MO.0.A"
 print(motif_oi)
 fig, ax = plt.subplots()
 pd.DataFrame(pwms[motif_oi].numpy()).plot(ax=ax)

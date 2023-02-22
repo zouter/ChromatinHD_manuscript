@@ -14,6 +14,7 @@ dataset_peakcaller_combinations = pd.DataFrame.from_records(
                 "brain",
                 "alzheimer",
                 "pbmc10k_gran",
+                "GSE198467_H3K27ac",
             ],
             [
                 "rolling_100",
@@ -203,6 +204,7 @@ dataset_latent_combinations = pd.DataFrame.from_records(
                 "brain",
                 "alzheimer",
                 "pbmc10k_gran",
+                "GSE198467_H3K27ac",
             ],
             ["leiden_0.1"],
         ),
@@ -232,6 +234,7 @@ dataset_latent_method_combinations = pd.concat(
                         "brain",
                         "alzheimer",
                         "pbmc10k_gran",
+                        "GSE198467_H3K27ac",
                         # "morf_20",
                     ]
                 )

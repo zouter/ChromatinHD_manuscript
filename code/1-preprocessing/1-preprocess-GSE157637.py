@@ -45,7 +45,8 @@ import chromatinhd as chd
 folder_root = chd.get_output()
 folder_data = folder_root / "data"
 
-dataset_name = "GSE198467_H3K27ac"; organism = "mm"; genome = "mm10"
+dataset_name = "GSE198467_single_modality_H3K27me3"; organism = "mm"; genome = "mm10"
+# dataset_name = "GSE198467_H3K27ac"; organism = "mm"; genome = "mm10"
 # dataset_name = "GSE198467_H3K27me3"; organism = "mm"; genome = "mm10"
 # dataset_name = "GSE198467_ATAC"; organism = "mm"; genome = "mm10"
 
@@ -74,7 +75,8 @@ main_url = "ftp://ftp.ncbi.nlm.nih.gov/geo/series/GSE198nnn/GSE198467/suppl/"
 # !wget {main_url}/{dataset_name}_fragments.tsv.gz -O {folder_data_preproc}/fragments.tsv.gz
 
 # %%
-# !wget {main_url}/{dataset_name}_Seurat_object_clustered_renamed.h5seurat -O {folder_data_preproc}/seurat.h5seurat
+# !wget {main_url}/{dataset_name}_01.clustering.h5seurat -O {folder_data_preproc}/seurat.h5seurat
+# # !wget {main_url}/{dataset_name}_Seurat_object_clustered_renamed.h5seurat -O {folder_data_preproc}/seurat.h5seurat
 
 # %% [markdown]
 # ## Get obs
@@ -119,6 +121,9 @@ obs.to_csv("obs.tsv", sep = "\t")
 # %%
 import tabix
 import pysam
+
+# %%
+# !gunzip -t {folder_data_preproc}/fragments.tsv.gz
 
 # %%
 # create tabix index if not available
@@ -195,6 +200,9 @@ obs["ix"] = np.arange(len(obs))
 cell_to_cell_ix = dict(zip(obs.index, obs["ix"]))
 
 # %%
+fragments_promoter = fragments_tabix.query(*promoter_info[["chr", "start", "end"]])
+
+# %%
 coordinates_raw = []
 mapping_raw = []
 
@@ -259,9 +267,6 @@ fragments.coordinates = coordinates
 
 # %%
 fragments.create_cellxgene_indptr()
-
-# %%
-# !ls -lh ../../output/data/{dataset_name}/fragments/10k10k
 
 # %% [markdown]
 # ## Fragment distribution

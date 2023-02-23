@@ -2,7 +2,7 @@ Setting up output folder
 ```
 groupadd peak_free_atac
 
-usermod -a -G peak_free_atac wsaelens
+sudo usermod -a -G peak_free_atac wsaelens
 
 setfacl -d -m group:peak_free_atac:rwx /data/peak_free_atac
 setfacl -m group:peak_free_atac:rwx /data/peak_free_atac

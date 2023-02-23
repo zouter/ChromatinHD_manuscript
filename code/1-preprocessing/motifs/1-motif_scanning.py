@@ -274,8 +274,8 @@ str(np.prod(onehot_promoters.shape) * 32 / 8 / 1024 / 1024 / 1024) + " GiB"
 # Running this on GPU generally gives a 10x time improvement (40 minutes to 3 minutes)
 
 # %%
-cutoff_col = "cutoff_0001"
-# cutoff_col = "cutoff_001"
+# cutoff_col = "cutoff_0001"
+cutoff_col = "cutoff_001"
 
 # %% tags=[]
 position_ixs = []

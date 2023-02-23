@@ -1,3 +1,5 @@
+#! /home/vifernan/projects/ChromatinHD_manuscript/software/R/R-4.2.2/bin/Rscript
+
 # MultiVelo Seurat WNN Demo
 # The procedure mostly follows Seurat tutorial: https://satijalab.org/seurat/articles/weighted_nearest_neighbor_analysis.html
 # Note that we do not claim these preprocessing steps to be the best, as there aren't any. Feel free to make any changes you deem necessary.
@@ -7,11 +9,14 @@ library(Seurat)
 library(Signac)
 
 getwd()
+
+main_path = '/home/vifernan/projects/ChromatinHD_manuscript/output/data/hspc/'
+
 # read in expression and accessbility data
-hspc.data <- Read10X(data.dir = "/home/vifernan/projects/ChromatinHD_manuscript/output/data/hspc/MV2/")
+hspc.data <- Read10X(data.dir = paste0(main_path, "MV2"))
 
 # subset for the same cells in the jointly filtered anndata object
-barcodes <- read.delim("/home/vifernan/projects/ChromatinHD_manuscript/output/data/hspc/filtered_cells.txt", header = F, stringsAsFactors = F)$V1
+barcodes <- read.delim(paste0(main_path, "filtered_cells.txt"), header = F, stringsAsFactors = F)$V1
 
 # preprocess RNA
 hspc <- CreateSeuratObject(counts = hspc.data$`Gene Expression`[,barcodes])
@@ -39,9 +44,11 @@ nn_dist <- hspc@neighbors$weighted.nn@nn.dist
 nn_cells <- hspc@neighbors$weighted.nn@cell.names
 
 # save neighborhood graph
-write.table(nn_idx, "/home/vifernan/projects/ChromatinHD_manuscript/output/data/hspc/nn_idx.txt", sep = ',', row.names = F, col.names = F, quote = F)
-write.table(nn_dist, "/home/vifernan/projects/ChromatinHD_manuscript/output/data/hspc/nn_dist.txt", sep = ',', row.names = F, col.names = F, quote = F)
-write.table(nn_cells, "/home/vifernan/projects/ChromatinHD_manuscript/output/data/hspc/nn_cells.txt", sep = ',', row.names = F, col.names = F, quote = F)
+write.table(nn_idx, paste0(main_path, "nn_idx.txt"), sep = ',', row.names = F, col.names = F, quote = F)
+write.table(nn_dist, paste0(main_path, "nn_dist.txt"), sep = ',', row.names = F, col.names = F, quote = F)
+write.table(nn_cells, paste0(main_path, "nn_cells.txt"), sep = ',', row.names = F, col.names = F, quote = F)
 
 # save sessionInfo for reproducibility
-writeLines(capture.output(sessionInfo()), "/home/vifernan/projects/ChromatinHD_manuscript/output/data/hspc/sessionInfo.txt")
+writeLines(capture.output(sessionInfo()), paste0(main_path, "sessionInfo.txt"))
+
+print('end of script')

@@ -35,6 +35,7 @@ import pathlib
 
 import torch_scatter
 import torch
+import math
 
 import tqdm.auto as tqdm
 
@@ -47,13 +48,14 @@ import chromatinhd as chd
 folder_root = chd.get_output()
 folder_data = folder_root / "data"
 
-dataset_name = "lymphoma"; organism = "hs"
-# dataset_name = "pbmc10k"; organism = "hs"
+# dataset_name = "lymphoma"; organism = "hs"
+dataset_name = "pbmc10k"; organism = "hs"
 # dataset_name = "e18brain"; organism = "mm"
 # dataset_name = "alzheimer"; organism = "mm"
 # dataset_name = "brain"; organism = "hs"
 # dataset_name = "pbmc10k_gran"; organism = "hs"
-dataset_name = "GSE198467_H3K27ac"; organism = "mm"; genome = "mm10"
+# dataset_name = "GSE198467_H3K27ac"; organism = "mm"; genome = "mm10"
+# dataset_name = "GSE198467_single_modality_H3K27me3"; organism = "mm"; genome = "mm10"
 
 # dataset_name = "FLI1_7"
 # dataset_name = "PAX2_7"
@@ -152,7 +154,7 @@ promoters = pd.read_csv(
 )
 
 # %%
-genome = pickle.load(gzip.GzipFile((folder_data_preproc / "genome.pkl.gz"), "rb"))
+genome = pickle.load(gzip.GzipFile((folder_data_preproc / "genome" / "genome.pkl.gz"), "rb"))
 
 # %%
 import math
@@ -167,19 +169,25 @@ def create_onehot(seq):
 
 
 # %%
-onehot_promoters = torch.empty((promoters.shape[0], window[1] - window[0], 4))
-for promoter_ix, (gene, promoter) in tqdm.tqdm(
-    enumerate(promoters.iterrows()), total=promoters.shape[0]
-):
-    # have to add a +1 here because the genome annotation starts from 1 while python starts from 0
-    sequence = genome[promoter["chr"]][promoter["start"] + 1 : promoter["end"] + 1]
+def get_sequences(promoters, genome):
+    onehot_promoters = torch.empty((promoters.shape[0], window[1] - window[0], 4))
+    for promoter_ix, (gene, promoter) in tqdm.tqdm(
+        enumerate(promoters.iterrows()), total=promoters.shape[0]
+    ):
+        # have to add a +1 here because the genome annotation starts from 1 while python starts from 0
+        sequence = genome[promoter["chr"]][promoter["start"] + 1 : promoter["end"] + 1]
 
-    # flip sequence if strand is negative
-    if promoter["strand"] == -1:
-        sequence = sequence[::-1]
-        sequence = np.array([3, 2, 1, 0, 4])[sequence]
+        # flip sequence if strand is negative
+        if promoter["strand"] == -1:
+            sequence = sequence[::-1]
+            sequence = np.array([3, 2, 1, 0, 4])[sequence]
 
-    onehot_promoters[promoter_ix] = create_onehot(sequence)
+        onehot_promoters[promoter_ix] = create_onehot(sequence)
+    return onehot_promoters
+
+
+# %%
+onehot_promoters = get_sequences(promoters, genome)
 
 # %%
 pickle.dump(
@@ -214,8 +222,8 @@ nucleotides["color"] = sns.color_palette(n_colors=4)
 # %%
 # motif_oi = "ZN250_HUMAN.H11MO.0.C"
 # motif_oi = "ZN250_HUMAN.H11MO.0.C"
-# motif_oi = "SALL4_HUMAN.H11MO.0.B"
-motif_oi = "CEBPA_MOUSE.H11MO.0.A"
+motif_oi = "SALL4_HUMAN.H11MO.0.B"
+# motif_oi = "CEBPA_MOUSE.H11MO.0.A"
 print(motif_oi)
 fig, ax = plt.subplots()
 pd.DataFrame(pwms[motif_oi].numpy()).plot(ax=ax)
@@ -329,9 +337,6 @@ pwm = pwms[motifs_oi.iloc[motif_ix].name]
 
 # %%
 chr, start, end, strand = promoters.iloc[gene_ix][["chr", "start", "end", "strand"]]
-
-# %%
-promoter["chr"] + ":" + str(promoter["start"]) + "-" + str((promoter["start"] + 10))
 
 # %%
 window_length = window[1] - window[0]

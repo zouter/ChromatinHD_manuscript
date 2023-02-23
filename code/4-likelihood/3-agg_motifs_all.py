@@ -50,12 +50,14 @@ promoter_name = "10k10k"
 
 # %%
 def get_score_folder(x):
-    return chd.get_output() / "prediction_likelihood" / x.dataset / promoter_name / x.latent / x.method / "scoring" / x.peakcaller / x.diffexp / x.motifscan / x.enricher
+    return chd.get_output() / "prediction_likelihood" / x.dataset / promoter_name / x.latent / str(x.method) / "scoring" / x.peakcaller / x.diffexp / x.motifscan / x.enricher
 design["score_folder"] = design.apply(get_score_folder, axis = 1)
 
 # %%
 # design = design.query("dataset != 'alzheimer'")
-design = design.query("dataset == 'GSE198467_H3K27ac'")
+design = design.query("dataset == 'GSE198467_H3K27ac'").copy()
+design = design.query("enricher == 'cluster_vs_clusters'")
+# design = design.query("enricher == 'cluster_vs_background'")
 
 # %% [markdown]
 # ## Aggregate
@@ -123,7 +125,7 @@ def calculate_motifscore_expression_correlations(motifscores):
 
 
 # %%
-design["force"] = False
+design["force"] = True
 # design.loc[design["peakcaller"] == 'macs2_leiden_0.1', "force"] = True
 
 # %%
@@ -227,6 +229,56 @@ for design_ix, subdesign in tqdm.tqdm(design.iterrows(), total = len(design)):
         scores = pd.DataFrame(scores)
         pickle.dump(scores, (subdesign["score_folder"] / "aggscores.pkl").open("wb"))
 # scores = pd.DataFrame(scores)
+
+# %%
+for cluster_oi in cluster_info.index:
+    motifscores_all = motifscores.loc[cluster_oi]
+    linreg_peakslope = scipy.stats.linregress(motifscores_all["logodds_region"], motifscores_all["logodds_peak"])
+    slope_logodds_all = np.clip(1/linreg_peakslope.slope, 0, 3)
+    print(slope_logodds_all)
+    fig, ax = plt.subplots()
+    ax.scatter(motifscores_all["logodds_peak"], motifscores_all["logodds_region"])
+    ax.set_title(slope_logodds_all)
+    ax.set_aspect(1)
+    ax.axline([0, 0], [1, 1])
+    
+    # print(motifscores_all.query("qval_region < 0.05").sort_values("logodds_peak", ascending = False).index[:10])
+    a = len(motifscores_all.query("(qval_region < 0.05) & (odds_region > 1.2)"))
+    b = len(motifscores_all.query("(qval_peak < 0.05) & (odds_peak > 1.2)"))
+    print((a + 1e-5)/(b+1e-5))
+    # print(len(motifscores_all.query("odds_region > 1.5")), len(motifscores_all.query("odds_peak > 1.2")))
+    # print(motifscores_all.loc["SPI1_MOUSE.H11MO.0.A"][["logodds_peak", "logodds_region"]])
+    # print(motifscores_all.loc["NDF1_MOUSE.H11MO.0.A"][["logodds_peak", "logodds_region"]])
+    # break
+
+# %%
+slices = pickle.load((chd.get_output() / "prediction_likelihood/GSE198467_H3K27ac/10k10k/leiden_0.1/v9_64-32/scoring/macs2_improved/scanpy/slices.pkl").open("rb"))
+slices2 = pickle.load((chd.get_output() / "prediction_differential/GSE198467_H3K27ac/10k10k/leiden_0.1/scanpy/macs2_improved/slices.pkl").open("rb"))
+slices.get_slicescores().groupby("cluster_ix")["length"].sum() / slices2.get_slicescores().groupby("cluster_ix")["length"].sum()
+
+# %%
+slices.get_slicescores()
+
+# %%
+(slices.positions[:, 1] - slices.positions[:, 0]).sum()
+
+# %%
+motifscores.query("qval_peak < 0.05").shape
+
+# %%
+motifscores.query("qval_region < 0.05").shape
+
+# %%
+motifscores.loc["Macrophages"].query("qval_region < 0.05").sort_values("logodds_region", ascending = False)
+
+# %%
+motifscores.loc["Macrophages"].query("qval_peak < 0.05").sort_values("logodds_peak", ascending = False)
+
+# %%
+motifscores.loc["Macrophages"].sort_values("logodds_region", ascending = False).head(10)
+
+# %%
+cluster_info
 
 # %% [markdown]
 # ## Summarize

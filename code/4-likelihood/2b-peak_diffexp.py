@@ -26,7 +26,7 @@ from chromatinhd_manuscript.designs import (
 # design = design.query("dataset == 'alzheimer'")
 design = design.query("dataset == 'GSE198467_H3K27ac'")
 
-design["force"] = False
+design["force"] = True
 
 print(design)
 

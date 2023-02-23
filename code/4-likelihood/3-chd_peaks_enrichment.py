@@ -29,7 +29,7 @@ from chromatinhd_manuscript.designs import (
 
 # design = design.query("dataset != 'alzheimer'")
 # design = design.query("dataset == 'morf_20'")
-# design = design.query("peakcaller in ['1k1k', 'stack']")
+design = design.query("peakcaller in ['macs2_improved']")
 # design = design.query("diffexp in ['signac']")
 design = design.query("dataset == 'GSE198467_H3K27ac'")
 
@@ -37,6 +37,7 @@ design = design.query("dataset == 'GSE198467_H3K27ac'")
 # design = design.query("dataset in ['lymphoma', 'e18brain']")
 # design = design.query("dataset == 'brain'")
 design = design.query("enricher == 'cluster_vs_clusters'")
+# design = design.query("enricher == 'cluster_vs_background'")
 
 ## QTL
 # from chromatinhd_manuscript.designs import (
@@ -49,7 +50,7 @@ design = design.query("enricher == 'cluster_vs_clusters'")
 # design = design.query("motifscan == 'onek1k_0.2'")
 ##
 
-design["force"] = False
+design["force"] = True
 print(design)
 
 for dataset_name, design_dataset in design.groupby("dataset"):

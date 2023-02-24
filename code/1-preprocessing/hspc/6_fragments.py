@@ -215,3 +215,5 @@ fig, ax = plt.subplots()
 ax.plot(xs, ys)
 ax.hist(sizes, range = (0, 1000), bins = 100, density = True)
 ax.set_xlim(0, 1000)
+
+#%%

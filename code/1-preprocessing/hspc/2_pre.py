@@ -33,6 +33,7 @@ if organism == "mm":
     chromosomes = ["chr" + str(i) for i in range(20)] + ["chrX", "chrY"]
 elif organism == "hs":
     chromosomes = ["chr" + str(i) for i in range(24)] + ["chrX", "chrY"]
+
 # %%
 ### External Data
 genes = pd.read_csv(folder_data_preproc / "genes.csv", index_col = 0)
@@ -79,9 +80,6 @@ adata_atac = sc.read_10x_mtx(folder_data_preproc / "MV2", var_names='gene_symbol
 adata_atac = adata_atac[:,adata_atac.var['feature_types'] == "Peaks"]
 
 #%%
-all_gene_ids = sorted(list(set(genes.loc[genes["chr"].isin(chromosomes)]['symbol']) & set(adata_rna.var.index)))
-
-#%%
 adata_atac = mv.aggregate_peaks_10x(
     adata_atac, 
     folder_data_preproc / 'GSM6403411_3423-MV-2_atac_peak_annotation.tsv', 
@@ -94,6 +92,9 @@ plt.hist(adata_atac.X.sum(1), bins=100, range=(0, 200000))
 # %%
 sc.pp.filter_cells(adata_atac, min_counts=5000)
 sc.pp.filter_cells(adata_atac, max_counts=100000)
+
+#%%
+all_gene_ids = sorted(list(set(genes.loc[genes["chr"].isin(chromosomes)]['symbol']) & set(adata_rna.var.index)))
 
 # %%
 adata_rna.obs_names = [x.split(':')[1][:-1] + '-1' for x in adata_rna.obs_names]
@@ -132,19 +133,19 @@ sc.tl.leiden(adata_rna2, resolution = 1)
 sc.tl.umap(adata_rna2, n_components=2)
 
 #%%
-# plt.ioff()
+plt.ioff()
 
-# sc.pl.umap(adata_rna2, color="leiden", legend_loc="on data", show=False)
-# plt.savefig(folder_data_preproc / 'plots/UMAP_MV2_basic.pdf')
+sc.pl.umap(adata_rna2, color="leiden", legend_loc="on data", show=False)
+plt.savefig(folder_data_preproc / 'plots/UMAP_MV2_basic.pdf')
 
-# sc.pl.umap(adata_rna2, color=hspc_marker_genes, title=hspc_marker_genes, show=False)
-# plt.savefig(folder_data_preproc / 'plots/UMAP_MV2_basic_hspc_genes.pdf')
+sc.pl.umap(adata_rna2, color=hspc_marker_genes, title=hspc_marker_genes, show=False)
+plt.savefig(folder_data_preproc / 'plots/UMAP_MV2_basic_hspc_genes.pdf')
 
-# sc.pl.umap(adata_rna2, color=s_genes_sub, title=s_genes_sub, show=False)
-# plt.savefig(folder_data_preproc / 'plots/UMAP_MV2_basic_s_genes.pdf')
+sc.pl.umap(adata_rna2, color=s_genes_sub, title=s_genes_sub, show=False)
+plt.savefig(folder_data_preproc / 'plots/UMAP_MV2_basic_s_genes.pdf')
 
-# sc.pl.umap(adata_rna2, color=g2m_genes_sub, title=g2m_genes_sub, show=False)
-# plt.savefig(folder_data_preproc / 'plots/UMAP_MV2_basic_g2m_genes.pdf')
+sc.pl.umap(adata_rna2, color=g2m_genes_sub, title=g2m_genes_sub, show=False)
+plt.savefig(folder_data_preproc / 'plots/UMAP_MV2_basic_g2m_genes.pdf')
 
 #%%
 scv.tl.score_genes_cell_cycle(adata_rna2, s_genes=s_genes_sub, g2m_genes=g2m_genes_sub)
@@ -153,14 +154,14 @@ scv.tl.score_genes_cell_cycle(adata_rna2, s_genes=s_genes_sub, g2m_genes=g2m_gen
 sc.pp.regress_out(adata_rna2, keys=['S_score', 'G2M_score'], n_jobs=4)
 
 #%%
-# sc.pl.umap(adata_rna2, color=hspc_marker_genes, title=hspc_marker_genes, show=False)
-# plt.savefig(folder_data_preproc / 'plots/UMAP_MV2_basic_hspc_genes_ro.pdf')
+sc.pl.umap(adata_rna2, color=hspc_marker_genes, title=hspc_marker_genes, show=False)
+plt.savefig(folder_data_preproc / 'plots/UMAP_MV2_basic_hspc_genes_ro.pdf')
 
-# sc.pl.umap(adata_rna2, color=s_genes_sub, title=s_genes_sub, show=False)
-# plt.savefig(folder_data_preproc / 'plots/UMAP_MV2_basic_s_genes_ro.pdf')
+sc.pl.umap(adata_rna2, color=s_genes_sub, title=s_genes_sub, show=False)
+plt.savefig(folder_data_preproc / 'plots/UMAP_MV2_basic_s_genes_ro.pdf')
 
-# sc.pl.umap(adata_rna2, color=g2m_genes_sub, title=g2m_genes_sub, show=False)
-# plt.savefig(folder_data_preproc / 'plots/UMAP_MV2_basic_g2m_genes_ro.pdf')
+sc.pl.umap(adata_rna2, color=g2m_genes_sub, title=g2m_genes_sub, show=False)
+plt.savefig(folder_data_preproc / 'plots/UMAP_MV2_basic_g2m_genes_ro.pdf')
 
 #%%
 del adata_rna2.uns
@@ -176,17 +177,17 @@ sc.tl.leiden(adata_rna2, resolution = 1)
 sc.tl.umap(adata_rna2, n_components=2)
 
 #%%
-# sc.pl.umap(adata_rna2, color="leiden", legend_loc="on data", show=False)
-# plt.savefig(folder_data_preproc / 'plots/UMAP_MV2_ro.pdf')
+sc.pl.umap(adata_rna2, color="leiden", legend_loc="on data", show=False)
+plt.savefig(folder_data_preproc / 'plots/UMAP_MV2_ro.pdf')
 
-# sc.pl.umap(adata_rna2, color=hspc_marker_genes, title=hspc_marker_genes, show=False)
-# plt.savefig(folder_data_preproc / 'plots/UMAP_MV2_ro_hspc_genes.pdf')
+sc.pl.umap(adata_rna2, color=hspc_marker_genes, title=hspc_marker_genes, show=False)
+plt.savefig(folder_data_preproc / 'plots/UMAP_MV2_ro_hspc_genes.pdf')
 
-# sc.pl.umap(adata_rna2, color=s_genes_sub, title=s_genes_sub, show=False)
-# plt.savefig(folder_data_preproc / 'plots/UMAP_MV2_ro_s_genes.pdf')
+sc.pl.umap(adata_rna2, color=s_genes_sub, title=s_genes_sub, show=False)
+plt.savefig(folder_data_preproc / 'plots/UMAP_MV2_ro_s_genes.pdf')
 
-# sc.pl.umap(adata_rna2, color=g2m_genes_sub, title=g2m_genes_sub, show=False)
-# plt.savefig(folder_data_preproc / 'plots/UMAP_MV2_ro_g2m_genes.pdf')
+sc.pl.umap(adata_rna2, color=g2m_genes_sub, title=g2m_genes_sub, show=False)
+plt.savefig(folder_data_preproc / 'plots/UMAP_MV2_ro_g2m_genes.pdf')
 
 # %%
 # sc.pl.umap(adata_rna2, color=['CD34', 'ATXN1'], title=['CD34', 'ATXN1'], use_raw=True)
@@ -222,7 +223,7 @@ df_annotation = df_annotation.reindex(adata_rna2.obs["leiden"].unique())
 adata_rna2.obs["celltype"] = df_annotation.loc[adata_rna2.obs["leiden"]].values
 
 sc.pl.umap(adata_rna2, color="celltype", legend_loc="on data", show=False)
-# plt.savefig(folder_data_preproc / 'plots/UMAP_MV2_ro_celltypes.pdf')
+plt.savefig(folder_data_preproc / 'plots/UMAP_MV2_ro_celltypes.pdf')
 
 #%%
 adata_rna2.obs_names.to_frame().to_csv(folder_data_preproc / 'filtered_cells.txt', header=False, index=False)

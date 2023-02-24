@@ -77,7 +77,6 @@ shutil.move(folder_data_preproc/'GSE209878_3423-MV-2_matrix.mtx.gz', mv2/'matrix
 
 # %%
 ### https://doi.org/10.1126/science.aad0501
-
 s_genes = [
     'MCM5', 'PCNA', 'TYMS', 'FEN1', 'MCM2', 'MCM4', 'RRM1', 'UNG', 'GINS2', 'MCM6', 
     'CDCA7', 'DTL', 'PRIM1', 'UHRF1', 'MLF1IP', 'HELLS', 'RFC2', 'RPA2', 'NASP', 

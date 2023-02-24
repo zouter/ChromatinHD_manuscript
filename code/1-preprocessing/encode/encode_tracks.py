@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: light
 #       format_version: '1.5'
-#       jupytext_version: 1.14.1
+#       jupytext_version: 1.14.4
 #   kernelspec:
 #     display_name: Python 3 (ipykernel)
 #     language: python
@@ -69,22 +69,30 @@ biosamples_oi = pd.DataFrame([
 assert biosamples_oi["Biosample term name"].isin(files["Biosample term name"]).all()
 assert files["Biosample term name"].isin(biosamples_oi["Biosample term name"]).all()
 
-# !ln -s ~/NAS2/wsaelens/projects/chromatinhd/chromatinhd_manuscript/{encode_folder_relative} {encode_folder}
-
 encode_folder = chd.get_output() / "data" / "encode"
 encode_folder_relative = encode_folder.relative_to(chd.get_git_root())
 
+# + tags=[]
+# !ln -s ~/NAS2/wsaelens/projects/chromatinhd/chromatinhd_manuscript/{encode_folder_relative} {encode_folder}
+# -
+
 bw_folder = encode_folder / "immune"
-bw_folder.mkdir(exist_ok = True)
+bw_folder.mkdir(exist_ok = True, parents = True)
 
 files["filename"] = files["File download URL"].str.split("/").str[-1]
 
 import urllib
 
+# + tags=[]
+opener = urllib.request.build_opener()
+opener.addheaders = [('User-agent', 'Mozilla/5.0')]
+urllib.request.install_opener(opener)
+# -
+
 for _, file in files.iterrows():
     if not (bw_folder / file["filename"]).exists():
         print(file["filename"])
-        urllib.request.urlretrieve(file["File download URL"], bw_folder / file["filename"])
+        urllib.request.urlretrieve(file["File download URL"], bw_folder / file["filename"], )
 
 files["Experiment target"].value_counts()
 

@@ -79,6 +79,15 @@ if not (folder_data_preproc / "genome").exists():
 # ! echo wget {main_url}_atac_fragments.tsv.gz -O {folder_data_preproc}/bam/atac_fragments.tsv.gz
 
 # %%
+genome_folder = "/data/genome/GATK/hg38"
+print(f"""gatk --java-options "-Xmx20g -XX:ParallelGCThreads=10 -XX:ConcGCThreads=10" HaplotypeCaller 
+   -R {genome_folder}/Homo_sapiens_assembly38.fasta
+   -I {folder_data_preproc}/bam/atac_possorted_bam.bam
+   -O {folder_data_preproc}/output.g.vcf.gz
+   -ERC GVCF 
+""".replace("\n", ""))
+
+# %%
 # ! wget {main_url}_filtered_feature_bc_matrix.h5 -O {folder_data_preproc}/filtered_feature_bc_matrix.h5
 
 # %%

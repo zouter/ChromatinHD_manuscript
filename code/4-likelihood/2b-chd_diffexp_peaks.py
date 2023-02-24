@@ -30,7 +30,7 @@ design = design.query("dataset == 'GSE198467_H3K27ac'")
 # design = design.query("diffexp in ['signac']")
 # design = design.query("peakcaller == 'encode_screen'")
 
-design["force"] = False
+design["force"] = True
 print(design)
 
 for dataset_name, design_dataset in design.groupby("dataset"):
@@ -130,7 +130,14 @@ for dataset_name, design_dataset in design.groupby("dataset"):
                                     )
                                 )
                             )
-                            desired_x = torch.arange(*window)
+
+                            if np.prod(probs.shape) < 10**8:
+                                basepair_step = 1
+                                desired_x = torch.arange(*window, step=basepair_step)
+                            else:
+                                basepair_step = 10
+                                desired_x = torch.arange(*window, step=basepair_step)
+
                             probs_interpolated = chd.utils.interpolate_1d(
                                 desired_x,
                                 torch.from_numpy(x)[0][0],
@@ -144,6 +151,30 @@ for dataset_name, design_dataset in design.groupby("dataset"):
                                 - probs_interpolated.mean(1, keepdims=True)
                             )
                             basepair_ranking[probs_interpolated < prob_cutoff] = -99999
+
+                            filter_background = True
+                            background_window = 250
+                            if filter_background:
+
+                                def moving_average(a, n=3):
+                                    dim = -1
+                                    a_padded = torch.nn.functional.pad(
+                                        a, (n // 2, n // 2), mode="replicate"
+                                    )
+                                    ret = torch.cumsum(a_padded, axis=dim)
+                                    ret[..., :-n] = ret[..., n:] - ret[..., :-n]
+
+                                    return ret[..., : a.shape[dim]] / n
+
+                                n = (background_window // basepair_step) + 1
+                                x = torch.from_numpy(np.exp(probs_interpolated))
+                                probs_smoothened = moving_average(x, n).numpy()
+
+                                mask = (
+                                    np.exp(probs_interpolated) / probs_smoothened
+                                ) < 1.2
+                                print(mask.mean())
+                                basepair_ranking[mask] = -99999
 
                         # set cutoffs for each cluster to get the same # of nucleotides in each
                         cutoffs = []
@@ -167,8 +198,20 @@ for dataset_name, design_dataset in design.groupby("dataset"):
                         # call differential regions
                         regionresult = (
                             chd.differential.DifferentialSlices.from_basepair_ranking(
-                                basepair_ranking, window, cutoff=cutoffs[:, None]
+                                basepair_ranking,
+                                window,
+                                cutoff=cutoffs[:, None],
+                                resolution=basepair_step,
                             )
+                        )
+
+                        print(
+                            peakresult.get_slicescores()
+                            .groupby("cluster_ix")["length"]
+                            .sum()
+                            / regionresult.get_slicescores()
+                            .groupby("cluster_ix")["length"]
+                            .sum()
                         )
 
                         pickle.dump(

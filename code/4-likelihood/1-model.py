@@ -216,6 +216,7 @@ dataset_name = "pbmc10k"
 # dataset_name = "KLF4_7"
 # dataset_name = "MSGN1_7"
 # dataset_name = "morf_20"
+dataset_name = "GSE198467_H3K27ac"
 folder_data_preproc = folder_data / dataset_name
 
 # %%
@@ -246,7 +247,7 @@ import chromatinhd.loaders.fragments
 # n_genes_step = 1000
 
 n_cells_step = 100
-n_genes_step = 5000
+n_genes_step = 50
 
 # n_cells_step = 2000
 # n_genes_step = 500
@@ -311,7 +312,7 @@ n_latent_dimensions = latent.shape[-1]
 
 cluster_info = pd.read_pickle(latent_folder / (latent_name + "_info.pkl"))
 cluster_info["color"] = sns.color_palette("husl", latent.shape[1])
-transcriptome.obs["cluster"] = transcriptome.adata.obs["cluster"] = pd.Categorical(pd.from_dummies(latent).iloc[:, 0])
+fragments.obs["cluster"] = pd.Categorical(pd.from_dummies(latent).iloc[:, 0])
 
 # %% [markdown]
 # ### Create model
@@ -321,46 +322,11 @@ reflatent = torch.eye(n_latent_dimensions).to(torch.float)
 reflatent_idx = torch.from_numpy(np.where(latent.values)[1])
 
 # %%
-# import chromatinhd.models.vae.v3 as vae_model
-# model = vae_model.Decoding(fragments, latent, n_bins = 50)
-
-# import chromatinhd.models.likelihood.v2 as vae_model
-# model = vae_model.Decoding(fragments, latent, n_components = 64)
-
-# import chromatinhd.models.likelihood.v4 as vae_model
-# model = vae_model.Decoding(fragments, torch.from_numpy(latent.values), nbins = (64, 32, ))
-
-
-# import chromatinhd.models.likelihood.v8 as vae_model
-# import chromatinhd.models.likelihood.v5 as vae_model
-# model = vae_model.Decoding(fragments, reflatent, reflatent_idx, nbins = (256, 128, 64, ))
-# model = vae_model.Decoding(fragments, reflatent, reflatent_idx, nbins = (64, 32, ))
-# model = vae_model.Decoding(fragments, reflatent, reflatent_idx, nbins = (64, ))
-# model = vae_model.Decoding(fragments, reflatent, reflatent_idx, nbins = (128, ))
-# model = vae_model.Decoding(fragments, reflatent, reflatent_idx, nbins = (128, 64, 32, 16, 8))
-# model = vae_model.Decoding(fragments, reflatent, reflatent_idx, nbins = (32, 64, 128, ))
-# model = vae_model.Decoding(fragments, reflatent, reflatent_idx, nbins = (128, ))
-
 import chromatinhd.models.likelihood.v9 as vae_model
-model = vae_model.Decoding(fragments, torch.from_numpy(latent.values), nbins = (128, 64, 32, ))
-
-# import chromatinhd.models.likelihood.v11 as vae_model
 # model = vae_model.Decoding(fragments, torch.from_numpy(latent.values), nbins = (128, 64, 32, ))
+model = vae_model.Decoding(fragments, torch.from_numpy(latent.values), nbins = (32, ))
 
-# model = pickle.load((chd.get_output() / "prediction_likelihood" / dataset_name / promoter_name / latent_name / "v2_baseline" / "model_0.pkl").open("rb"))
-# model = pickle.load((chd.get_output() / "prediction_likelihood" / dataset_name / promoter_name / latent_name / "v2" / "model_0.pkl").open("rb"))
-# model = pickle.load((chd.get_output() / "prediction_likelihood" / dataset_name / promoter_name / latent_name / "v4_64_1l" / "model_0.pkl").open("rb"))
-# model = pickle.load((chd.get_output() / "prediction_likelihood" / dataset_name / promoter_name / latent_name / "v4_64-32" / "model_0.pkl").open("rb"))
-# model = pickle.load((chd.get_output() / "prediction_likelihood" / dataset_name / promoter_name / latent_name / "v4_128-64-32_30" / "model_0.pkl").open("rb"))
-# model = pickle.load((chd.get_output() / "prediction_likelihood" / dataset_name / promoter_name / latent_name / "v4_128-64-32" / "model_0.pkl").open("rb"))
-# model = pickle.load((chd.get_output() / "prediction_likelihood" / dataset_name / promoter_name / latent_name / "v4_128-64-32_30_rep" / "model_0.pkl").open("rb"))
-# model = pickle.load((chd.get_output() / "prediction_likelihood" / dataset_name / promoter_name / latent_name / "v4_256-128-64-32" / "model_0.pkl").open("rb"))
-# model = pickle.load((chd.get_output() / "prediction_likelihood" / dataset_name / promoter_name / latent_name / "v5_128-64-32" / "model_0.pkl").open("rb"))
-# model = pickle.load((chd.get_output() / "prediction_likelihood" / dataset_name / promoter_name / latent_name / "v8_128-64-32" / "model_0.pkl").open("rb"))
-# model = pickle.load((chd.get_output() / "prediction_likelihood" / dataset_name / promoter_name / latent_name / "v9_128-64-32" / "model_0.pkl").open("rb"))
-
-# %%
-# sns.heatmap((model.mixture.transform.unnormalized_heights.weight.data.cpu().numpy()))
+# model = pickle.load((chd.get_output() / "prediction_likelihood/GSE198467_H3K27ac/10k10k/leiden_0.1/v9_128-64-32/model_0.pkl").open("rb"))
 
 # %% [markdown]
 # ### Prior distribution
@@ -373,9 +339,9 @@ model = model.to(device)
 fragments.create_cut_data()
 
 # %%
-gene_oi = 1
-# gene_oi = symbols.index("CCL4")
-gene_oi = int(transcriptome.gene_ix("CD74"));gene_id = transcriptome.var.index[gene_oi]
+gene_oi = 0
+# gene_oi = promoters["symbol"].tolist().index("Neurod1")
+# gene_oi = int(transcriptome.gene_ix("Neurod1"));gene_id = transcriptome.var.index[gene_oi]
 # gene_oi = int(transcriptome.gene_ix("IL1B"));gene_id = transcriptome.var.index[gene_oi]
 # gene_oi = "ENSG00000005379";gene_ix = int(transcriptome.gene_ix(transcriptome.symbol(gene_oi)))
 
@@ -520,6 +486,9 @@ hooks = [hook_genelikelihood]
 
 # %%
 # torch.autograd.set_detect_anomaly(True)
+
+# %%
+# minibatches_train
 
 # %%
 # with torch.autograd.detect_anomaly():

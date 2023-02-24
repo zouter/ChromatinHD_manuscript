@@ -69,6 +69,8 @@ biosamples_oi = pd.DataFrame([
 assert biosamples_oi["Biosample term name"].isin(files["Biosample term name"]).all()
 assert files["Biosample term name"].isin(biosamples_oi["Biosample term name"]).all()
 
+# ### Download files
+
 encode_folder = chd.get_output() / "data" / "encode"
 encode_folder_relative = encode_folder.relative_to(chd.get_git_root())
 
@@ -94,6 +96,8 @@ for _, file in files.iterrows():
         print(file["filename"])
         urllib.request.urlretrieve(file["File download URL"], bw_folder / file["filename"], )
 
+# ### Check out
+
 files["Experiment target"].value_counts()
 
 files["Biosample term name"].value_counts()
@@ -110,8 +114,11 @@ import chromatinhd.conservation
 idx_oi = files.query("`Biosample term name` == 'natural killer cell'").query("`Experiment target` == 'H3K4me3-human'").index[0]
 idx_oi = files.query("`Biosample term name` == 'dendritic cell'").query("`Experiment target` == 'H3K4me3-human'").index[0]
 idx_oi = files.query("`Biosample term name` == 'CD14-positive monocyte'").query("`Experiment target` == 'H3K4me3-human'").index[0]
+idx_oi = files.query("`Biosample term name` == 'naive thymus-derived CD8-positive, alpha-beta T cell'").query("`Experiment target` == 'H3K4me3-human'").index[0]
 
-idx_oi = files.query("`Biosample term name` == 'natural killer cell'").query("`Experiment target` == 'H3K27me3-human'").index[1]
+# repressive
+# idx_oi = files.query("`Biosample term name` == 'natural killer cell'").query("`Experiment target` == 'H3K27me3-human'").index[1]
+# idx_oi = files.query("`Biosample term name` == 'naive thymus-derived CD4-positive, alpha-beta T cell'").query("`Experiment target` == 'H3K27me3-human'").index[1]
 # idx_oi = files.query("`Biosample term name` == 'CD14-positive monocyte'").query("`Experiment target` == 'H3K27me3-human'").index[5]
 # idx_oi = files.query("`Biosample term name` == 'dendritic cell'").query("`Experiment target` == 'H3K27me3-human'").index[0]
 # -
@@ -142,7 +149,8 @@ plotdata = pd.DataFrame({
 fig, ax = plt.subplots(figsize = (15, 2))
 ax.plot(plotdata["position"], plotdata["conservation"])
 
-files_oi = pd.merge(files, biosamples_oi).query("cluster in ['NK', 'cDCs']")
+files_oi = pd.merge(files, biosamples_oi).query("cluster in ['B', 'CD4 T']")
+# files_oi = pd.merge(files, biosamples_oi).query("cluster in ['NK', 'cDCs']")
 files_oi = files_oi.query("`Experiment target` == 'H3K4me3-human'")
 # files_oi = files_oi.query("`Experiment target` == 'H3K27me3-human'")
 files_oi = files_oi.copy()

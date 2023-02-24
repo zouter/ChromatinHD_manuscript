@@ -4,6 +4,7 @@ import chromatinhd.models.likelihood.v4
 import chromatinhd.models.likelihood.v5
 import chromatinhd.models.likelihood.v8
 import chromatinhd.models.likelihood.v9
+import chromatinhd.models.likelihood.v11
 import chromatinhd as chd
 
 import pickle
@@ -11,6 +12,7 @@ import numpy as np
 import torch
 
 n_cells_step = 100
+n_genes_step = 5000
 
 
 def get_design(dataset_name, latent_name, fragments):
@@ -24,7 +26,7 @@ def get_design(dataset_name, latent_name, fragments):
 
     general_model_parameters = {"fragments": fragments}
 
-    n_genes_step = fragments.n_genes
+    n_genes_step = min(fragments.n_genes, 5000)
 
     general_loader_parameters = {
         "fragments": fragments,
@@ -56,7 +58,25 @@ def get_design(dataset_name, latent_name, fragments):
         "n_epoch": 50,
     }
 
-    import chromatinhd.models.likelihood.v11
+    design["v9_64-32"] = {
+        "model_cls": chromatinhd.models.likelihood.v9.Decoding,
+        "model_parameters": {
+            **general_model_parameters,
+            "latent": cell_latent_space,
+            "nbins": (
+                64,
+                32,
+            ),
+        },
+        "loader_cls": chromatinhd.loaders.fragments.Fragments,
+        "loader_parameters": {
+            **{
+                k: general_loader_parameters[k]
+                for k in ["fragments", "cellxgene_batch_size"]
+            }
+        },
+        "n_epoch": 50,
+    }
 
     reflatent = torch.eye(cell_latent_space.shape[1]).to(torch.float64)
     reflatent_idx = torch.from_numpy(np.where(cell_latent_space)[1])
@@ -90,7 +110,7 @@ import chromatinhd.loaders.minibatching
 
 
 def get_folds_training(fragments, folds):
-    n_genes_step = fragments.n_genes
+    n_genes_step = min(fragments.n_genes, 5000)
 
     for fold in folds:
         minibatcher = chd.loaders.minibatching.Minibatcher(

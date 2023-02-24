@@ -205,6 +205,7 @@ dataset_latent_combinations = pd.DataFrame.from_records(
                 "alzheimer",
                 "pbmc10k_gran",
                 "GSE198467_H3K27ac",
+                "GSE198467_single_modality_H3K27me3",
             ],
             ["leiden_0.1"],
         ),
@@ -234,12 +235,22 @@ dataset_latent_method_combinations = pd.concat(
                         "brain",
                         "alzheimer",
                         "pbmc10k_gran",
-                        "GSE198467_H3K27ac",
+                        "GSE198467_single_modality_H3K27me3",
                         # "morf_20",
                     ]
                 )
             ],
             pd.DataFrame({"method": ["v9_128-64-32"]}),
+        ),
+        chd.utils.crossing(
+            dataset_latent_combinations.loc[
+                dataset_latent_combinations["dataset"].isin(
+                    [
+                        "GSE198467_H3K27ac",
+                    ]
+                )
+            ],
+            pd.DataFrame({"method": ["v9_64-32"]}),
         ),
     ]
 )
@@ -261,9 +272,9 @@ dataset_latent_peakcaller_diffexp_combinations = pd.concat(
     ]
 )
 
-dataset_latent_peakcaller_diffexp_method_combinations = chd.utils.crossing(
-    dataset_latent_peakcaller_diffexp_combinations,
-    pd.DataFrame({"method": ["v9_128-64-32"]}),
+
+dataset_latent_peakcaller_diffexp_method_combinations = pd.merge(
+    dataset_latent_method_combinations, dataset_latent_peakcaller_diffexp_combinations
 )
 
 

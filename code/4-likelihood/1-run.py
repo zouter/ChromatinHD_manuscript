@@ -27,7 +27,7 @@ print(torch.cuda.memory_allocated(0))
 
 from chromatinhd_manuscript.designs import dataset_latent_method_combinations as design
 
-design = design.query("dataset == 'GSE198467_H3K27ac'")
+design = design.query("dataset == 'GSE198467_single_modality_H3K27me3'")
 
 design["force"] = True
 
@@ -48,8 +48,6 @@ for dataset_name, design_dataset in design.groupby("dataset"):
         folder_data_preproc / "fragments" / promoter_name
     )
     fragments.window = window
-
-    print(fragments.n_genes)
 
     for latent_name, design_latent in design_dataset.groupby("latent"):
         # create design to run

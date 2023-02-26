@@ -40,7 +40,6 @@ import tqdm.auto as tqdm
 
 import chromatinhd as chd
 import tempfile
-
 import requests
 
 url = "https://www.encodeproject.org/search/?type=Experiment&assay_title=Mint-ChIP-seq&biosample_ontology.term_name=naive+thymus-derived+CD8-positive%2C+alpha-beta+T+cell&biosample_ontology.term_name=naive+thymus-derived+CD4-positive%2C+alpha-beta+T+cell&biosample_ontology.term_name=naive+B+cell&biosample_ontology.term_name=B+cell&biosample_ontology.term_name=CD14-positive+monocyte&biosample_ontology.term_name=natural+killer+cell&biosample_ontology.term_name=immature+natural+killer+cell&biosample_ontology.term_name=dendritic+cell&limit=1000&assay_title=Histone+ChIP-seq&control_type!=*&target.label=H3K27ac&target.label=H3K4me3&target.label=H3K27me3&target.label=H3K36me3&target.label=H3K9me3&target.label=H3K4me1&files.file_type=bigWig"

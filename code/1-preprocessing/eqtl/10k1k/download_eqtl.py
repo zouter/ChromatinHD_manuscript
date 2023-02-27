@@ -174,6 +174,9 @@ sns.histplot(eqtl.head(1000000)["spearmans_rho"].to_pandas())
 sns.histplot(eqtl.filter(pl.col("fdr") < 0.05).head(1000000)["spearmans_rho"].to_pandas())
 
 # %% tags=[]
+eqtl.filter(pl.col("gene_id") == "ENSG00000203747")
+
+# %% tags=[]
 eqtl.filter(pl.col("rsid") == "rs207253")
 
 # %%

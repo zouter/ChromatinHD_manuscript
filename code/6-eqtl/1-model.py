@@ -41,206 +41,32 @@ import tqdm.auto as tqdm
 import chromatinhd as chd
 import tempfile
 
-# %%
-# import os
-# os.environ["PYTORCH_CUDA_ALLOC_CONF"] = 'max_split_size_mb:128'
-
 # %% [markdown]
 # ## Get the dataset
 
-# %% [markdown]
-# ### Simulation
-
-# %%
-from simulate import Simulation
-
-# %%
-simulation = Simulation(n_cells = 1000, n_genes = 30)
-
-# %%
-window = simulation.window
-
-# %%
-coordinates, mapping, cell_latent_space= torch.from_numpy(simulation.coordinates).to(torch.float32), torch.from_numpy(simulation.mapping), torch.from_numpy(simulation.cell_latent_space).to(torch.float32)
-
-# %%
-cellmapping = mapping[:, 0]
-genemapping = mapping[:, 1] 
-
-# %%
-## Plot prior distribution
-gene_ix = 0
-fig, (ax) = plt.subplots(1, 1, figsize=(40, 2))
-for dim in range(cell_latent_space.shape[1]):
-    fragments_oi = (cell_latent_space[:, dim] > 0)[cellmapping] & (genemapping == gene_ix)
-    ax.hist(coordinates.cpu().numpy()[fragments_oi, 0], bins=1000, range = window, histtype = "step")
-
-# %%
-# library sizes
-sns.histplot(torch.bincount(cellmapping, minlength = simulation.n_cells).numpy())
-
-# %%
-# gene means
-sns.histplot(torch.bincount(genemapping, minlength = simulation.n_genes).numpy())
-
-# %% [markdown]
-# Create fragments
-
-# %%
-import chromatinhd as chd
-import pathlib
-import tempfile
-
-# %%
-fragments = chd.data.Fragments(path = pathlib.Path(tempfile.TemporaryDirectory().name))
-
-# %%
-# need to make sure the order of fragments is cellxgene
-order = np.argsort((simulation.mapping[:, 0] * simulation.n_genes) + simulation.mapping[:, 1])
-
-fragments.coordinates = torch.from_numpy(simulation.coordinates)[order]
-fragments.mapping = torch.from_numpy(simulation.mapping)[order]
-fragments.var = pd.DataFrame({"gene":np.arange(simulation.n_genes)}).set_index("gene")
-fragments.obs = pd.DataFrame({"cell":np.arange(simulation.n_cells)}).set_index("cell")
-fragments.create_cellxgene_indptr()
-
-# %% [markdown]
-# ### Single gene real
-
 # %%
 folder_root = chd.get_output()
 folder_data = folder_root / "data"
 
-# dataset_name = "lymphoma"
-dataset_name = "pbmc10k"
-# dataset_name = "e18brain"
+dataset_name = "pbmc10k_leiden_0.1"
 folder_data_preproc = folder_data / dataset_name
 
 # %%
-# promoter_name, window = "4k2k", (2000, 4000)
-promoter_name, window = "10k10k", np.array([-10000, 10000])
-promoters = pd.read_csv(folder_data_preproc / ("promoters_" + promoter_name + ".csv"), index_col = 0)
-window_width = window[1] - window[0]
-
-# %%
-transcriptome = chd.data.Transcriptome(folder_data_preproc / "transcriptome")
-fragments_original = chd.data.Fragments(folder_data_preproc / "fragments" / promoter_name)
-
-# %%
-# one gene
-symbol = "IL1B"
-# symbol = "Neurod1"
-gene_id = transcriptome.gene_id(symbol)
-gene_ix = fragments_original.var.loc[gene_id]["ix"]
-
-fragments = chd.data.Fragments(path = pathlib.Path(tempfile.TemporaryDirectory().name))
-
-fragments_oi = fragments_original.genemapping == gene_ix
-
-fragments.coordinates = fragments_original.coordinates[fragments_oi]
-fragments.mapping = fragments_original.mapping[fragments_oi]
-fragments.mapping[:, 1] = 0
-fragments.var = pd.DataFrame({"gene":[1]}).set_index("gene")
-fragments.obs = pd.DataFrame({"cell":np.arange(fragments_original.n_cells)}).set_index("cell")
-fragments.create_cellxgene_indptr()
-
-# %% [markdown]
-# ### Two genes real
-
-# %%
-folder_root = chd.get_output()
-folder_data = folder_root / "data"
-
-# dataset_name = "lymphoma"
-dataset_name = "pbmc10k"
-# dataset_name = "e18brain"
-folder_data_preproc = folder_data / dataset_name
-
-# %%
-# promoter_name, window = "4k2k", (2000, 4000)
-promoter_name, window = "10k10k", np.array([-10000, 10000])
-promoters = pd.read_csv(folder_data_preproc / ("promoters_" + promoter_name + ".csv"), index_col = 0)
-window_width = window[1] - window[0]
-
-# %%
-transcriptome = chd.data.Transcriptome(folder_data_preproc / "transcriptome")
-fragments_original = chd.data.Fragments(folder_data_preproc / "fragments" / promoter_name)
-
-# %%
-# one gene
-# symbols = ["IL1B"]
-# symbols = ["IL1B", "FOSB"]
-# symbols = ["FOSB", "IL1B"]
-symbols = transcriptome.var.symbol[:100].tolist()# + ["IL1B", "FOSB"]
-# symbol = "Neurod1"
-gene_ids = transcriptome.gene_id(symbols)
-gene_ixs = fragments_original.var.loc[gene_ids]["ix"]
-
-fragments = chd.data.Fragments(path = pathlib.Path(tempfile.TemporaryDirectory().name))
-
-fragments_oi = torch.isin(fragments_original.genemapping, torch.from_numpy(gene_ixs.values))
-
-fragments.coordinates = fragments_original.coordinates[fragments_oi]
-fragments.mapping = fragments_original.mapping[fragments_oi]
-mapper = np.zeros(fragments_original.n_genes)
-mapper[gene_ixs] = np.arange(len(gene_ixs))
-fragments.mapping[:, 1] = torch.from_numpy(mapper[fragments_original.mapping[fragments_oi][:, 1]])
-
-cellxgene = fragments.mapping[:, 0] * len(gene_ids) + fragments.mapping[:, 1]
-order = torch.argsort(cellxgene)
-fragments.coordinates = fragments.coordinates[order]
-fragments.mapping = fragments.mapping[order]
-
-fragments.var = pd.DataFrame({"gene":range(len(gene_ids))}).set_index("gene")
-fragments.obs = pd.DataFrame({"cell":np.arange(fragments_original.n_cells)}).set_index("cell")
-fragments.create_cellxgene_indptr()
-
-# %%
-fragments.window = window
-fragments.create_cut_data()
-
-# %% [markdown]
-# ### Full real dataset
-
-# %%
-folder_root = chd.get_output()
-folder_data = folder_root / "data"
-
-# dataset_name = "lymphoma"
-dataset_name = "pbmc10k"
-# dataset_name = "e18brain"
-# dataset_name = "alzheimer"
-# dataset_name = "brain"
-# dataset_name = "CDX2_7"
-# dataset_name = "CDX1_7"
-# dataset_name = "KLF4_7"
-# dataset_name = "MSGN1_7"
-# dataset_name = "morf_20"
-dataset_name = "GSE198467_H3K27ac"
-dataset_name = "hspc"
-folder_data_preproc = folder_data / dataset_name
-
-# %%
-# promoter_name, window = "4k2k", (2000, 4000)
-promoter_name, window = "10k10k", np.array([-10000, 10000])
-promoters = pd.read_csv(folder_data_preproc / ("promoters_" + promoter_name + ".csv"), index_col = 0)
-window_width = window[1] - window[0]
-
-# %%
-transcriptome = chd.data.Transcriptome(folder_data_preproc / "transcriptome")
-fragments = chd.data.Fragments(folder_data_preproc / "fragments" / promoter_name)
-fragments.window = window
+fragments = chd.data.Fragments(folder_data_preproc / "fragments")
 
 # %% [markdown]
 # ## Create loaders
 
 # %%
-fragments.window = window
-fragments.create_cut_data()
+# which clusters to look at
+clusters_oi = np.array([0, 1, 2, 3])
 
 # %%
-cells_train = np.arange(0, int(fragments.n_cells * 9 / 10))
-cells_validation = np.arange(int(fragments.n_cells * 9 / 10), fragments.n_cells)
+# which positions (i.e. SNPs) to look at
+positions_oi = np.array([10000])
+
+# %%
+import chromatinhd.loaders.chunkfragments
 
 # %%
 import chromatinhd.loaders.fragments
@@ -248,7 +74,7 @@ import chromatinhd.loaders.fragments
 # n_genes_step = 1000
 
 n_cells_step = 100
-n_genes_step = 5000
+n_genes_step = 50
 
 # n_cells_step = 2000
 # n_genes_step = 500
@@ -293,12 +119,17 @@ loaders_validation.initialize(minibatches_validation)
 # ### Load latent space
 
 # %%
-# loading
-# latent_name = "leiden_1"
-# latent_name = "leiden_0.1"
-latent_name = "celltype"
-# latent_name = "overexpression"
+# latent = torch.from_numpy(simulation.cell_latent_space).to(torch.float32)
 
+# using transcriptome clustering
+# sc.tl.leiden(transcriptome.adata, resolution = 0.1)
+# latent = torch.from_numpy(pd.get_dummies(transcriptome.adata.obs["leiden"]).values).to(torch.float)
+
+# loading
+latent_name = "leiden_1"
+latent_name = "leiden_0.1"
+# latent_name = "celltype"
+# latent_name = "overexpression"
 folder_data_preproc = folder_data / dataset_name
 latent_folder = folder_data_preproc / "latent"
 latent = pickle.load((latent_folder / (latent_name + ".pkl")).open("rb"))
@@ -314,9 +145,13 @@ fragments.obs["cluster"] = pd.Categorical(pd.from_dummies(latent).iloc[:, 0])
 # ### Create model
 
 # %%
+reflatent = torch.eye(n_latent_dimensions).to(torch.float)
+reflatent_idx = torch.from_numpy(np.where(latent.values)[1])
+
+# %%
 import chromatinhd.models.likelihood.v9 as vae_model
-model = vae_model.Decoding(fragments, torch.from_numpy(latent.values), nbins = (128, 64, 32, ))
-# model = vae_model.Decoding(fragments, torch.from_numpy(latent.values), nbins = (32, ))
+# model = vae_model.Decoding(fragments, torch.from_numpy(latent.values), nbins = (128, 64, 32, ))
+model = vae_model.Decoding(fragments, torch.from_numpy(latent.values), nbins = (32, ))
 
 # model = pickle.load((chd.get_output() / "prediction_likelihood/GSE198467_H3K27ac/10k10k/leiden_0.1/v9_128-64-32/model_0.pkl").open("rb"))
 
@@ -477,12 +312,28 @@ hook_genelikelihood = GeneLikelihoodHook(fragments.n_genes)
 hooks = [hook_genelikelihood]
 
 # %%
+# torch.autograd.set_detect_anomaly(True)
+
+# %%
+# minibatches_train
+
+# %%
 # with torch.autograd.detect_anomaly():
 model = model.to(device).train()
 loaders_train.restart()
 loaders_validation.restart()
 trainer = chd.train.Trainer(model, loaders_train, loaders_validation, optimizer, n_epochs = 50, checkpoint_every_epoch=1, optimize_every_step = 1, hooks_checkpoint = hooks)
 trainer.train()
+
+# %%
+likelihood_mixture = pd.DataFrame(np.vstack(hook_genelikelihood.likelihood_mixture), columns = fragments.var.index).T
+
+# %%
+scores = (likelihood_mixture.iloc[:, -1] - likelihood_mixture[0]).sort_values().to_frame("lr")
+scores["label"] = transcriptome.symbol(scores.index)
+
+# %%
+scores.tail(20)
 
 # %%
 pickle.dump(model.to("cpu"), open("./model.pkl", "wb"))
@@ -533,6 +384,31 @@ transcriptome.var.head(10)
 
 # %%
 gene_oi = 0
+
+# symbol = "DNAH5" # !!
+# symbol = "ABHD12B"
+# symbol = "HOXB8" # !!
+# symbol = "CALB1" # !
+# symbol = "DLL3" # !!
+# symbol = "HOXD4" # !
+# symbol = "GLI3"
+# symbol = "CAPN2" # !!
+# symbol = "LRRTM4"
+# symbol = "SHROOM3"
+# symbol = "CALD1"
+# symbol = "ADAM28" # !
+# symbol = "SLIT3" # !
+# symbol = "PDGFRA" # !
+# symbol = "HAPLN1" # !
+# symbol = "C3orf52" #!?
+# symbol = "PHC2" # !!
+# symbol = "AFF3"
+# symbol = "EFNB2"
+# symbol = "RPL4"
+# symbol = "HSPA8"
+# symbol = "NOTCH2"
+# symbol = "STK38L"
+# symbol = "FREM1"
 
 # symbol = "SOX5"
 symbol = "CD3D"

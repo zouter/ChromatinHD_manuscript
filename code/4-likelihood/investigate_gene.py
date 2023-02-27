@@ -182,9 +182,9 @@ genes = pd.read_csv(folder_data_preproc / "genome/genes.csv", index_col = 0)
 
 # %%
 # motifscan_name = "cutoff_0001"
-motifscan_name = "cutoff_001"
+# motifscan_name = "cutoff_001"
 # motifscan_name = "onek1k_0.2"
-# motifscan_name = "gwas_immune"
+motifscan_name = "gwas_immune"
 # motifscan_name = "gwas_lymphoma"
 # motifscan_name = "gwas_cns"
 # motifscan_name = "gtex_immune"
@@ -204,7 +204,7 @@ promoters["n"] = np.diff(motifscan.indptr).reshape((len(promoters), (window[1] -
 # distribution
 plt.plot(np.diff(motifscan.indptr).reshape((len(promoters), (window[1] - window[0]))).sum(0))
 
-# %% [markdown] tags=[] jp-MarkdownHeadingCollapsed=true jp-MarkdownHeadingCollapsed=true tags=[] jp-MarkdownHeadingCollapsed=true tags=[] jp-MarkdownHeadingCollapsed=true
+# %% [markdown] tags=[] jp-MarkdownHeadingCollapsed=true jp-MarkdownHeadingCollapsed=true tags=[] jp-MarkdownHeadingCollapsed=true tags=[] jp-MarkdownHeadingCollapsed=true jp-MarkdownHeadingCollapsed=true tags=[]
 # ### Peakcounts
 
 # %%
@@ -286,8 +286,11 @@ peak_cluster_prob_diffs = np.log(peak_cluster_probs) - np.log(peak_cluster_probs
 # symbol = "CD40" # Interesting
 # symbol = "HLA-DQA1"
 # symbol = "CD244" # Woohoo
-symbol = "POU2AF1" # Yays
-symbol = "TCF3"
+# symbol = "POU2AF1" # Yays
+symbol = "LRRC25"
+# symbol = "TCF3"
+# symbol = "SP140"
+# symbol = "TCF3"
 
 
 # symbol = "TNFRSF13C" # Certainly interesting, the promoter is opening up everywhere, no wonder with PU1 binding sites littered all over the place
@@ -393,6 +396,9 @@ gene_id
 # ### Extract motif data
 
 # %%
+import itertools
+
+# %%
 # motifs_oi = pd.DataFrame([], columns = ["motif", "clusters"]).set_index("motif")
 
 if motifscan_name in ["cutoff_0001", "cutoff_001"]:
@@ -434,7 +440,7 @@ if motifscan_name in ["cutoff_0001", "cutoff_001"]:
 
 if motifscan_name in ["gwas_immune"]:
     motifs_oi = pd.DataFrame([
-        [x, [cluster_info.index[i]]] for x, i in zip(motifs.index, range(len(cluster_info.index)))
+        [x, [cluster_info.index[i]]] for x, i in zip(motifs.index, itertools.chain(range(len(cluster_info.index)), range(len(cluster_info.index))))
     ], columns = ["motif", "clusters"]).set_index("motif")
 
 # motifs_oi = pd.DataFrame([

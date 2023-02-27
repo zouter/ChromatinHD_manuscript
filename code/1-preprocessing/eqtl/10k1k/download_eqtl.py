@@ -83,12 +83,6 @@ eqtl_file = eqtl_data_folder / "onek1k_eqtl_dataset.tsv"
 # !head -n 3 {eqtl_file}
 
 # %% tags=[]
-# !awk 'NR==390135' {eqtl_file}
-
-# %% tags=[]
-# !awk 'NR==390134' {eqtl_file}
-
-# %% tags=[]
 # !awk 'NR==390136' {eqtl_file}
 
 # %% tags=[]
@@ -178,6 +172,9 @@ eqtl_filtered.groupby(["rsid", "gene"], observed = True).size().sort_values(asce
 # %% tags=[]
 sns.histplot(eqtl.head(1000000)["spearmans_rho"].to_pandas())
 sns.histplot(eqtl.filter(pl.col("fdr") < 0.05).head(1000000)["spearmans_rho"].to_pandas())
+
+# %% tags=[]
+eqtl.filter(pl.col("rsid") == "rs207253")
 
 # %%
 eqtl.filter(pl.col("gene") == "CTLA4").to_pandas().query("q_value < 0.1").sort_values("p_value")

@@ -89,9 +89,6 @@ pushd ${idat_folder}
 for f in *.gz ; do gunzip -c "$f" > "${f%.*}" ; done
 
 # %% tags=[]
-file.parent / "_".join(split[1:])
-
-# %% tags=[]
 # convert to correct idat file name format as per https://github.com/freeseek/gtc2vcf
 # we remove the 1st sample id, which was probably added by GEO
 # we will map everything later
@@ -114,20 +111,27 @@ for file in idat_folder.iterdir():
 # https://support.illumina.com/array/array_kits/infinium-global-screening-array/downloads.html
 
 # %% tags=[]
-# !wget -P {raw_data_folder} https://webdata.illumina.com/downloads/productfiles/global-screening-array/v2-0/infinium-global-screening-array-24-v2-0-a2-manifest-file-csv.zip
+# 37
+# !wget -P {raw_data_folder} https://webdata.illumina.com/downloads/productfiles/global-screening-array/v2-0/gsa-24-v2-0-A1-manifest-file-bpm.zip
+# !wget -P {raw_data_folder} https://webdata.illumina.com/downloads/productfiles/global-screening-array/v2-0/gsa-24-v2-0-A1-manifest-file-csv.zip
 
 # %% tags=[]
+# !unzip -d {raw_data_folder} {raw_data_folder}/gsa-24-v2-0-A1-manifest-file-bpm.zip
+# !unzip -d {raw_data_folder} {raw_data_folder}/gsa-24-v2-0-A1-manifest-file-csv.zip
+
+# %% tags=[]
+# 38
+# !wget -P {raw_data_folder} https://webdata.illumina.com/downloads/productfiles/global-screening-array/v2-0/infinium-global-screening-array-24-v2-0-a2-manifest-file-csv.zip
 # !wget -P {raw_data_folder} https://webdata.illumina.com/downloads/productfiles/global-screening-array/v2-0/infinium-global-screening-array-24-v2-0-a2-manifest-file-bpm.zip
+
+# %% tags=[]
+# !unzip -d {raw_data_folder} {raw_data_folder}/infinium-global-screening-array-24-v2-0-a2-manifest-file-bpm.zip
+# !unzip -d {raw_data_folder} {raw_data_folder}/infinium-global-screening-array-24-v2-0-a2-manifest-file-csv.zip
 
 # %% tags=[]
 # !wget -P {raw_data_folder} https://webdata.illumina.com/downloads/productfiles/global-screening-array/v2-0/gsa-24-v2-0-A1-cluster-file.zip
 
-# %% tags=[]
-# !unzip -d {raw_data_folder} {raw_data_folder}/infinium-global-screening-array-24-v2-0-a2-manifest-file-bpm.zip
 # !unzip -d {raw_data_folder} {raw_data_folder}/gsa-24-v2-0-A1-cluster-file.zip
-
-# %% tags=[]
-# !unzip -d {raw_data_folder} {raw_data_folder}/infinium-global-screening-array-24-v2-0-a2-manifest-file-csv.zip
 
 # %% [markdown]
 # ### Run IAAP
@@ -139,21 +143,25 @@ for file in idat_folder.iterdir():
 import os
 
 # %% tags=[]
+# 38
 bpm_manifest_file = raw_data_folder/"GSA-24v2-0_A2.bpm"
 egt_cluster_file = raw_data_folder/"GSA-24v2-0_A1_ClusterFile.egt"
+gtc_folder = raw_data_folder/"gtc"
+
+# 37
+bpm_manifest_file = raw_data_folder/"GSA-24v2-0_A1.bpm"
+egt_cluster_file = raw_data_folder/"GSA-24v2-0_A1_ClusterFile.egt"
+gtc_folder = raw_data_folder/"gtc_37"
 
 idat_folder = str(raw_data_folder/"idat")
 
-gtc_folder = raw_data_folder/"gtc"
 gtc_folder.mkdir(exist_ok = True, parents = True)
 
 # %% tags=[]
 os.environ["bpm_manifest_file"] = str(bpm_manifest_file)
 os.environ["egt_cluster_file"] = str(egt_cluster_file)
 os.environ["gtc_folder"] = str(gtc_folder)
-
-# %% tags=[] language="bash"
-# $HOME/bin/iaap-cli/iaap-cli gencall --help
+os.environ["idat_folder"] = str(idat_folder)
 
 # %% tags=[] language="bash"
 # CLR_ICU_VERSION_OVERRIDE="$(uconv -V | sed 's/.* //g')" LANG="en_US.UTF-8" $HOME/bin/iaap-cli/iaap-cli \
@@ -161,30 +169,48 @@ os.environ["gtc_folder"] = str(gtc_folder)
 #   --idat-folder $idat_folder \
 #   --output-gtc \
 #   --gender-estimate-call-rate-threshold -0.1 \
-#   --num-threads 10
+#   --num-threads 20
+
+# %% [markdown] tags=[]
+# 37: https://imputationserver.sph.umich.edu/start.html#!jobs/job-20230227-024618-010  
+# 38: 
 
 # %% [markdown]
 # ### Illumina GTC to VCF
 
 # %% tags=[]
+# create genome
+# # !mkdir -p $HOME/GRCh37
+# # !wget -O- ftp://ftp.1000genomes.ebi.ac.uk/vol1/ftp/technical/reference/human_g1k_v37.fasta.gz | gzip -d > $HOME/GRCh37/human_g1k_v37.fasta
+# # !samtools faidx $HOME/GRCh37/human_g1k_v37.fasta
+# # !bwa index $HOME/GRCh37/human_g1k_v37.fasta
+
+# %% tags=[]
+# 38
+bpm_manifest_file = raw_data_folder/"GSA-24v2-0_A2.bpm"
 csv_manifest_file = raw_data_folder/"GSA-24v2-0_A2.csv"
 egt_cluster_file = raw_data_folder/"GSA-24v2-0_A1_ClusterFile.egt"
-
-gtc_folder = raw_data_folder/"gtc"
-
+gtc_folder = raw_data_folder/"gtc_38"
+vcf_folder = raw_data_folder/"vcf_38"
 ref = pathlib.Path("/home/wsaelens/GRCh38/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna")
 
-vcf_folder = raw_data_folder/"vcf"
+# 37
+# bpm_manifest_file = raw_data_folder/"GSA-24v2-0_A1.bpm"
+# csv_manifest_file = raw_data_folder/"GSA-24v2-0_A1.csv"
+# egt_cluster_file = raw_data_folder/"GSA-24v2-0_A1_ClusterFile.egt"
+# gtc_folder = raw_data_folder/"gtc_37"
+# vcf_folder = raw_data_folder/"vcf_37"
+# ref = pathlib.Path("/home/wsaelens/GRCh37/human_g1k_v37.fasta")
+
 vcf_folder.mkdir(exist_ok = True, parents = True)
 
 # %% tags=[]
+os.environ["bpm_manifest_file"] = str(bpm_manifest_file)
 os.environ["csv_manifest_file"] = str(csv_manifest_file)
 os.environ["egt_cluster_file"] = str(egt_cluster_file)
 os.environ["gtc_folder"] = str(gtc_folder)
 os.environ["vcf_folder"] = str(vcf_folder)
 os.environ["ref"] = str(ref)
-
-# %% tags=[]
 os.environ["BCFTOOLS_PLUGINS"] = "/home/wsaelens/bin"
 
 # %% tags=[] language="bash"
@@ -218,10 +244,12 @@ data_folder = raw_data_folder.parent
 data_folder.mkdir(exist_ok = True)
 
 # %% tags=[]
-# !cp {raw_data_folder}/vcf/out.bcf {data_folder}/out.bcf
+# !cp {raw_data_folder}/vcf_38/out.bcf {data_folder}/out_38.bcf
+# !cp {raw_data_folder}/vcf_38/out.bcf.csi {data_folder}/out_38.bcf.csi
 
-# %% tags=[]
-# !cp {raw_data_folder}/vcf/out.bcf.csi {data_folder}/out.bcf.csi
+# %%
+# !cp {raw_data_folder}/vcf_38/out.bcf {data_folder}/out_38.bcf
+# !cp {raw_data_folder}/vcf_38/out.bcf.csi {data_folder}/out_38.bcf.csi
 
 # %% [markdown]
 # ### Filter samples and clean
@@ -243,19 +271,28 @@ genotype_metadata["donor_id"] = genotype_metadata["!Sample_characteristics_ch1"]
 genotype_metadata = genotype_metadata.loc[genotype_metadata["donor_id"] != "Blood"].reset_index(drop = True)
 
 # %% tags=[]
+donors = pd.read_csv("donors.csv").loc[:, "0"]
+
+# %% tags=[]
 samples["donor"] = genotype_metadata[["gsm", "donor_id"]].set_index("gsm")["donor_id"].reindex(samples["gsm"]).values
 
 # %% tags=[]
 samples = samples.loc[~pd.isnull(samples["donor"])]
+samples = samples.loc[samples["donor"].isin(donors)]
 
 # %% tags=[]
-samples[["old"]].to_csv("samples.csv", index = False, header = False)
+# save samples
+samples.to_csv("samples.csv", index = False, header = False)
 
 # %% tags=[]
-cleaned_bcf_file = data_folder/"out_cleaned.bcf"
+samples[["old"]].to_csv("samples_filtering.csv", index = False, header = False)
 
 # %% tags=[]
-# !bcftools view --threads 10 -S samples.csv {data_folder}/out.bcf | bcftools annotate --threads=10 -x FILTER,FORMAT | bcftools view --threads=10 -o {cleaned_bcf_file}
+out_bcf_file = data_folder/"raw/vcf_37/out.bcf"
+cleaned_bcf_file = data_folder/"out_37_cleaned.bcf"
+
+# %% tags=[]
+# !bcftools view --threads 10 -S samples_filtering.csv {out_bcf_file} | bcftools annotate --threads=10 -x FILTER,FORMAT | bcftools view --threads=10 -o {cleaned_bcf_file}
 
 # %% tags=[]
 # samples[["old", "donor"]].to_csv("samples.csv", index = False, header = False)
@@ -270,18 +307,18 @@ cleaned_bcf_file = data_folder/"out_cleaned.bcf"
 # ### Imputation
 
 # %% tags=[]
-cleaned_bcf_file = data_folder/"out_cleaned.bcf"
+cleaned_bcf_file = data_folder/"out_37_cleaned.bcf"
 
 # %% [markdown]
 # Create imputation files
 
 # %% tags=[]
-for_imputation_folder = data_folder/"for_imputation"
+for_imputation_folder = data_folder/"for_imputation_37"
 for_imputation_folder.mkdir(exist_ok = True)
 
 # %% tags=[]
-os.environ["cleaned_bcf_file"] = str(data_folder/"out_cleaned.bcf")
-os.environ["for_imputation_folder"] = str(final_bcf_folder)
+os.environ["cleaned_bcf_file"] = str(cleaned_bcf_file)
+os.environ["for_imputation_folder"] = str(for_imputation_folder)
 
 # %% tags=[] language="bash"
 # bcftools index -s $cleaned_bcf_file | cut -f 1 | while read C; do bcftools view --threads=10 -O z -q 0.01:minor -o $for_imputation_folder/${C}.vcf.gz $cleaned_bcf_file "${C}" ; done
@@ -290,19 +327,61 @@ os.environ["for_imputation_folder"] = str(final_bcf_folder)
 # ![image.png](attachment:1b06fe6f-b0db-44d3-8de6-c489b86f6d2e.png)
 
 # %% tags=[]
-after_imputation_folder = data_folder/"after_imputation"
+after_imputation_folder = data_folder/"after_imputation_37"
 after_imputation_folder.mkdir(exist_ok = True)
 
 # %% tags=[]
 os.environ["after_imputation_folder"] = str(after_imputation_folder)
 
-# %% language="bash"
-# pushd $after_imputation_folder
-# curl -sL https://imputationserver.sph.umich.edu/get/3060183/19e4dc2d3aa55b79281ac831c2a69bfb1b6539b201e3fb50dbeacd5450c228f4 | bash
-
 # %% tags=[] language="bash"
 # pushd $after_imputation_folder
-# curl -sL https://imputationserver.sph.umich.edu/get/3060189/15181615a9143ec612dac501bdf51ee45ee3c1b180d2e58b82127158443749ca | bash
+# curl -sL https://imputationserver.sph.umich.edu/get/3060299/b3946da6aaf7d21a6bbecd8d1d93e80759225cbfadc0ee2f73081c56a024f9d3 | bash
+
+# %% [markdown]
+# ### Process imputed
+
+# %% tags=[]
+after_imputation_folder = data_folder/"after_imputation"
+
+# %% [markdown]
+# password: kXPi2HfJwT2SXq
+
+# %% tags=[]
+password = "kXPi2HfJwT2SXq"
+
+# %% [markdown]
+# #### Check out
+
+# %% tags=[]
+# !unzip -P {password} {after_imputation_folder}/chr_1.zip -d {after_imputation_folder}
+
+# %% tags=[]
+# !zcat {after_imputation_folder}/chr1.info.gz | head
+
+# %% [markdown]
+# ### Apply filtering to all
+
+# %%
+after_imputation_folder = data_folder/"after_imputation"
+
+# %%
+password = "kXPi2HfJwT2SXq"
+
+# %% tags=[]
+chrs = np.arange(1, 23)
+
+# %% tags=[]
+for chr in chrs:
+    print(chr)
+    in_zip = after_imputation_folder/f"chr_{chr}.zip"
+    in_vcf = after_imputation_folder/f"chr{chr}.dose.vcf.gz"
+    out_vcf = after_imputation_folder/f"chr{chr}.final.bcf.gz"
+    if not out_vcf.exists():
+        # ! unzip -u -P {password} {in_zip} -d {after_imputation_folder}
+        # ! bcftools view --threads=10 -q 0.05:minor {in_vcf} | bcftools filter --threads=10 -e 'INFO/R2>0.8' -o {out_vcf}
+
+# %% tags=[]
+# ! bcftools head {after_imputation_folder}/chr1.dose.vcf.gz -n 1
 
 # %% [markdown]
 # ## Download expression

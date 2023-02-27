@@ -217,6 +217,7 @@ dataset_name = "pbmc10k"
 # dataset_name = "MSGN1_7"
 # dataset_name = "morf_20"
 dataset_name = "GSE198467_H3K27ac"
+dataset_name = "hspc"
 folder_data_preproc = folder_data / dataset_name
 
 # %%
@@ -247,7 +248,7 @@ import chromatinhd.loaders.fragments
 # n_genes_step = 1000
 
 n_cells_step = 100
-n_genes_step = 50
+n_genes_step = 5000
 
 # n_cells_step = 2000
 # n_genes_step = 500
@@ -292,17 +293,12 @@ loaders_validation.initialize(minibatches_validation)
 # ### Load latent space
 
 # %%
-# latent = torch.from_numpy(simulation.cell_latent_space).to(torch.float32)
-
-# using transcriptome clustering
-# sc.tl.leiden(transcriptome.adata, resolution = 0.1)
-# latent = torch.from_numpy(pd.get_dummies(transcriptome.adata.obs["leiden"]).values).to(torch.float)
-
 # loading
-latent_name = "leiden_1"
-latent_name = "leiden_0.1"
-# latent_name = "celltype"
+# latent_name = "leiden_1"
+# latent_name = "leiden_0.1"
+latent_name = "celltype"
 # latent_name = "overexpression"
+
 folder_data_preproc = folder_data / dataset_name
 latent_folder = folder_data_preproc / "latent"
 latent = pickle.load((latent_folder / (latent_name + ".pkl")).open("rb"))
@@ -318,13 +314,9 @@ fragments.obs["cluster"] = pd.Categorical(pd.from_dummies(latent).iloc[:, 0])
 # ### Create model
 
 # %%
-reflatent = torch.eye(n_latent_dimensions).to(torch.float)
-reflatent_idx = torch.from_numpy(np.where(latent.values)[1])
-
-# %%
 import chromatinhd.models.likelihood.v9 as vae_model
-# model = vae_model.Decoding(fragments, torch.from_numpy(latent.values), nbins = (128, 64, 32, ))
-model = vae_model.Decoding(fragments, torch.from_numpy(latent.values), nbins = (32, ))
+model = vae_model.Decoding(fragments, torch.from_numpy(latent.values), nbins = (128, 64, 32, ))
+# model = vae_model.Decoding(fragments, torch.from_numpy(latent.values), nbins = (32, ))
 
 # model = pickle.load((chd.get_output() / "prediction_likelihood/GSE198467_H3K27ac/10k10k/leiden_0.1/v9_128-64-32/model_0.pkl").open("rb"))
 
@@ -485,28 +477,12 @@ hook_genelikelihood = GeneLikelihoodHook(fragments.n_genes)
 hooks = [hook_genelikelihood]
 
 # %%
-# torch.autograd.set_detect_anomaly(True)
-
-# %%
-# minibatches_train
-
-# %%
 # with torch.autograd.detect_anomaly():
 model = model.to(device).train()
 loaders_train.restart()
 loaders_validation.restart()
 trainer = chd.train.Trainer(model, loaders_train, loaders_validation, optimizer, n_epochs = 50, checkpoint_every_epoch=1, optimize_every_step = 1, hooks_checkpoint = hooks)
 trainer.train()
-
-# %%
-likelihood_mixture = pd.DataFrame(np.vstack(hook_genelikelihood.likelihood_mixture), columns = fragments.var.index).T
-
-# %%
-scores = (likelihood_mixture.iloc[:, -1] - likelihood_mixture[0]).sort_values().to_frame("lr")
-scores["label"] = transcriptome.symbol(scores.index)
-
-# %%
-scores.tail(20)
 
 # %%
 pickle.dump(model.to("cpu"), open("./model.pkl", "wb"))
@@ -557,31 +533,6 @@ transcriptome.var.head(10)
 
 # %%
 gene_oi = 0
-
-# symbol = "DNAH5" # !!
-# symbol = "ABHD12B"
-# symbol = "HOXB8" # !!
-# symbol = "CALB1" # !
-# symbol = "DLL3" # !!
-# symbol = "HOXD4" # !
-# symbol = "GLI3"
-# symbol = "CAPN2" # !!
-# symbol = "LRRTM4"
-# symbol = "SHROOM3"
-# symbol = "CALD1"
-# symbol = "ADAM28" # !
-# symbol = "SLIT3" # !
-# symbol = "PDGFRA" # !
-# symbol = "HAPLN1" # !
-# symbol = "C3orf52" #!?
-# symbol = "PHC2" # !!
-# symbol = "AFF3"
-# symbol = "EFNB2"
-# symbol = "RPL4"
-# symbol = "HSPA8"
-# symbol = "NOTCH2"
-# symbol = "STK38L"
-# symbol = "FREM1"
 
 # symbol = "SOX5"
 symbol = "CD3D"

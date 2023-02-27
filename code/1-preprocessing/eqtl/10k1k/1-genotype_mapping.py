@@ -413,19 +413,11 @@ for chr in chrs:
 # %% tags=[]
 # !wget https://ftp.ncbi.nlm.nih.gov/snp/organisms/human_9606/VCF/00-All.vcf.gz.tbi -P {data_folder}
 
-# %% tags=[]
-# change ID to rsids
-# takes about 20 minutes
-# !bcftools annotate -c ID -a {data_folder}/00-All.vcf.gz {data_folder}/final.bcf.gz -O b -o {data_folder}/final_annotated.bcf.gz
-
-# %% tags=[]
-# !ls -lh /data/genome/GATK/hg38/
-
 # %% [markdown]
 # ### Create variants info
 
 # %% tags=[]
-final_file = data_folder /"final_annotated.bcf.gz"
+final_file = data_folder /"final.bcf.gz"
 # !bcftools index --force --threads=10 {final_file}
 
 # %% tags=[]
@@ -449,16 +441,41 @@ for variant in vcf:
 variants_info = pd.DataFrame(variants_info).set_index("variant")
 
 # %% tags=[]
-variants_info
+variants_info["chr_ix"] = variants_info["chr"].str[3:].astype(int)
 
-# %% tags=[]
-variants_info.index[:100]
-
-# %% tags=[]
-variants_info["type"].value_counts()
+# %% [markdown]
+# Add rsid
 
 # %%
-variant_info.to_pickle(data_folder / "variants_info.pkl")
+# bcftools annotate "hangs" at the end of the annotation without any error but with leaving an unfinished file...
+# that's why we add the rsids manually via this very slow approach (about 1.5h for our 6e6 SNPs...)
+
+# %% tags=[]
+annot_vcf = cyvcf2.VCF(data_folder / "00-All.vcf.gz")
+
+# %% tags=[]
+var = variants_info.iloc[0]
+
+# %% tags=[]
+queries = (variants_info["chr_ix"].astype(str) + ":" + variants_info["start"].astype(str) + "-" + variants_info["end"].astype(str)).values
+
+# %% tags=[]
+rsids = []
+for q in tqdm.tqdm(queries):
+    try:
+        var = next(annot_vcf(q))
+        rsids.append(var.ID)
+    except:
+        rsids.append(None)
+
+# %% tags=[]
+variants_info["rsid"] = rsids
+
+# %% tags=[]
+pd.isnull(variants_info["rsid"]).mean()
+
+# %% tags=[]
+variants_info.to_pickle(data_folder / "variants_info.pkl")
 
 # %% [markdown]
 # ## Download expression

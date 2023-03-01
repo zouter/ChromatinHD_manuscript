@@ -42,6 +42,11 @@ import requests
 import os
 
 # %% [markdown]
+# Check out [install.md]() for several important installation instructions.
+#
+# Great thanks to the people at https://github.com/freeseek/gtc2vcf for providing clear instructions and tools.
+
+# %% [markdown]
 # ### Prepare folder
 
 # %% tags=[]
@@ -309,6 +314,8 @@ cleaned_bcf_file = data_folder/"out_38_cleaned.bcf"
 
 # %% [markdown]
 # ### Imputation
+#
+# Imputation is done as described in the original paper using the michigan server, but a crucial difference with the paper is that we use Grch38 and 1000g phase 3 as reference. This leads to a phew hundredthousands more SNPs above the 0.8 R2 threshold.
 
 # %% tags=[]
 # cleaned_bcf_file = data_folder/"out_37_cleaned.bcf"
@@ -350,17 +357,19 @@ os.environ["after_imputation_folder"] = str(after_imputation_folder)
 # %% tags=[] language="bash"
 # pushd $after_imputation_folder
 # # curl -sL https://imputationserver.sph.umich.edu/get/3060299/b3946da6aaf7d21a6bbecd8d1d93e80759225cbfadc0ee2f73081c56a024f9d3 | bash # 37
-# curl -sL https://imputationserver.sph.umich.edu/get/3060793/8ec9a82024ee79268439c9fa0bec9f2c5144408ed485f0ae219e51810a83d74f | bash # 38
+# # curl -sL https://imputationserver.sph.umich.edu/get/3060793/8ec9a82024ee79268439c9fa0bec9f2c5144408ed485f0ae219e51810a83d74f | bash # 38
+# wget https://imputationserver.sph.umich.edu/share/results/09bd86b349c531d0b8cccac43730e5c2baf58a9e36732d1d137c8a750cc80138/chr_X.zip
 
 # %% [markdown]
 # ### Process imputed
 
 # %% tags=[]
-after_imputation_folder = data_folder/"after_imputation"
+after_imputation_folder = data_folder/"after_imputation_38"
 
 # %% tags=[]
 password = "kXPi2HfJwT2SXq" # 37
 password = "lsuw7bRGI+8UO" # 38
+password = "aoZVho9R3CNLAx" #38 X
 
 # %% [markdown]
 # #### Check out
@@ -385,13 +394,14 @@ after_filter_folder.mkdir(exist_ok = True, parents = True)
 # %%
 password = "HlSnGgkQ0C6p7c" # 37
 password = "lsuw7bRGI+8UO" # 38
+password = "aoZVho9R3CNLAx" #38 X
 
 # %% tags=[]
-chrs = np.arange(1, 23)
+chrs = np.arange(1, 23).tolist() + ["X"]
 # chrs = [22]
 
 # %% tags=[]
-chrs = np.arange(1, 10)
+# chrs = np.arange(1, 10)
 for chr in chrs:
     print(chr)
     in_zip = after_imputation_folder/f"chr_{chr}.zip"
@@ -408,17 +418,13 @@ for chr in chrs:
 # !bcftools concat -O b {after_filter_folder}/chr*.final.bcf.gz -o {data_folder}/final.bcf.gz
 
 # %% tags=[]
-# !wget https://ftp.ncbi.nlm.nih.gov/snp/organisms/human_9606/VCF/00-All.vcf.gz -P {data_folder}
-
-# %% tags=[]
-# !wget https://ftp.ncbi.nlm.nih.gov/snp/organisms/human_9606/VCF/00-All.vcf.gz.tbi -P {data_folder}
+# !bcftools index --force --threads=10 {data_folder}/final.bcf.gz
 
 # %% [markdown]
 # ### Create variants info
 
 # %% tags=[]
 final_file = data_folder /"final.bcf.gz"
-# !bcftools index --force --threads=10 {final_file}
 
 # %% tags=[]
 import cyvcf2
@@ -441,10 +447,14 @@ for variant in vcf:
 variants_info = pd.DataFrame(variants_info).set_index("variant")
 
 # %% tags=[]
-variants_info["chr_ix"] = variants_info["chr"].str[3:].astype(int)
+variants_info["chr_ix"] = variants_info["chr"].str[3:]
 
 # %% [markdown]
 # Add rsid
+
+# %% tags=[]
+# # !wget https://ftp.ncbi.nlm.nih.gov/snp/organisms/human_9606/VCF/00-All.vcf.gz -P {data_folder}
+# # !wget https://ftp.ncbi.nlm.nih.gov/snp/organisms/human_9606/VCF/00-All.vcf.gz.tbi -P {data_folder}
 
 # %%
 # bcftools annotate "hangs" at the end of the annotation without any error but with leaving an unfinished file...
@@ -454,10 +464,7 @@ variants_info["chr_ix"] = variants_info["chr"].str[3:].astype(int)
 annot_vcf = cyvcf2.VCF(data_folder / "00-All.vcf.gz")
 
 # %% tags=[]
-var = variants_info.iloc[0]
-
-# %% tags=[]
-queries = (variants_info["chr_ix"].astype(str) + ":" + variants_info["start"].astype(str) + "-" + variants_info["end"].astype(str)).values
+queries = (variants_info["chr_ix"].astype(str) + ":" + variants_info["pos"].astype(str) + "-" + (variants_info["pos"] + 1).astype(str)).values
 
 # %% tags=[]
 rsids = []
@@ -476,6 +483,56 @@ pd.isnull(variants_info["rsid"]).mean()
 
 # %% tags=[]
 variants_info.to_pickle(data_folder / "variants_info.pkl")
+
+# %% [markdown]
+# Add some, e.g. X chromosome
+
+# %% tags=[]
+variants_info2 = []
+vcf = cyvcf2.VCF(final_file, strict_gt = True)
+for variant in vcf("chrX:0-9999999999999999"):
+    variants_info2.append({
+        "variant":variant.ID,
+        "ref":variant.REF,
+        "alt":variant.ALT,
+        "chr":variant.CHROM,
+        "pos":variant.POS,
+        "aaf":variant.aaf,
+        "type":variant.var_type,
+        "start":variant.start,
+        "end":variant.end
+    })
+variants_info2 = pd.DataFrame(variants_info2).set_index("variant")
+
+# %% tags=[]
+variants_info2["chr_ix"] = variants_info2["chr"].str[3:]
+
+# %% tags=[]
+annot_vcf = cyvcf2.VCF(data_folder / "00-All.vcf.gz")
+
+# %% tags=[]
+queries = (variants_info2["chr_ix"].astype(str) + ":" + variants_info2["start"].astype(str) + "-" + variants_info2["end"].astype(str)).values
+
+# %% tags=[]
+rsids2 = []
+for q in tqdm.tqdm(queries):
+    try:
+        var = next(annot_vcf(q))
+        rsids2.append(var.ID)
+    except:
+        rsids2.append(None)
+
+# %% tags=[]
+variants_info2["rsid"] = rsids2
+
+# %% tags=[]
+variants_info = pd.read_pickle(data_folder / "variants_info.pkl")
+
+# %% tags=[]
+variants_info_new = pd.concat([variants_info, variants_info2], axis = 0)
+
+# %% tags=[]
+variants_info_new.to_pickle(data_folder / "variants_info.pkl")
 
 # %% [markdown]
 # ## Download expression

@@ -123,8 +123,6 @@ print(f"""gatk --java-options "-Xmx20g -XX:ParallelGCThreads=10 -XX:ConcGCThread
 
 # %%
 biomart_dataset_name = "mmusculus_gene_ensembl" if organism == "mm" else "hsapiens_gene_ensembl"
-
-# %%
 if genome == "GRCh38.107":
     query = f"""<?xml version="1.0" encoding="UTF-8"?>
     <!DOCTYPE Query>

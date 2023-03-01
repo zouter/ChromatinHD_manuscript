@@ -1,35 +1,83 @@
-#%%
-import torch
-import pickle
-import pathlib
-import tempfile
+# ---
+# jupyter:
+#   jupytext:
+#     formats: ipynb,py:percent
+#     text_representation:
+#       extension: .py
+#       format_name: percent
+#       format_version: '1.3'
+#       jupytext_version: 1.14.1
+#   kernelspec:
+#     display_name: Python 3 (ipykernel)
+#     language: python
+#     name: python3
+# ---
+
+# %%
+# %load_ext autoreload
+# %autoreload 2
+
 import numpy as np
 import pandas as pd
-import scanpy as sc
-import tqdm.auto as tqdm
-import chromatinhd as chd
 
-import matplotlib as mpl
 import matplotlib.pyplot as plt
+import matplotlib as mpl
+
 import seaborn as sns
 sns.set_style('ticks')
 # %config InlineBackend.figure_format='retina'
 
+import pickle
+
+import scanpy as sc
+
+import pathlib
+
+import torch
+
+import tqdm.auto as tqdm
+
+# %%
+import chromatinhd as chd
+import tempfile
+
+# %% [markdown]
+# ## Get the dataset
+
 # %%
 folder_root = chd.get_output()
 folder_data = folder_root / "data"
-dataset_name = "hpsc"
+
+dataset_name = "pbmc10k_leiden_0.1"
 folder_data_preproc = folder_data / dataset_name
 
 # %%
 fragments = chd.data.Fragments(folder_data_preproc / "fragments")
 
-# %% 
+# %% [markdown]
 # ## Create loaders
+
+# %%
+# which clusters to look at
+clusters_oi = np.array([0, 1, 2, 3])
+
+# %%
+# which positions (i.e. SNPs) to look at
+positions_oi = np.array([10000])
+
+# %%
+import chromatinhd.loaders.chunkfragments
+
+# %%
 import chromatinhd.loaders.fragments
+# n_cells_step = 1000
+# n_genes_step = 1000
 
 n_cells_step = 100
 n_genes_step = 50
+
+# n_cells_step = 2000
+# n_genes_step = 500
 
 loaders_train = chromatinhd.loaders.pool.LoaderPool(
     chromatinhd.loaders.fragments.Fragments,
@@ -37,17 +85,15 @@ loaders_train = chromatinhd.loaders.pool.LoaderPool(
     n_workers = 20,
     shuffle_on_iter = True
 )
-
 minibatches_train = chd.loaders.minibatching.create_bins_random(
     cells_train,
     np.arange(fragments.n_genes),
     fragments.n_genes,
     n_genes_step = n_genes_step,
-    n_cells_step = n_cells_step,
+    n_cells_step=n_cells_step,
     use_all = True,
     permute_genes = False
 )
-
 loaders_train.initialize(minibatches_train)
 
 loaders_validation = chromatinhd.loaders.pool.LoaderPool(
@@ -55,30 +101,32 @@ loaders_validation = chromatinhd.loaders.pool.LoaderPool(
     {"fragments":fragments, "cellxgene_batch_size":n_cells_step * n_genes_step},
     n_workers = 5
 )
-
 minibatches_validation = chd.loaders.minibatching.create_bins_random(
     cells_validation,
     np.arange(fragments.n_genes),
     fragments.n_genes,
     n_genes_step = n_genes_step,
-    n_cells_step = n_cells_step,
+    n_cells_step=n_cells_step,
     use_all = True,
     permute_genes = False
 )
-
 loaders_validation.initialize(minibatches_validation)
 
-# %%
+# %% [markdown]
 # ## Model
+
+# %% [markdown]
 # ### Load latent space
 
 # %%
 # latent = torch.from_numpy(simulation.cell_latent_space).to(torch.float32)
+
 # using transcriptome clustering
 # sc.tl.leiden(transcriptome.adata, resolution = 0.1)
 # latent = torch.from_numpy(pd.get_dummies(transcriptome.adata.obs["leiden"]).values).to(torch.float)
 
 # loading
+latent_name = "leiden_1"
 latent_name = "leiden_0.1"
 # latent_name = "celltype"
 # latent_name = "overexpression"
@@ -93,8 +141,10 @@ cluster_info = pd.read_pickle(latent_folder / (latent_name + "_info.pkl"))
 cluster_info["color"] = sns.color_palette("husl", latent.shape[1])
 fragments.obs["cluster"] = pd.Categorical(pd.from_dummies(latent).iloc[:, 0])
 
-# %%
+# %% [markdown]
 # ### Create model
+
+# %%
 reflatent = torch.eye(n_latent_dimensions).to(torch.float)
 reflatent_idx = torch.from_numpy(np.where(latent.values)[1])
 
@@ -128,6 +178,9 @@ model.n_genes = fragments.n_genes
 # %%
 bc = torch.bincount(fragments.genemapping)
 (bc / bc.sum())[gene_oi] * fragments.n_genes
+
+# %%
+import torch
 
 # %% jp-MarkdownHeadingCollapsed=true tags=[]
 model = model.to(device)

@@ -2,11 +2,12 @@
 import scanpy as sc
 import numpy as np
 import pandas as pd
-import matplotlib as mpl
-import matplotlib.pyplot as plt
-import seaborn as sns
 import chromatinhd as chd
 
+import seaborn as sns
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+from matplotlib.patches import Rectangle
 sns.set_style('ticks')
 # %config InlineBackend.figure_format='retina'
 
@@ -44,30 +45,34 @@ transcriptome = transcriptome.adata[lt_myeloid.index, :]
 transcriptome.obs.index.name = 'cell'
 transcriptome.obs = transcriptome.obs.join(lt_myeloid, how='left')
 
-# %%
-gene = 'MPO'
+genes = sorted(hspc_marker_genes)
 
-for gene in hspc_marker_genes:
+heatmap_data = transcriptome[:, genes]
+heatmap_data = heatmap_data.X
+
+# %%
+for gene in genes:
+    print('try', gene)
+
     gene_id = transcriptome.var.loc[gene]['Accession']
     try:
-       gene_ix = fragments.var.loc[gene_id]["ix"]
+        gene_ix = fragments.var.loc[gene_id]["ix"]
+        print('success', gene)
+
     except KeyError:
-        break
+        print('failed', gene)
+        continue
 
-    sc.pl.umap(transcriptome, color = [gene])
+    # sc.pl.umap(transcriptome, color = [gene])
 
-    # %%
-    cells_oi = range(0, 4000)
-
-    coordinates = fragments.coordinates[fragments.mapping[:, 1] == gene_ix].numpy()#[cells_oi]
-    mapping = fragments.mapping[fragments.mapping[:, 1] == gene_ix].numpy()#[cells_oi]
-    # outcome = transcriptome.adata.obs["celltype"].cat.codes#[cells_oi]
+    coordinates = fragments.coordinates[fragments.mapping[:, 1] == gene_ix].numpy()
+    mapping = fragments.mapping[fragments.mapping[:, 1] == gene_ix].numpy()
+    # outcome = transcriptome.adata.obs["celltype"].cat.codes
     outcome = lt_myeloid
 
     cell_order = outcome.index
     n_cells = len(cell_order)
 
-    #%%
     obs = fragments.obs.copy()
     obs = obs[obs.index.isin(cell_order)]
     obs.index = obs.index.astype(str)
@@ -77,37 +82,59 @@ for gene in hspc_marker_genes:
     obs["y"] = np.arange(obs.shape[0])
     obs = obs.set_index("ix")
 
-    # %%
-    fig, (ax_fragments, ax_gex) = plt.subplots(1, 2, figsize = (15, n_cells/300), sharey = True, width_ratios = [2, 0.5])
+    fig, (ax_gex, ax_heatmap, ax_fragments) = plt.subplots(1, 3, figsize = (30, n_cells/300), sharey = True, width_ratios = [0.5, 1, 1.5])
+
+    ax_gex.plot(obs["gex"], obs["y"])
+    ax_gex.set_xlabel('Latent Time')
+    ax_gex.set_xticks([0, 0.25, 0.5, 0.75, 1])
+
+    im = ax_heatmap.imshow(heatmap_data, cmap='coolwarm', aspect='auto', origin='lower', extent=[0, heatmap_data.shape[1], 0, heatmap_data.shape[0]], interpolation='none')
+
+    ax_heatmap.set_xlabel('Gene Expression')
+    ax_heatmap.set_xticks(np.arange(heatmap_data.shape[1]) + 0.5)
+    ax_heatmap.set_xticklabels(genes)
+    ax_heatmap.tick_params(axis='x', rotation=270)
+
+    highlighted_column = gene
+    highlighted_column_index = genes.index(highlighted_column)
+    rect = Rectangle((highlighted_column_index, 0), 1, heatmap_data.shape[0], edgecolor='black', facecolor='none', linewidth=3)
+    ax_heatmap.add_patch(rect)
+
+    highlighted_label = ax_heatmap.xaxis.get_ticklabels()[highlighted_column_index]
+    highlighted_label.set_weight('bold')
+    highlighted_label.set_backgroundcolor('lightgray')
+
+    # cbar = ax_heatmap.figure.colorbar(im, ax=ax_heatmap)
+
     ax_fragments.set_xlim(*window)
     ax_fragments.set_ylim(0, n_cells)
 
     for (start, end, cell_ix) in zip(coordinates[:, 0], coordinates[:, 1], mapping[:, 0]):
         if cell_ix in obs.index:
-            color = "black"
-            color = "#33333333"
-            rect = mpl.patches.Rectangle((start, obs.loc[cell_ix, "y"]), end - start, 10, fc = "#33333333", ec = None, linewidth = 0)
-            ax_fragments.add_patch(rect)
-            
-            rect = mpl.patches.Rectangle((start-10, obs.loc[cell_ix, "y"]), 10, 10, fc = "red", ec = None, linewidth = 0)
-            ax_fragments.add_patch(rect)
-            rect = mpl.patches.Rectangle((end-10, obs.loc[cell_ix, "y"]), 10, 10, fc = "red", ec = None, linewidth = 0)
-            ax_fragments.add_patch(rect)
-            
-    ax_gex.plot(obs["gex"], obs["y"])
-    ax_gex.set_xlabel('latent time')
+            rectangles = [
+                mpl.patches.Rectangle((start, obs.loc[cell_ix, "y"]), end - start, 10, fc = "#33333333", ec = None, linewidth = 0),
+                mpl.patches.Rectangle((start-10, obs.loc[cell_ix, "y"]), 10, 10, fc = "red", ec = None, linewidth = 0),
+                mpl.patches.Rectangle((end-10, obs.loc[cell_ix, "y"]), 10, 10, fc = "red", ec = None, linewidth = 0)
+            ]
+            for rect in rectangles:
+                ax_fragments.add_patch(rect)
 
-    ax_fragments.set_xlabel("Distance from TSS")
-    ax_fragments.set_xticks([4400])
-
-    for ax1 in [ax_gex, ax_fragments]:
+    ax_fragments.set_xlabel(f"Distance from TSS ({gene})")
+    ax_fragments.set_xticks([-10000, -5000, 0, 5000, 10000])
+    
+    for ax1 in [ax_gex, ax_heatmap, ax_fragments]:
         ax2 = ax1.twiny()
         ax2.set_xlim(ax1.get_xlim())
         ax2.set_xlabel(ax1.get_xlabel())
         ax2.set_xticks(ax1.get_xticks())
         ax2.set_xticklabels(ax1.get_xticklabels())
 
-    # %%
-    fig.savefig(folder_data_preproc / f"plots/{gene}_fragments.png", transparent=False, dpi = 300)
+        if ax1 == ax_heatmap:
+            ax2.tick_params(axis='x', rotation=90)
+            highlighted_label = ax2.xaxis.get_ticklabels()[highlighted_column_index]
+            highlighted_label.set_weight('bold')
+            highlighted_label.set_backgroundcolor('lightgray')
+
+    fig.savefig(folder_data_preproc / f"plots/fragments_{gene}.png", transparent=False, dpi = 300)
 
 # %%

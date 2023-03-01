@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.14.1
+#       jupytext_version: 1.14.4
 #   kernelspec:
 #     display_name: Python 3 (ipykernel)
 #     language: python
@@ -61,6 +61,21 @@ folder_root = chd.get_output()
 folder_data = folder_root / "data"
 
 # %% [markdown]
+# ### Load latent
+
+# %%
+latent_name = "leiden_0.1"
+latent_folder = original_folder_data_preproc / "latent"
+latent = pickle.load((latent_folder / (latent_name + ".pkl")).open("rb"))
+cluster_info = pickle.load((latent_folder / (latent_name + "_info.pkl")).open("rb"))
+
+# %%
+cluster_info["ix"] = range(len(cluster_info))
+
+# %%
+cell_to_cluster_ix = pd.Series(cluster_info["ix"][latent.idxmax(1)].values, latent.index).to_dict()
+
+# %% [markdown]
 # ### Creating chromosomes
 
 # %%
@@ -75,21 +90,6 @@ chromosomes["position_end"] =np.cumsum(chromosomes["size"])
 
 # %%
 chunk_size = 100
-
-# %% [markdown]
-# ### Load latent
-
-# %%
-latent_name = "leiden_0.1"
-latent_folder = original_folder_data_preproc / "latent"
-latent = pickle.load((latent_folder / (latent_name + ".pkl")).open("rb"))
-cluster_info = pickle.load((latent_folder / (latent_name + "_info.pkl")).open("rb"))
-
-# %%
-cluster_info["ix"] = range(len(cluster_info))
-
-# %%
-cell_to_cluster_ix = pd.Series(cluster_info["ix"][latent.idxmax(1)].values, latent.index).to_dict()
 
 # %% [markdown]
 # ### Create fragments
@@ -238,9 +238,6 @@ genes.to_csv(folder_data_preproc / "genes.csv")
 # %% [markdown]
 # https://github.com/10XGenomics/subset-bam
 
-# %%
-# !wget https://github.com/10XGenomics/subset-bam/releases/download/v1.1.0/subset-bam_linux -O $HOME/bin/subset_bam
-
 # %% [markdown]
 # ### Create subset lists
 
@@ -250,12 +247,6 @@ genes.to_csv(folder_data_preproc / "genes.csv")
 # %%
 subset_list_dir = folder_data_preproc / "subset"
 subset_list_dir.mkdir(exist_ok = True, parents = True)
-
-# %%
-latent_name = "leiden_0.1"
-latent_folder = original_folder_data_preproc / "latent"
-latent = pickle.load((latent_folder / (latent_name + ".pkl")).open("rb"))
-cluster_info = pickle.load((latent_folder / (latent_name + "_info.pkl")).open("rb"))
 
 # %%
 cluster_to_cells = {}
@@ -286,4 +277,33 @@ for source_file, target_file in zip(source_files, target_files):
     ])
     proc.communicate()
 
+# %% [markdown]
+# ### Subset
+
 # %%
+# !wget https://github.com/10XGenomics/subset-bam/releases/download/v1.1.0/subset-bam_linux -O $HOME/bin/subset_bam
+# !chmod +x $HOME/bin/subset_bam
+
+# %% tags=[]
+bam_location = original_folder_data_preproc/"bam/atac_possorted_bam.bam"
+
+# %% tags=[]
+subset_list_dir = folder_data_preproc / "subset"
+subset_list_dir.mkdir(exist_ok = True, parents = True)
+
+# %% tags=[]
+source_output = "/home/wsaelens/NAS2/wsaelens/projects/chromatinhd/chromatinhd_manuscript/output"
+target_folder = subset_list_dir
+target_output = chd.get_output()
+source_folder = source_output / target_folder.relative_to(target_output)
+if not target_folder.exists():
+    target_folder.symlink_to(source_folder)
+
+# %% tags=[]
+# !samtools index -@ 20 {bam_location}
+
+# %% tags=[]
+for cluster in cluster_info.index:
+    subset_file = subset_list_dir / (cluster + ".csv")
+    out_bam = subset_list_dir / (cluster + ".bam")
+    # !subset_bam --bam {bam_location} --cell-barcodes "{subset_file}" --out-bam {out_bam}

@@ -178,3 +178,5 @@ software/
 code/*.mp4
 
 code/1-preprocessing/eqtl/10k1k/original
+
+.vscode

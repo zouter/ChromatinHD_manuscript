@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.14.4
+#       jupytext_version: 1.14.1
 #   kernelspec:
 #     display_name: Python 3 (ipykernel)
 #     language: python
@@ -48,15 +48,44 @@ data_folder = chd.get_output() / "data" / "eqtl" / "onek1k"
 # %% tags=[]
 transcriptome = chd.data.transcriptome.transcriptome.ClusterTranscriptome(data_folder / "transcriptome")
 
+# %%
+target = transcriptome.path
+target_output = chd.get_output()
+source_output = "/home/wsaelens/NAS2/wsaelens/projects/chromatinhd/chromatinhd_manuscript/output"
+source = source_output / target.relative_to(target_output)
+# !rm -d {target}
+target.symlink_to(source)
+
 # %% tags=[]
 adata2 = transcriptome.adata
+
+# %%
+target_output = chd.get_output()
+source_output = "/home/wsaelens/NAS2/wsaelens/projects/chromatinhd/chromatinhd_manuscript/output"
+target_files = [
+    data_folder / "variants_info.pkl",
+    data_folder / "final.bcf.gz",
+    data_folder / "final.bcf.gz.csi",
+    data_folder / "donors_info.csv",
+    data_folder / "genes.csv"
+]
+source_files = [source_output / file.relative_to(target_output) for file in target_files]
+
+# %%
+for source_file, target_file in zip(source_files, target_files):
+    assert source_file.exists()
+    if target_file.is_symlink():
+        if target_file.resolve() == source_file:
+            pass
+    else:
+        target_file.symlink_to(source_file)
 
 # %% tags=[]
 variants_info = pd.read_pickle(data_folder / "variants_info.pkl")
 variants_info["ix"] = np.arange(len(variants_info))
 
 # %% tags=[]
-samples = pd.read_csv(data_folder / "raw" / "samples.csv")
+donors_info = pd.read_csv(data_folder / "donors_info.csv")
 
 # %% tags=[]
 genes = pd.read_csv(data_folder / "genes.csv", index_col = 0)
@@ -84,6 +113,9 @@ genes["std"] = adata2.var["std"]
      .sort_values("std", ascending = False)
      .head(20)
 )
+
+# %% [markdown]
+# ## Modelling
 
 # %% tags=[]
 import xarray as xr
@@ -142,13 +174,13 @@ cluster_to_cluster_ix = clusters_info["ix"].to_dict()
 genes["ix"] = np.arange(len(genes))
 gene_to_gene_ix = genes["ix"].to_dict()
 
-donors_info = samples.set_index("donor")
+donors_info = donors_info
 
 # %% tags=[]
 import torch
 
 # %% tags=[]
-lib = expression_oi.sum("donor") / 10**6
+lib = (expression.sum("gene") / 10**6).transpose("donor", "cluster").astype(np.float32)
 
 # %% tags=[]
 n_clusters = len(clusters_info)
@@ -156,7 +188,9 @@ n_donors = len(donors_info)
 n_variants = len(variants_info_oi)
 
 # %%
-from model import Model
+from chromatinhd.models.eqtl.mapping.v1 import Model
+
+# %%
 lib_torch = torch.from_numpy(lib.values)
 model = Model(n_clusters, n_donors, n_variants, lib_torch)
 
@@ -164,5 +198,33 @@ model = Model(n_clusters, n_donors, n_variants, lib_torch)
 genotype_torch = torch.from_numpy(genotype)
 expression_oi_torch = torch.from_numpy(expression_oi.values)
 
-# %% tags=[]
-model.forward(genotype_torch, expression_oi_torch)
+# %%
+model = model.to("cuda")
+genotype_torch = genotype_torch.to("cuda")
+expression_oi_torch = expression_oi_torch.to("cuda")
+model.lib = model.lib.to("cuda")
+
+# %%
+optim = torch.optim.Adam(model.parameters(), lr = 1e-3)
+
+# %%
+n_epochs = 100
+
+# %%
+for epoch in range(n_epochs):
+    elbo = model.forward(genotype_torch, expression_oi_torch)
+    elbo.backward()
+    optim.step()
+    optim.zero_grad()
+
+# %%
+model.fc_log_mu
+
+# %%
+fc_log_mu = xr.DataArray(model.fc_log_mu.detach().cpu().numpy(), coords = [cluster_info.index, variants_info_oi.index])
+
+# %%
+scores = fc_log_mu.to_pandas().unstack().to_frame(name = "fc_log_mu")
+
+# %%
+scores.sort_values("fc_log_mu", ascending = False)

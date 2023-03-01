@@ -55,10 +55,32 @@ folder_data_preproc = folder_data / dataset_name
 fragments = chd.data.Fragments(folder_data_preproc / "fragments")
 
 # %% [markdown]
+# ## Creating data
+
+# %% [markdown]
+# ### Size
+
+# %%
+(
+    5000000 # number of SNPs
+    * 1000  # number of patients
+    * 2     # homo/hetero/homo alt
+    * 8     # bits
+    / 1024 / 1024 / 1024  # gbs
+)
+
+# %%
+outcome = torch.tensor([[0, 1, 0, 1, 1, 0]])
+
+# %%
+outcome
+
+# %% [markdown]
 # ## Create loaders
 
 # %%
 # which clusters to look at
+# the loader will always select the same set of clusters
 clusters_oi = np.array([0, 1, 2, 3])
 
 # %%
@@ -66,7 +88,7 @@ clusters_oi = np.array([0, 1, 2, 3])
 positions_oi = np.array([10000])
 
 # %%
-import chromatinhd.loaders.chunkfragments
+# import chromatinhd.loaders.chunkfragments
 
 # %%
 import chromatinhd.loaders.fragments

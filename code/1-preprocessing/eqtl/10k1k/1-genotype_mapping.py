@@ -292,7 +292,7 @@ samples = samples.loc[samples["donor"].isin(donors)]
 
 # %% tags=[]
 # save samples
-samples.to_csv(raw_data_folder / "samples.csv", index = False, header = True)
+samples.to_csv(data_folder / "samples.csv", index = False, header = True)
 
 # %% tags=[]
 samples[["old"]].to_csv("samples_filtering.csv", index = False, header = False)

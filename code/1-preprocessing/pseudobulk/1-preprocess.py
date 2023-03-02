@@ -73,9 +73,6 @@ chromosomes.to_csv(folder_data_preproc / ("chromosomes.csv"))
 chromosomes["position_start"] = np.hstack([[0], np.cumsum(chromosomes["size"])[:-1]])
 chromosomes["position_end"] =np.cumsum(chromosomes["size"])
 
-# %%
-chunk_size = 100
-
 # %% [markdown]
 # ### Load latent
 
@@ -91,8 +88,18 @@ cluster_info["ix"] = range(len(cluster_info))
 # %%
 cell_to_cluster_ix = pd.Series(cluster_info["ix"][latent.idxmax(1)].values, latent.index).to_dict()
 
+# %%
+cluster_info["n_cells"] = latent.idxmax(1).value_counts()
+
+# %%
+pickle.dump(latent, (folder_data_preproc / "latent.pkl").open("wb"))
+cluster_info.to_pickle(folder_data_preproc / "cluster_info.pkl")
+
 # %% [markdown]
 # ### Create fragments
+
+# %%
+chunk_size = 100
 
 # %%
 import tabix
@@ -151,6 +158,7 @@ assert chunkcoords.shape == relcoords.shape
 # %%
 fragments.chromosomes = chromosomes
 fragments.clusters_info = cluster_info
+fragments.chunk_size = chunk_size
 
 # %%
 sorted_idx = torch.argsort(coordinates)
@@ -267,6 +275,12 @@ for cluster, cells in latent.idxmax(1).to_frame("cluster").reset_index().groupby
 import subprocess
 
 # %%
+source_file
+
+# %%
+target_file
+
+# %%
 source_output = chd.get_output()
 target_output = "/home/wsaelens/NAS2/wsaelens/projects/chromatinhd/chromatinhd_manuscript/output"
 source_files = [
@@ -280,9 +294,9 @@ for source_file, target_file in zip(source_files, target_files):
         "rsync",
         "-av",
         "--progress",
-        "--dry-run",
+        # "--dry-run",
         str(source_file),
-        str(target_file)
+        str(target_file.parent)
     ])
     proc.communicate()
 

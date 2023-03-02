@@ -156,10 +156,13 @@ def get_types(window):
 
 
 # %% tags=[]
+symbol = "NFKB1"
+gene_oi = genes.query("symbol == @symbol").iloc[0]
+
 # gene_oi = genes.query("symbol == 'KCNAB2'").iloc[0]
 # gene_oi = genes.query("symbol == 'GNB1-DT'").iloc[0]
 # gene_oi = genes.query("symbol == 'IL1B'").iloc[0]
-gene_oi = genes.query("symbol == 'CCL4'").iloc[0]
+# gene_oi = genes.query("symbol == 'CCL4'").iloc[0]
 # gene_oi = genes.query("symbol == 'XBP1'").iloc[0]
 # gene_oi = genes.query("symbol == 'CCR6'").iloc[0]
 # gene_oi = genes.query("symbol == 'IL2RA'").iloc[0]
@@ -180,6 +183,7 @@ window_str = f"{gene_oi.chr}:{window[0]}-{window[1]}"
 genotype, variant_ids = get_types(window_str)
 genotype = xr.DataArray(genotype - 1, coords = [donors_info.index, pd.Index(variant_ids, name = "variant")])
 # genotype = genotype.sel(variant = ["chr2:203830251:C:T"])
+genotype = genotype.sel(variant = genotype.coords["variant"].to_pandas()[variants_info.loc[genotype.coords["variant"]]["rsid"].isin(qtl_mapped["rsid"])].index)
 
 # %% tags=[]
 variants_info_oi = variants_info.loc[genotype.coords["variant"].to_pandas()]
@@ -283,9 +287,6 @@ fc_log_mu = xr.DataArray(model.fc_log_mu.detach().cpu().numpy(), coords = [clust
 scores = fc_log_mu.to_pandas().unstack().to_frame(name = "fc_log_mu")
 
 # %%
-scores.sort_values("fc_log_mu")
-
-# %%
 with torch.no_grad():
     elbo = model.forward(genotype_torch, expression_oi_torch)
     likelihood1 = model.get_likelihood().cpu().detach()
@@ -301,13 +302,30 @@ scores["lr"] = lr.T.flatten()
 # %%
 scores.groupby("cluster")["lr"].sum()
 
+# %%
+scores["significant"] = scores["lr"] > np.log(10)
+
+# %%
+scores.groupby("cluster")["significant"].sum()
+
+# %%
+x = scores["significant"].unstack()
+overlap = (x.T.astype(int) @ x.astype(int))
+overlap
+union = x.sum(0).values + x.sum(0).values[:, None] - overlap
+(overlap/union).style.background_gradient(axis=None, vmin=0, vmax=1, cmap="YlGnBu")
+
 # %% [markdown]
 # ### Interpret
 
 # %%
+variants_info_oi["gwas"] = variants_info_oi["rsid"].isin(qtl_mapped["rsid"])
+
+# %%
 # variant_id, cluster_id = scores.sort_values("fc_log_mu", ascending = False).index[0]
 # variant_id, cluster_id = scores.query("cluster == 'cDCs'").sort_values("fc_log_mu", ascending = False).index[0]
-variant_id, cluster_id = scores.query("cluster == 'CD4 T'").sort_values("lr", ascending = False).index[0]
+variant_id, cluster_id = scores.query("cluster == 'B'").sort_values("lr", ascending = False).index[0]
+# variant_id, cluster_id = scores.loc[variants_info_oi["gwas"].loc[scores.index.get_level_values("variant")].values].query("cluster == 'NK'").sort_values("lr", ascending = False).index[0]
 # variant_id = (scores.xs("NK", level = "cluster")["lr"] - scores.xs("CD4 T", level = "cluster")["lr"]).sort_values(ascending = False).index[1]
 # variant_id = variants_info.query("rsid == 'rs207253'").index[0]
 
@@ -328,7 +346,7 @@ plotdata = plotdata.reset_index()
 sns.boxplot(data = plotdata, x = "cluster", y = "expression", hue = "genotype")
 
 # %% [markdown]
-# ### Visualize differential
+# ### Visualize differential & ATAC
 
 # %%
 folder_root = chd.get_output()
@@ -368,17 +386,17 @@ cluster_info = pickle.load((folder_data_preproc / ("cluster_info.pkl")).open("rb
 
 # %%
 # variants_query = variants_info_oi.query("rsid in ['rs207253', 'rs10944479']")
-# variants_query = variants_info_oi.query("rsid in ['rs60849819']") # BACH2 rs60849819
+# variants_query = variants_info_oi.query("rsid in ['rs1872691']") # BACH2 rs60849819
 variants_query = variants_info_oi.loc[[variant_id]]
-variants_query = variants_info_oi.loc[variants_info_oi["rsid"].isin(qtl_mapped["rsid"])]
+# variants_query = variants_info_oi.loc[variants_info_oi["rsid"].isin(qtl_mapped["rsid"])]
 # variants_query = variants_info_oi.query("variant in ['chr2:203930034:T:C']")
 
 # %%
-window_oi = window
-bins = np.linspace(*window_oi, int(np.diff(window_oi)//1000))
+# window_oi = window
+# bins = np.linspace(*window_oi, int(np.diff(window_oi)//1000))
 
-# window_oi = [variants_query.iloc[0]["pos"] - 50000, variants_query.iloc[0]["pos"] + 50000]
-# bins = np.linspace(*window_oi, 500)
+window_oi = [variants_query.iloc[0]["pos"] - 100000, variants_query.iloc[0]["pos"] + 100000]
+bins = np.linspace(*window_oi, 500)
 
 # %%
 main = chd.grid.Grid(padding_height=0)
@@ -406,11 +424,13 @@ for cluster_ix, cluster in enumerate(cluster_info.index):
     
     ax.axvline(gene_oi["tss"], dashes = (2, 2), color = "grey")
     ax.scatter(plotdata_variants["pos"], plotdata_variants["lr"], s = 1, color = "red")
-    ax.axhline(np.log(10), zorder = -10, lw = 1)
-    # ax.set_ylim(np.log(10))
+    ax.axhline(np.log(10), zorder = -10, lw = 1, color = "grey")
     
-    for _, variant in variants_query.iterrows():
-        ax.axvline(variant["pos"], zorder = -10, lw = 1)
+    plotdata_variants_query = plotdata_variants.loc[variants_query.index]
+    ax.scatter(plotdata_variants_query["pos"], plotdata_variants_query["lr"], s = 1, color = "green")
+    
+    # for _, variant in variants_query.iterrows():
+    #     ax.axvline(variant["pos"], zorder = -10, lw = 1)
     ax.set_xlim(*window_oi)
     
 main[0, -1]
@@ -424,8 +444,8 @@ fig, ax = plt.subplots()
 ld = pd.DataFrame(np.abs(np.corrcoef(genotype.T)), genotype.coords["variant"].to_pandas(), genotype.coords["variant"].to_pandas())
 mappable = ax.matshow(ld, vmin = 0, vmax = 1)
 fig.colorbar(mappable)
-ax.axhline(variants_info_oi.index.to_list().index(variant_id))
-ax.axvline(variants_info_oi.index.to_list().index(variant_id))
+ax.axhline(variants_info_oi.index.to_list().index(variant_id), color = "white")
+ax.axvline(variants_info_oi.index.to_list().index(variant_id), color = "white")
 
 # %%
 variants_info_oi.loc[variant_id]
@@ -441,12 +461,12 @@ ax.scatter(variants_info_oi["pos"], variants_info_oi["ld"])
 # ## Overlap with GWAS
 
 # %%
-motifscan_name = "gwas_immune"
+qtl_name = "gwas_immune"
 
 # %%
 folder_qtl = chd.get_output() / "data" / "qtl" / "hs" / "gwas"
 folder_qtl.mkdir(exist_ok = True, parents=True)
-qtl_mapped = pd.read_pickle(folder_qtl / ("qtl_mapped_" + motifscan_name + ".pkl"))
+qtl_mapped = pd.read_pickle(folder_qtl / ("qtl_mapped_" + qtl_name + ".pkl"))
 
 # %%
 qtl_mapped["found"] = qtl_mapped["snp"].isin(variants_info["rsid"])
@@ -470,16 +490,20 @@ variants_info_oi["significant_any"] = scores.groupby("variant")["significant"].a
 variants_info_oi["gwas"] = variants_info_oi["rsid"].isin(qtl_mapped["rsid"])
 
 # %%
-contingency = pd.crosstab(variants_info_oi["significant_any"], variants_info_oi["gwas"]).values
+contingency = pd.crosstab(variants_info_oi["significant_any"], variants_info_oi["gwas"], )
 
 # %%
 import fisher
 
 # %%
-fisher.pvalue(*contingency.flatten())
+contingency
 
 # %%
-(contingency[0, 0] * contingency[1, 1])/(contingency[0, 1] * contingency[1, 0])
+fisher.pvalue(*contingency.values.flatten()).right_tail
+
+# %%
+odds = (contingency.values[0, 0] * contingency.values[1, 1])/(contingency.values[0, 1] * contingency.values[1, 0])
+odds
 
 # %%
 variants_info_oi["significant_any"].sum(), variants_info_oi["gwas"].sum()

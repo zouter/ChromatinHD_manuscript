@@ -57,6 +57,36 @@ import requests
 # !wc -l {folder_qtl}/full.tsv
 
 # %% [markdown]
+# ## OBO
+
+# %%
+# # !pip install owlready2
+# # !wget http://www.ebi.ac.uk/efo/efo.owl
+
+# %%
+import owlready2
+
+# %%
+onto = owlready2.get_ontology("efo.owl").load()
+
+# %%
+immune_system_disease = onto.search(iri = "http://www.ebi.ac.uk/efo/EFO_0000540")[0]
+
+# %%
+children = onto.search(subclass_of = immune_system_disease)
+
+# %%
+rdf = onto.get_namespace("http://www.w3.org/2000/01/rdf-schema#")
+obo = onto.get_namespace("http://purl.obolibrary.org/obo/")
+
+# %%
+traits = []
+for child in children:
+    description = obo.IAO_0000115[child][0] if len(obo.IAO_0000115[child]) else ""
+    traits.append({"trait":rdf.label[child][0], "description":description})
+traits = pd.DataFrame(traits)
+
+# %% [markdown]
 # ## Process
 
 # %%
@@ -73,7 +103,10 @@ diseases = qtl.groupby("disease/trait").size().sort_values(ascending = False)
 trait_counts = qtl["disease/trait"].value_counts()
 
 # %%
-trait_counts.head(40)
+trait_counts.loc[trait_counts.index.str.contains("lymph")]
+
+# %%
+trait_counts.head(250).iloc[200:250]
 
 # %%
 # traits_oi = pd.DataFrame([
@@ -99,8 +132,10 @@ traits_oi = pd.DataFrame([
     ["Rheumatoid arthritis"],
     ["Ankylosing spondylitis"],
     ["Hodgkin's lymphoma"],
+    ["Psoriasis"],
+    ["Post bronchodilator FEV1/FVC ratio in COPD"],
     ["Non-Hodgkin's lymphoma"],
-    # ["Core binding factor acute myeloid leukemia"],
+    ["Core binding factor acute myeloid leukemia"],
     ["Chronic lymphocytic leukemia"],
     ["Interleukin-6 levels"],
     ["Interleukin-18 levels"],
@@ -108,13 +143,23 @@ traits_oi = pd.DataFrame([
     ["Time-dependent creatinine clearance change response to tenofovir treatment in HIV infection (time and treatment arm interaction)"],
     ["Autoimmune thyroid disease"],
     ["IgG glycosylation"],
+    ["Asthma"],
     ["Allergic disease (asthma, hay fever or eczema)"],
     ["High IL-1beta levels in gingival crevicular fluid"],
     ["C-reactive protein levels (MTAG)"],
     ["Behcet's disease"],
     ["Neutrophil count"],
+    ["Eosinophil counts"],
     ["Monocyte count"],
+    ["Lymphocyte count"],
     ["Endometriosis"],
+    ["Medication use (thyroid preparations)"],
+    ["Basophil count"],
+    ["Acute graft versus host disease in bone marrow transplantation (recipient effect)"],
+    ["Selective IgA deficiency"],
+    ["Lymphocyte-to-monocyte ratio"],
+    ["COVID-19"],
+    ["C-reactive protein"],
 ], columns = ["disease/trait"]).set_index("disease/trait"); motifscan_name = "gwas_immune"
 # traits_oi
 
@@ -154,6 +199,9 @@ if not lddb_file.exists():
     pickle.dump(lddb, lddb_file.open("wb"))
 lddb = pickle.load(lddb_file.open("rb"))
 len(lddb)
+
+# %%
+sum([rsid not in lddb for rsid in qtl_oi["rsid"]])
 
 
 # %%
@@ -252,7 +300,7 @@ for snps in tqdm.tqdm(chunks):
     result = result.reindex(snps)
     result.index.name = "snp"
     
-    assert result.index.str.contains(";").any()
+    # assert result.index.str.contains(";").any()
     
     snp_info = pd.concat([snp_info, result], axis = 0)
     pickle.dump(snp_info, snp_info_file.open("wb"))

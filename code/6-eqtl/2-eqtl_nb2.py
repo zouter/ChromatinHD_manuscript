@@ -107,9 +107,11 @@ vcf = cyvcf2.VCF(final_file)
 
 # %% tags=[]
 adata2.var["std"] = adata2.X.std(0)
+adata2.var["mean"] = adata2.X.mean(0)
 
 # %% tags=[]
 genes["std"] = adata2.var["std"]
+genes["mean"] = adata2.var["mean"]
 
 # %% tags=[]
 (genes
@@ -156,8 +158,12 @@ def get_types(window):
 
 
 # %% tags=[]
-symbol = "NFKB1"
+symbol = "CCR6"
+symbol = "KCNAB2"
 gene_oi = genes.query("symbol == @symbol").iloc[0]
+
+gene_oi = genes.loc[np.abs((genes.query("chr == @gene_oi.chr")["tss"] - gene_oi["tss"])).sort_values().index].query("mean > 0.1").iloc[5]
+gene_oi = genes.query("mean > 0.1").iloc[15]
 
 # gene_oi = genes.query("symbol == 'KCNAB2'").iloc[0]
 # gene_oi = genes.query("symbol == 'GNB1-DT'").iloc[0]
@@ -324,7 +330,7 @@ variants_info_oi["gwas"] = variants_info_oi["rsid"].isin(qtl_mapped["rsid"])
 # %%
 # variant_id, cluster_id = scores.sort_values("fc_log_mu", ascending = False).index[0]
 # variant_id, cluster_id = scores.query("cluster == 'cDCs'").sort_values("fc_log_mu", ascending = False).index[0]
-variant_id, cluster_id = scores.query("cluster == 'B'").sort_values("lr", ascending = False).index[0]
+variant_id, cluster_id = scores.query("cluster == 'NK'").sort_values("lr", ascending = False).index[0]
 # variant_id, cluster_id = scores.loc[variants_info_oi["gwas"].loc[scores.index.get_level_values("variant")].values].query("cluster == 'NK'").sort_values("lr", ascending = False).index[0]
 # variant_id = (scores.xs("NK", level = "cluster")["lr"] - scores.xs("CD4 T", level = "cluster")["lr"]).sort_values(ascending = False).index[1]
 # variant_id = variants_info.query("rsid == 'rs207253'").index[0]
@@ -392,10 +398,10 @@ variants_query = variants_info_oi.loc[[variant_id]]
 # variants_query = variants_info_oi.query("variant in ['chr2:203930034:T:C']")
 
 # %%
-# window_oi = window
-# bins = np.linspace(*window_oi, int(np.diff(window_oi)//1000))
+window_oi = window
+bins = np.linspace(*window_oi, int(np.diff(window_oi)//1000))
 
-window_oi = [variants_query.iloc[0]["pos"] - 100000, variants_query.iloc[0]["pos"] + 100000]
+window_oi = [variants_query.iloc[0]["pos"] - 5000, variants_query.iloc[0]["pos"] + 5000]
 bins = np.linspace(*window_oi, 500)
 
 # %%
@@ -429,12 +435,13 @@ for cluster_ix, cluster in enumerate(cluster_info.index):
     plotdata_variants_query = plotdata_variants.loc[variants_query.index]
     ax.scatter(plotdata_variants_query["pos"], plotdata_variants_query["lr"], s = 1, color = "green")
     
-    # for _, variant in variants_query.iterrows():
-    #     ax.axvline(variant["pos"], zorder = -10, lw = 1)
     ax.set_xlim(*window_oi)
     
 main[0, -1]
 fig.plot()
+
+# %%
+gene_oi
 
 # %% [markdown]
 # ## LD
@@ -446,6 +453,9 @@ mappable = ax.matshow(ld, vmin = 0, vmax = 1)
 fig.colorbar(mappable)
 ax.axhline(variants_info_oi.index.to_list().index(variant_id), color = "white")
 ax.axvline(variants_info_oi.index.to_list().index(variant_id), color = "white")
+
+# %%
+variants_info_oi.iloc[9]
 
 # %%
 variants_info_oi.loc[variant_id]

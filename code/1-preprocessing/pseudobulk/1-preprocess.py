@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.14.4
+#       jupytext_version: 1.14.1
 #   kernelspec:
 #     display_name: Python 3 (ipykernel)
 #     language: python
@@ -57,7 +57,8 @@ folder_data_preproc = folder_data / dataset_name
 folder_data_preproc.mkdir(exist_ok=True, parents=True)
 
 if organism == "hs":
-    chromosome_names = ["chr" + str(i) for i in range(1, 23)]
+    chromosome_names = ["chr" + str(i) for i in range(1, 23)] + ["chrX"]
+    # chromosome_names = ["chr22", "chrX"]
 
 # %%
 folder_root = chd.get_output()
@@ -70,21 +71,23 @@ folder_data = folder_root / "data"
 latent_name = "leiden_0.1"
 latent_folder = original_folder_data_preproc / "latent"
 latent = pickle.load((latent_folder / (latent_name + ".pkl")).open("rb"))
-cluster_info = pickle.load((latent_folder / (latent_name + "_info.pkl")).open("rb"))
+clusters_info = pickle.load((latent_folder / (latent_name + "_info.pkl")).open("rb"))
 
 # %%
-cluster_info["ix"] = range(len(cluster_info))
+clusters_info["ix"] = range(len(clusters_info))
 
 # %%
 cell_to_cluster_ix = pd.Series(
-    cluster_info["ix"][latent.idxmax(1)].values, latent.index
+    clusters_info["ix"][latent.idxmax(1)].values, latent.index
 ).to_dict()
+
+# %%
+clusters_info["n_cells"] = latent.idxmax(1).value_counts()
+pickle.dump(latent, (folder_data_preproc / "latent.pkl").open("wb"))
+clusters_info.to_pickle(folder_data_preproc / "clusters_info.pkl")
 
 # %% [markdown]
 # ### Creating chromosomes
-
-# %%
-list((folder_data_preproc / "genome").iterdir())
 
 # %%
 chromosomes = (
@@ -98,16 +101,6 @@ chromosomes.to_csv(folder_data_preproc / ("chromosomes.csv"))
 
 chromosomes["position_start"] = np.hstack([[0], np.cumsum(chromosomes["size"])[:-1]])
 chromosomes["position_end"] = np.cumsum(chromosomes["size"])
-
-# %%
-chunk_size = 100
-
-# %%
-cluster_info["n_cells"] = latent.idxmax(1).value_counts()
-
-# %%
-pickle.dump(latent, (folder_data_preproc / "latent.pkl").open("wb"))
-cluster_info.to_pickle(folder_data_preproc / "cluster_info.pkl")
 
 # %% [markdown]
 # ### Create fragments
@@ -174,8 +167,6 @@ relcoords = coordinates % chunk_size
 import chromatinhd.data
 
 # %%
-import pathlib
-
 fragments = chd.data.fragments.ChunkedFragments(folder_data_preproc / "fragments")
 
 # %%
@@ -184,7 +175,7 @@ assert chunkcoords.shape == relcoords.shape
 
 # %%
 fragments.chromosomes = chromosomes
-fragments.clusters_info = cluster_info
+fragments.clusters_info = clusters_info
 fragments.chunk_size = chunk_size
 
 # %%
@@ -359,7 +350,7 @@ if not target_folder.exists():
 # !samtools index -@ 20 {bam_location}
 
 # %% tags=[]
-for cluster in cluster_info.index:
+for cluster in clusters_info.index:
     subset_file = subset_list_dir / (cluster + ".csv")
     out_bam = subset_list_dir / (cluster + ".bam")
     # !subset_bam --bam {bam_location} --cell-barcodes "{subset_file}" --out-bam {out_bam}

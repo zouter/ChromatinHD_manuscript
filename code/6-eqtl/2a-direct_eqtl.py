@@ -38,6 +38,7 @@ import tqdm.auto as tqdm
 import chromatinhd as chd
 import tempfile
 import requests
+import xarray as xr
 
 # %%
 fragment_dataset_name = "pbmc10k_leiden_0.1"
@@ -162,9 +163,6 @@ for data in tqdm.tqdm(loaders_inference):
 bf = xr.DataArray(elbo_dummy - elbo, coords = [transcriptome.clusters_info.index, variantxgene_index])
 
 # %%
-import xarray as xr
-
-# %%
 fc_log_mu = xr.DataArray(model.fc_log_predictor.variantxgene_cluster_effect.weight.detach().cpu().numpy().T, coords = [transcriptome.clusters_info.index, variantxgene_index])
 
 # %%
@@ -210,6 +208,9 @@ variantxgene_effect[variantxgene_effect_sorted.index] = variantxgene_effect_sort
 
 missing_reference_fc = variantxgene_effect.index[np.isnan(variantxgene_effect)]
 variantxgene_effect[missing_reference_fc] = variantxgene_effect_max[missing_reference_fc]
+
+# %%
+chd.save(variantxgene_effect, pathlib.Path("variantxgene_effect.pkl").open("wb"))
 
 # %% [markdown]
 # ## Predictive model
@@ -293,6 +294,7 @@ model_pred = prediction_model.Model.create(
 model_pred.parameters_dense()
 
 # %%
+model_pred = model_pred.to("cpu")
 model_pred.forward(data)
 
 # %% [markdown]
@@ -304,12 +306,7 @@ loaders_validation.initialize(minibatches_validation)
 
 # %%
 optim = chd.optim.SparseDenseAdam(model_pred.parameters_sparse(), model_pred.parameters_dense(), lr = 1e-2)
-trainer = prediction_model.Trainer(model_pred, loaders, loaders_validation, optim, checkpoint_every_epoch=5, n_epochs = 300)
-trainer.train()
-
-# %%
-optim = chd.optim.SparseDenseAdam(model_dummy.parameters_sparse(), model_dummy.parameters_dense(), lr = 1e-2)
-trainer = eqtl_model.Trainer(model_dummy, loaders, optim, checkpoint_every_epoch=50, n_epochs = 300)
+trainer = prediction_model.Trainer(model_pred, loaders, loaders_validation, optim, checkpoint_every_epoch=5, n_epochs = 20)
 trainer.train()
 
 # %%

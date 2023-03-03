@@ -247,6 +247,9 @@ if (dataset_folder/"fragments").exists():
 fragments = chd.data.fragments.ChunkedFragments(dataset_folder / "fragments")
 
 # %% [markdown]
+# -----------------
+
+# %% [markdown]
 # ## Check loader
 
 # %%
@@ -361,6 +364,7 @@ local_cluster_ixs = cluster_ixs
 # %%
 n_variants = len(variants_oi)
 n_clusters = len(fragments.clusters_info)
+local_clusterxvariant_indptr = chd.utils.indices_to_indptr(local_cluster_ixs * n_variants + local_variant_ixs, n_variants * n_clusters)
 
 # %%
 local_clusterxvariant_indptr = chd.utils.indices_to_indptr(local_cluster_ixs * n_variants + local_variant_ixs, n_variants * n_clusters)
@@ -807,20 +811,22 @@ loaders = chd.loaders.LoaderPool(
 )
 
 # %%
-minibatches = [minibatch]
-minibatches_inference = [minibatch]
+minibatches = eqtl_model.loader.create_bins_ordered(transcriptome.var["ix"].values)
+
+# %%
+minibatches_inference = minibatches
 
 # %%
 loaders.initialize(minibatches)
 
 # %%
 optim = chd.optim.SparseDenseAdam(model.parameters_sparse(), model.parameters_dense(), lr = 1e-2)
-trainer = eqtl_model.Trainer(model, loaders, optim, checkpoint_every_epoch=100, n_epochs = 500)
+trainer = eqtl_model.Trainer(model, loaders, optim, checkpoint_every_epoch=50, n_epochs = 300)
 trainer.train()
 
 # %%
 optim = chd.optim.SparseDenseAdam(model_dummy.parameters_sparse(), model_dummy.parameters_dense(), lr = 1e-2)
-trainer = eqtl_model.Trainer(model_dummy, loaders, optim, checkpoint_every_epoch=100, n_epochs = 500)
+trainer = eqtl_model.Trainer(model_dummy, loaders, optim, checkpoint_every_epoch=50, n_epochs = 300)
 trainer.train()
 
 # %% [markdown]
@@ -841,17 +847,26 @@ for gene, gene_ix in zip(transcriptome.var.index, transcriptome.var["ix"]):
 variantxgene_index = pd.MultiIndex.from_frame(pd.DataFrame(variantxgene_index, columns = ["gene", "variant"]))
 
 # %%
+device = "cpu"
+
+# %%
 loaders_inference.initialize(minibatches_inference)
 elbo = np.zeros((len(transcriptome.clusters_info), len(variantxgene_index)))
 elbo_dummy = np.zeros((len(transcriptome.clusters_info), len(variantxgene_index)))
-for data in loaders_inference:
+
+model = model.to(device)
+model_dummy = model_dummy.to(device)
+for data in tqdm.tqdm(loaders_inference):
+    data = data.to(device)
     model.forward(data)
     elbo_mb = model.get_full_elbo().sum(0).detach().cpu().numpy()
-    elbo[:, data.variantxgene_ixs] += elbo_mb
+    elbo[:, data.variantxgene_ixs.cpu().numpy()] += elbo_mb
     
     model_dummy.forward(data)
     elbo_mb = model_dummy.get_full_elbo().sum(0).detach().cpu().numpy()
-    elbo_dummy[:, data.variantxgene_ixs] += elbo_mb
+    elbo_dummy[:, data.variantxgene_ixs.cpu().numpy()] += elbo_mb
+    
+    loaders_inference.submit_next()
     
 bf = xr.DataArray(elbo_dummy - elbo, coords = [transcriptome.clusters_info.index, variantxgene_index])
 
@@ -869,6 +884,9 @@ scores["bf"] = bf.to_pandas().T.stack()
 
 # %%
 scores.sort_values("bf")
+
+# %%
+scores.query("cluster == 'B'").sort_values("bf").join(transcriptome.var[["symbol"]])
 
 # %%
 scores.groupby("cluster")["bf"].sum().to_frame("bf").style.bar()

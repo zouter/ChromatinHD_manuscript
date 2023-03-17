@@ -18,11 +18,18 @@ sns.set_style('ticks')
 # %%
 folder_root = chd.get_output()
 folder_data = folder_root / "data"
-dataset_name = "hpsc"
+dataset_name = "hspc"
 folder_data_preproc = folder_data / dataset_name
+promoter_name, window = "10k10k", np.array([-10000, 10000])
 
 # %%
-fragments = chd.data.Fragments(folder_data_preproc / "fragments")
+promoters = pd.read_csv(folder_data_preproc / ("promoters_" + promoter_name + ".csv"), index_col = 0)
+folds = pd.read_pickle(folder_data_preproc / "fragments_myeloid" / promoter_name / "folds.pkl")
+fragments = chd.data.Fragments(folder_data_preproc / "fragments_myeloid" / promoter_name)
+fragments.window = window
+ 
+cells_train = folds[0]['cells_train']
+cells_validation = folds[0]['cells_validation']
 
 # %% 
 # ## Create loaders
@@ -33,7 +40,7 @@ n_genes_step = 50
 
 loaders_train = chromatinhd.loaders.pool.LoaderPool(
     chromatinhd.loaders.fragments.Fragments,
-    {"fragments":fragments, "cellxgene_batch_size":n_cells_step * n_genes_step},
+    {"fragments": fragments, "cellxgene_batch_size": n_cells_step * n_genes_step},
     n_workers = 20,
     shuffle_on_iter = True
 )
@@ -52,7 +59,7 @@ loaders_train.initialize(minibatches_train)
 
 loaders_validation = chromatinhd.loaders.pool.LoaderPool(
     chromatinhd.loaders.fragments.Fragments,
-    {"fragments":fragments, "cellxgene_batch_size":n_cells_step * n_genes_step},
+    {"fragments": fragments, "cellxgene_batch_size": n_cells_step * n_genes_step},
     n_workers = 5
 )
 
@@ -73,25 +80,36 @@ loaders_validation.initialize(minibatches_validation)
 # ### Load latent space
 
 # %%
-# latent = torch.from_numpy(simulation.cell_latent_space).to(torch.float32)
-# using transcriptome clustering
-# sc.tl.leiden(transcriptome.adata, resolution = 0.1)
-# latent = torch.from_numpy(pd.get_dummies(transcriptome.adata.obs["leiden"]).values).to(torch.float)
-
 # loading
-latent_name = "leiden_0.1"
-# latent_name = "celltype"
-# latent_name = "overexpression"
-folder_data_preproc = folder_data / dataset_name
+latent_name = "latent_time"
 latent_folder = folder_data_preproc / "latent"
-latent = pickle.load((latent_folder / (latent_name + ".pkl")).open("rb"))
+df = pd.read_csv(folder_data_preproc / "MV2_latent_time_myeloid.csv", index_col = 0)
+df['quantile'] = pd.qcut(df['latent_time'], q=10, labels=False)
+latent = pd.get_dummies(df['quantile'], prefix='quantile')
 latent_torch = torch.from_numpy(latent.values).to(torch.float)
-
 n_latent_dimensions = latent.shape[-1]
 
-cluster_info = pd.read_pickle(latent_folder / (latent_name + "_info.pkl"))
+cluster_info = pd.DataFrame()
+cluster_info['cluster'] = list(latent.columns)
+cluster_info['label'] = list(latent.columns)
+cluster_info['dimension'] = range(n_latent_dimensions)
 cluster_info["color"] = sns.color_palette("husl", latent.shape[1])
-fragments.obs["cluster"] = pd.Categorical(pd.from_dummies(latent).iloc[:, 0])
+cluster_info.set_index('cluster', inplace=True)
+
+fragments.obs["cluster"] = df['quantile']
+
+# #%%
+# latent_name = "celltype"
+
+# folder_data_preproc = folder_data / dataset_name
+# latent_folder = folder_data_preproc / "latent"
+# latent = pickle.load((latent_folder / (latent_name + ".pkl")).open("rb"))
+# latent_torch = torch.from_numpy(latent.values).to(torch.float)
+# n_latent_dimensions = latent.shape[-1]
+
+# cluster_info = pd.read_pickle(latent_folder / (latent_name + "_info.pkl"))
+# cluster_info["color"] = sns.color_palette("husl", latent.shape[1])
+# fragments.obs["cluster"] = pd.Categorical(pd.from_dummies(latent).iloc[:, 0])
 
 # %%
 # ### Create model
@@ -100,8 +118,8 @@ reflatent_idx = torch.from_numpy(np.where(latent.values)[1])
 
 # %%
 import chromatinhd.models.likelihood.v9 as vae_model
-# model = vae_model.Decoding(fragments, torch.from_numpy(latent.values), nbins = (128, 64, 32, ))
-model = vae_model.Decoding(fragments, torch.from_numpy(latent.values), nbins = (32, ))
+model = vae_model.Decoding(fragments, torch.from_numpy(latent.values), nbins = (  128, 64, 32, ))
+# model = vae_model.Decoding(fragments, torch.from_numpy(latent.values), nbins = (32, ))
 
 # model = pickle.load((chd.get_output() / "prediction_likelihood/GSE198467_H3K27ac/10k10k/leiden_0.1/v9_128-64-32/model_0.pkl").open("rb"))
 
@@ -277,7 +295,14 @@ likelihood_mixture = pd.DataFrame(np.vstack(hook_genelikelihood.likelihood_mixtu
 
 # %%
 scores = (likelihood_mixture.iloc[:, -1] - likelihood_mixture[0]).sort_values().to_frame("lr")
-scores["label"] = transcriptome.symbol(scores.index)
+
+#%%
+transcriptome = chromatinhd.data.Transcriptome(folder_data_preproc / "transcriptome")
+transcriptome.var.index = transcriptome.var["Accession"]
+transcriptome.var.index.name = "gene"
+
+#%%
+scores["label"] = transcriptome.var.loc[scores.index]['symbol']
 
 # %%
 scores.tail(20)
@@ -331,38 +356,7 @@ transcriptome.var.head(10)
 
 # %%
 gene_oi = 0
-
-# symbol = "DNAH5" # !!
-# symbol = "ABHD12B"
-# symbol = "HOXB8" # !!
-# symbol = "CALB1" # !
-# symbol = "DLL3" # !!
-# symbol = "HOXD4" # !
-# symbol = "GLI3"
-# symbol = "CAPN2" # !!
-# symbol = "LRRTM4"
-# symbol = "SHROOM3"
-# symbol = "CALD1"
-# symbol = "ADAM28" # !
-# symbol = "SLIT3" # !
-# symbol = "PDGFRA" # !
-# symbol = "HAPLN1" # !
-# symbol = "C3orf52" #!?
-# symbol = "PHC2" # !!
-# symbol = "AFF3"
-# symbol = "EFNB2"
-# symbol = "RPL4"
-# symbol = "HSPA8"
-# symbol = "NOTCH2"
-# symbol = "STK38L"
-# symbol = "FREM1"
-
-# symbol = "SOX5"
-symbol = "CD3D"
-symbol = "IL1B"
-symbol = "SAT1"
-    
-gene_oi = int(transcriptome.gene_ix(symbol));gene_id = transcriptome.var.index[gene_oi]
+gene_id = transcriptome.var.index[gene_oi]
 
 # %% jp-MarkdownHeadingCollapsed=true tags=[]
 model = model.to(device)
@@ -415,3 +409,5 @@ sns.heatmap(probs, cmap = mpl.cm.RdBu_r)
 probs_diff = probs - probs.mean(0, keepdims = True)
 
 sns.heatmap(probs_diff, cmap = mpl.cm.RdBu_r, center = 0.)
+
+#%%

@@ -178,3 +178,4 @@ software/
 code/*.mp4
 .vscode
 cache
+scratch.py

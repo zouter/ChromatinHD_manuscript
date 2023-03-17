@@ -9,7 +9,6 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 sns.set_style('ticks')
-# %config InlineBackend.figure_format='retina'
 
 # %%
 folder_root = chd.get_output()
@@ -29,18 +28,18 @@ lin_platelet = info_genes_cells['lin_platelet'].dropna().tolist()
 # %%
 promoter_name, window = "10k10k", np.array([-10000, 10000])
 
-# %%
-transcriptome = chd.data.Transcriptome(folder_data_preproc / "transcriptome")
-fragments = chd.data.Fragments(folder_data_preproc / "fragments" / promoter_name)
-
 #%%
 lt_myeloid = pd.read_csv(folder_data_preproc / 'MV2_latent_time_myeloid.csv')
 lt_myeloid.index = lt_myeloid["cell"]
 del lt_myeloid["cell"]
 lt_myeloid.sort_values('latent_time', inplace=True)
 
+# %%
+transcriptome = chd.data.Transcriptome(folder_data_preproc / "transcriptome")
+fragments = chd.data.Fragments(folder_data_preproc / "fragments" / promoter_name)
+
+#%%
 transcriptome = transcriptome.adata[lt_myeloid.index, :]
-# fragments = fragments.adata[lt_myeloid.index, :]
 #%%
 transcriptome.obs.index.name = 'cell'
 transcriptome.obs = transcriptome.obs.join(lt_myeloid, how='left')
@@ -67,7 +66,6 @@ for gene in genes:
 
     coordinates = fragments.coordinates[fragments.mapping[:, 1] == gene_ix].numpy()
     mapping = fragments.mapping[fragments.mapping[:, 1] == gene_ix].numpy()
-    # outcome = transcriptome.adata.obs["celltype"].cat.codes
     outcome = lt_myeloid
 
     cell_order = outcome.index
@@ -77,20 +75,19 @@ for gene in genes:
     obs = obs[obs.index.isin(cell_order)]
     obs.index = obs.index.astype(str)
     obs = obs.join(outcome, how='left')
-    obs = obs.rename(columns={'latent_time': 'gex'})
     obs = obs.loc[cell_order]
-    obs["y"] = np.arange(obs.shape[0])
     obs = obs.set_index("ix")
+    obs["y"] = np.arange(obs.shape[0])
 
     fig, (ax_gex, ax_heatmap, ax_fragments) = plt.subplots(1, 3, figsize = (30, n_cells/300), sharey = True, width_ratios = [0.5, 1, 1.5])
 
-    ax_gex.plot(obs["gex"], obs["y"])
-    ax_gex.set_xlabel('Latent Time')
+    ax_gex.plot(obs["latent_time"], obs["y"])
+    ax_gex.set_xlabel('Latent Time', fontsize=20)
     ax_gex.set_xticks([0, 0.25, 0.5, 0.75, 1])
 
     im = ax_heatmap.imshow(heatmap_data, cmap='coolwarm', aspect='auto', origin='lower', extent=[0, heatmap_data.shape[1], 0, heatmap_data.shape[0]], interpolation='none')
 
-    ax_heatmap.set_xlabel('Gene Expression')
+    ax_heatmap.set_xlabel('Gene Expression', fontsize=20)
     ax_heatmap.set_xticks(np.arange(heatmap_data.shape[1]) + 0.5)
     ax_heatmap.set_xticklabels(genes)
     ax_heatmap.tick_params(axis='x', rotation=270)
@@ -119,7 +116,7 @@ for gene in genes:
             for rect in rectangles:
                 ax_fragments.add_patch(rect)
 
-    ax_fragments.set_xlabel(f"Distance from TSS ({gene})")
+    ax_fragments.set_xlabel(f"Distance from TSS ({gene})", fontsize=20)
     ax_fragments.set_xticks([-10000, -5000, 0, 5000, 10000])
     
     for ax1 in [ax_gex, ax_heatmap, ax_fragments]:

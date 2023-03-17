@@ -38,10 +38,13 @@ fragments_tabix = tabix.open(str(folder_data_preproc / "GSM6403411_3423-MV-2_ata
 promoters = pd.read_csv(folder_data_preproc / ("promoters_" + promoter_name + ".csv"), index_col = 0)
 
 # %%
+myeloid = pd.read_csv(folder_data_preproc / "MV2_latent_time_myeloid.csv", index_col = 0)
+
+# %%
 transcriptome = chromatinhd.data.Transcriptome(folder_data_preproc / "transcriptome")
 
 # %%
-fragments = chd.data.Fragments(folder_data_preproc / "fragments" / promoter_name)
+fragments = chd.data.Fragments(folder_data_preproc / "fragments_myeloid" / promoter_name)
 
 # %%
 var = pd.DataFrame(index = promoters.index)
@@ -49,13 +52,14 @@ n_genes = var.shape[0]
 var["ix"] = np.arange(n_genes)
 
 # %%
-obs = transcriptome.adata.obs[[]].copy()
+obs = transcriptome.adata[myeloid.index].obs[[]].copy()
 obs.index.name = "cell"
 obs["ix"] = np.arange(obs.shape[0])
 n_cells = obs.shape[0]
 
-if "cell_original" in transcriptome.adata.obs.columns:
-    cell_ix_to_cell = transcriptome.adata.obs["cell_original"].explode()
+#%%
+if "cell_original" in transcriptome.obs.columns:
+    cell_ix_to_cell = transcriptome.obs["cell_original"].explode()
     cell_to_cell_ix = pd.Series(cell_ix_to_cell.index.astype(int), cell_ix_to_cell.values)
 else:
     cell_to_cell_ix = obs["ix"].to_dict()
@@ -125,11 +129,12 @@ n_bins = 5
 
 # %%
 # train/test split
-transcriptome.var.index.name = "symbol"
-transcriptome.var = transcriptome.var.reset_index()
+# transcriptome.var.index.name = "symbol"
+# transcriptome.var = transcriptome.var.reset_index()
 transcriptome.var.index = transcriptome.var["Accession"]
 transcriptome.var.index.name = "gene"
 
+#%%
 cells_all = np.arange(fragments.n_cells)
 genes_all = np.arange(fragments.n_genes)
 
@@ -149,8 +154,12 @@ for i in range(n_folds):
 
     chromosomes_train = chromosome_bins.index[~(chromosome_bins == i)]
     chromosomes_validation = chromosome_bins.index[chromosome_bins == i]
-    genes_train = fragments.var["ix"][transcriptome.var.index[transcriptome.var["chr"].isin(chromosomes_train)]].values
-    genes_validation = fragments.var["ix"][transcriptome.var.index[transcriptome.var["chr"].isin(chromosomes_validation)]].values
+    
+    genes_index = set(transcriptome.var.index[transcriptome.var["Chromosome"].isin(chromosomes_train)]).intersection(set(promoters.index))
+    genes_train = fragments.var["ix"][genes_index].values
+
+    genes_index = set(transcriptome.var.index[transcriptome.var["Chromosome"].isin(chromosomes_validation)]).intersection(set(promoters.index))
+    genes_validation = fragments.var["ix"][genes_index].values
     
     folds.append({
         "cells_train":cells_train,
@@ -160,3 +169,5 @@ for i in range(n_folds):
     })
     
 pickle.dump(folds, (fragments.path / "folds.pkl").open("wb"))
+
+# %%

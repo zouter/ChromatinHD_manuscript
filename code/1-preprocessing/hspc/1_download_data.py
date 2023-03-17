@@ -75,6 +75,16 @@ shutil.move(folder_data_preproc/'GSE209878_3423-MV-2_matrix.mtx.gz', mv2/'matrix
 !ln -s {folder_data_preproc}/../brain/dna.fa.gz {folder_data_preproc}/dna.fa.gz
 !ln -s {folder_data_preproc}/../brain/genes.csv {folder_data_preproc}/genes.csv
 
+#%%
+ref ={
+    'dna.fa.gz': 'http://ftp.ensembl.org/pub/release-107/fasta/homo_sapiens/dna/Homo_sapiens.GRCh38.dna_sm.toplevel.fa.gz'
+}
+
+for file in ref:
+    print(file)
+    r = requests.get(ref[file])
+    with open(folder_data_preproc / file, 'wb') as f:
+        f.write(r.content) 
 # %%
 ### https://doi.org/10.1126/science.aad0501
 s_genes = [

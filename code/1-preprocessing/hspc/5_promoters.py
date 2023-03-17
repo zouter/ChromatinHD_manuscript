@@ -18,10 +18,7 @@ genes = pd.read_csv(folder_data_preproc / "genes.csv", index_col = 0)
 adata_result = sc.read_h5ad(folder_data_preproc / "multivelo_result.h5ad")
 
 # %%
-# promoter_name, (padding_negative, padding_positive) = "4k2k", (2000, 4000)
 promoter_name, (padding_negative, padding_positive) = "10k10k", (10000, 10000)
-# promoter_name, (padding_negative, padding_positive) = "20kpromoter", (10000, 0)
-# promoter_name, (padding_negative, padding_positive) = "1k1k", (1000, 1000)
 
 # %%
 all_gene_ids = adata_result.var['Accession']

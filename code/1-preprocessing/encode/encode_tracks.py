@@ -70,15 +70,17 @@ assert files["Biosample term name"].isin(biosamples_oi["Biosample term name"]).a
 
 # ### Download files
 
+# + tags=[]
 encode_folder = chd.get_output() / "data" / "encode"
 encode_folder_relative = encode_folder.relative_to(chd.get_git_root())
 
 # + tags=[]
-# !ln -s ~/NAS2/wsaelens/projects/chromatinhd/chromatinhd_manuscript/{encode_folder_relative} {encode_folder}
-# -
-
 bw_folder = encode_folder / "immune"
 bw_folder.mkdir(exist_ok = True, parents = True)
+
+# + tags=[]
+# !ln -s ~/NAS2/wsaelens/projects/chromatinhd/chromatinhd_manuscript/{encode_folder_relative} {encode_folder}
+# -
 
 files["filename"] = files["File download URL"].str.split("/").str[-1]
 
@@ -96,6 +98,10 @@ for _, file in files.iterrows():
         urllib.request.urlretrieve(file["File download URL"], bw_folder / file["filename"], )
 
 # ### Check out
+
+# + tags=[]
+prediction_likelihood/pbmc10k/10k10k/leiden_0.1/v9_128-64-32/scoring/significant_up
+# -
 
 files["Experiment target"].value_counts()
 
@@ -122,7 +128,13 @@ idx_oi = files.query("`Biosample term name` == 'naive thymus-derived CD8-positiv
 # idx_oi = files.query("`Biosample term name` == 'dendritic cell'").query("`Experiment target` == 'H3K27me3-human'").index[0]
 # -
 
-conservation = chd.conservation.BigWig(files.iloc[idx_oi]["File download URL"])
+bw = pyBigWig.open(str(bw_folder / files.iloc[idx_oi]["filename"]))
+
+# + tags=[]
+bw.values("1"
+
+# + tags=[]
+conservation.qu
 
 # +
 folder_root = chd.get_output()

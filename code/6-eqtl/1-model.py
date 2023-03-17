@@ -31,8 +31,66 @@ fragments.window = window
 cells_train = folds[0]['cells_train']
 cells_validation = folds[0]['cells_validation']
 
+<<<<<<< HEAD
 # %% 
+||||||| 5883ec7
+# %% [markdown]
+=======
+# %% [markdown]
+# ## Creating data
+
+# %% [markdown]
+# ### Size
+
+# %%
+(
+    5000000 # number of SNPs
+    * 1000  # number of patients
+    * 2     # homo/hetero/homo alt
+    * 8     # bits
+    / 1024 / 1024 / 1024  # gbs
+)
+
+# %%
+outcome = torch.tensor([[0, 1, 0, 1, 1, 0]])
+
+# %%
+outcome
+
+# %% [markdown]
+>>>>>>> main
 # ## Create loaders
+<<<<<<< HEAD
+||||||| 5883ec7
+
+# %%
+# which clusters to look at
+clusters_oi = np.array([0, 1, 2, 3])
+
+# %%
+# which positions (i.e. SNPs) to look at
+positions_oi = np.array([10000])
+
+# %%
+import chromatinhd.loaders.chunkfragments
+
+# %%
+=======
+
+# %%
+# which clusters to look at
+# the loader will always select the same set of clusters
+clusters_oi = np.array([0, 1, 2, 3])
+
+# %%
+# which positions (i.e. SNPs) to look at
+positions_oi = np.array([10000])
+
+# %%
+# import chromatinhd.loaders.chunkfragments
+
+# %%
+>>>>>>> main
 import chromatinhd.loaders.fragments
 
 n_cells_step = 100

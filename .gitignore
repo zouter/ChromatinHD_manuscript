@@ -175,7 +175,19 @@ tmp/
 software/
 *.parquet
 *.bb
+<<<<<<< HEAD
 code/*.mp4
 .vscode
 cache
 scratch.py
+||||||| 5883ec7
+code/*.mp4
+=======
+code/*.mp4
+
+code/1-preprocessing/eqtl/10k1k/original
+
+.vscode
+code/__old/data.txt
+manuscript
+>>>>>>> main

@@ -201,6 +201,12 @@ lddb = pickle.load(lddb_file.open("rb"))
 len(lddb)
 
 # %%
+np.sum([len(ld) +1 for ld in lddb.values()])
+
+# %%
+np.mean([len(ld) == 0 for ld in lddb.values()])
+
+# %%
 sum([rsid not in lddb for rsid in qtl_oi["rsid"]])
 
 
@@ -337,6 +343,7 @@ transcriptome = chd.data.Transcriptome(folder_data_preproc / "transcriptome")
 
 # %%
 promoter_name, window = "10k10k", np.array([-10000, 10000])
+promoter_name, window = "100k100k", np.array([-100000, 100000])
 # promoter_name, window = "1k1k", np.array([-1000, 1000])
 promoters = pd.read_csv(folder_data_preproc / ("promoters_" + promoter_name + ".csv"), index_col = 0)
 
@@ -345,6 +352,9 @@ promoters = pd.read_csv(folder_data_preproc / ("promoters_" + promoter_name + ".
 
 # %%
 chromosomes = promoters["chr"].unique()
+
+# %%
+motifscan_name = "gwas_immune"
 
 # %%
 snp_info = pickle.load((chd.get_output() / "snp_info.pkl").open("rb"))
@@ -356,6 +366,9 @@ association["pos"] = association["start"].astype(int)
 
 # %%
 import pybedtools
+
+# %%
+promoters["start"] = np.clip(promoters["start"], 0, np.inf)
 
 # %%
 association_bed = pybedtools.BedTool.from_dataframe(association.reset_index()[["chr", "pos", "pos", "index"]])

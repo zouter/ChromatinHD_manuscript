@@ -10,8 +10,8 @@ import chromatinhd.models.positional.v20
 import pickle
 import numpy as np
 
-n_cells_step = 500
-n_genes_step = 1000
+n_cells_step = 200
+n_genes_step = 500
 
 
 def get_design(transcriptome, fragments):
@@ -96,12 +96,25 @@ def get_folds_training(fragments, folds):
     return folds
 
 
-def get_folds_inference(fragments, folds):
+def get_folds_inference(
+    fragments,
+    folds,
+    n_cells_step=5000,
+    n_genes_step=200,
+    genes_oi=None,
+):
     for fold in folds:
         cells = []
         fold["phases"] = {}
 
-        genes_all = np.arange(fragments.n_genes)
+        if genes_oi is None:
+            genes_all = np.arange(fragments.n_genes)
+        else:
+            genes_all = np.arange(fragments.n_genes)[genes_oi]
+        fold["genes_all"] = genes_all
+        fold["gene_ix_mapper"] = np.zeros(fragments.n_genes, dtype=int)
+        fold["gene_ix_mapper"][genes_all] = np.arange(len(genes_all))
+
         if "cells_train" in fold:
             cells_train = list(fold["cells_train"])[:200]
             fold["phases"]["train"] = [cells_train, genes_all]
@@ -117,6 +130,10 @@ def get_folds_inference(fragments, folds):
             fold["phases"]["test"] = [cells_test, genes_all]
             cells.extend(cells_test)
 
+        fold["cells_all"] = cells
+        fold["cell_ix_mapper"] = np.zeros(fragments.n_cells, dtype=int)
+        fold["cell_ix_mapper"][cells] = np.arange(len(cells))
+
         rg = np.random.RandomState(0)
 
         minibatches = chd.loaders.minibatching.create_bins_ordered(
@@ -129,7 +146,7 @@ def get_folds_inference(fragments, folds):
             rg=rg,
         )
         fold["minibatches"] = minibatches
-    return folds
+    return folds, n_cells_step * n_genes_step
 
 
 def get_folds_test(fragments, folds):

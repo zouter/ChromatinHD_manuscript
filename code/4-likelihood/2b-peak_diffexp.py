@@ -24,7 +24,7 @@ from chromatinhd_manuscript.designs import (
 # design = design.query("dataset == 'morf_20'")
 # design = design.query("peakcaller == 'encode_screen'")
 # design = design.query("dataset == 'alzheimer'")
-design = design.query("dataset == 'GSE198467_H3K27ac'")
+design = design.query("dataset == 'pbmc10k_eqtl'")
 
 design["force"] = True
 

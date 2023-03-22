@@ -286,6 +286,21 @@ minibatches_validation = chd.loaders.minibatching.create_bins_random(
 )
 loaders_validation.initialize(minibatches_validation)
 
+# %%
+data = loaders_train.pull()
+
+# %%
+data.cut_coordinates
+
+# %%
+data.cut_local_cell_ix
+
+# %%
+data.cut_local_gene_ix
+
+# %%
+data.cut_local_cellxgene_ix
+
 # %% [markdown]
 # ## Model
 
@@ -314,11 +329,20 @@ fragments.obs["cluster"] = pd.Categorical(pd.from_dummies(latent).iloc[:, 0])
 # ### Create model
 
 # %%
-import chromatinhd.models.likelihood.v9 as vae_model
+import chromatinhd.models.likelihood.victor as vae_model
 model = vae_model.Decoding(fragments, torch.from_numpy(latent.values), nbins = (128, 64, 32, ))
 # model = vae_model.Decoding(fragments, torch.from_numpy(latent.values), nbins = (32, ))
 
 # model = pickle.load((chd.get_output() / "prediction_likelihood/GSE198467_H3K27ac/10k10k/leiden_0.1/v9_128-64-32/model_0.pkl").open("rb"))
+
+# %%
+model.latent
+
+# %%
+model.l
+
+# %%
+model.forward(data)
 
 # %% [markdown]
 # ### Prior distribution

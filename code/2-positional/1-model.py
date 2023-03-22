@@ -118,9 +118,7 @@ genes_oi = np.arange(0, n_genes)
 
 cellxgene_oi = (cells_oi[:, None] * fragments.n_genes + genes_oi).flatten()
 
-minibatch = chromatinhd.loaders.minibatching.Minibatch(
-    cellxgene_oi=cellxgene_oi, cells_oi=cells_oi, genes_oi=genes_oi
-)
+minibatch = chromatinhd.loaders.minibatching.Minibatch(cells_oi=cells_oi, genes_oi=genes_oi)
 data = loader.load(minibatch)
 
 # %%
@@ -150,9 +148,7 @@ genes_oi = np.arange(0, n_genes)
 
 cellxgene_oi = (cells_oi[:, None] * fragments.n_genes + genes_oi).flatten()
 
-minibatch = chromatinhd.loaders.minibatching.Minibatch(
-    cellxgene_oi=cellxgene_oi, cells_oi=cells_oi, genes_oi=genes_oi
-)
+minibatch = chromatinhd.loaders.minibatching.Minibatch(cells_oi=cells_oi, genes_oi=genes_oi)
 data = loader.load(minibatch)
 
 # %%
@@ -216,7 +212,7 @@ for i in range(2):
 
     data.append(
         chd.loaders.minibatching.Minibatch(
-            cells_oi=cells_oi, genes_oi=genes_oi, cellxgene_oi=cellxgene_oi
+            cells_oi=cells_oi, genes_oi=genes_oi
         )
     )
 loaders.initialize(data)
@@ -293,7 +289,7 @@ import chromatinhd.models.positional.v20
 embedder = chromatinhd.models.positional.v20.FragmentEmbedder(fragments.n_genes)
 
 # %%
-embedder.forward(data.coordinates, data.genemapping, data.n)[data.n]
+embedder.forward(data.coordinates, data.genemapping)
 
 # %%
 1 / (10000 ** (2 * 0 / 50))

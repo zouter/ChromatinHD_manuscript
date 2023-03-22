@@ -37,7 +37,9 @@ setuptools.setup(
     python_requires=">=3.8",
     install_requires=[
         "chromatinhd",
-        "manuscript",
+        "jupyterlab",
+        "jupytext",
+        # "manuscript",
     ],
     extras_require={
         "full": [],

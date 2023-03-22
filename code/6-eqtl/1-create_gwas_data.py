@@ -107,6 +107,13 @@ variants_info["gwas"] = variants_info["rsid"].isin(qtl_mapped["rsid"])
 variants_info = variants_info.loc[variants_info["rsid"].isin(qtl_mapped["rsid"])].copy()
 
 # %%
+# # filter on variants not in LD
+# lddb_file = pathlib.Path(chd.get_output() / "lddb.pkl")
+# lddb = pickle.load(lddb_file.open("rb"))
+# variants_info["main"] = [(rsid not in lddb) or (len(lddb[rsid]) == 0) for rsid in variants_info["rsid"]]
+# variants_info = variants_info.loc[variants_info["main"]].copy()
+
+# %%
 variants_info["ix"] = np.arange(len(variants_info))
 
 # %%
@@ -120,16 +127,26 @@ vcf = cyvcf2.VCF(pathlib.Path(vcf_file))
 
 genotypes = []
 genotypes_variant_mapping = []
+imputed = []
 for (variant_ix, chr, pos) in tqdm.tqdm(zip(variants_info["ix"].values, variants_info["chr"].values, variants_info["pos"].values)):
     window_str = chr + ":" + str(pos-1) + "-" + str(pos)
     variant = next(vcf(window_str))
     
     genotypes.append(variant.gt_types.copy())
     genotypes_variant_mapping.append(variant_ix)
+    try:
+        variant.INFO["IMPUTED"]
+        imputed.append(True)
+    except:
+        imputed.append(False)
 genotypes = np.stack(genotypes, 1)
 genotypes[genotypes == 2] = 1
 genotypes[genotypes == 3] = 2
 genotypes = genotypes - 1
+
+# %%
+variants_info["imputed"] = imputed
+variants_info["imputed"].mean()
 
 # %%
 import chromatinhd.data.genotype.genotype
@@ -183,6 +200,9 @@ genes_oi = [gene for gene, variants in gene_variants_mapping_all.items() if len(
 # %%
 genes = genes.loc[genes_oi]
 len(genes)
+
+# %%
+genes["tss_position"] = genes["tss"] + fragments.chromosomes["position_start"].loc[genes["chr"]].values
 
 # %%
 gene_variants_mapping = [gene_variants_mapping_all[gene] for gene in genes.index]

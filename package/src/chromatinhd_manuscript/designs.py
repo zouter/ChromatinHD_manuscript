@@ -14,8 +14,9 @@ dataset_peakcaller_combinations = pd.DataFrame.from_records(
                 "brain",
                 "alzheimer",
                 "pbmc10k_gran",
-                "GSE198467_H3K27ac",
+                "pbmc10k_eqtl",
             ],
+            ["10k10k"],
             [
                 "rolling_100",
                 "rolling_500",
@@ -39,6 +40,7 @@ dataset_peakcaller_combinations = pd.DataFrame.from_records(
                 "pbmc10k_gran",
                 # "morf_20",
             ],
+            ["10k10k"],
             ["genrich"],
         ),
         itertools.product(
@@ -51,35 +53,28 @@ dataset_peakcaller_combinations = pd.DataFrame.from_records(
                 "pbmc10k_gran",
                 # "morf_20", # was not processed using cellranger
             ],
+            ["10k10k"],
             ["cellranger"],
         ),
-        # itertools.product(
-        #     ["morf_20"],
-        #     [
-        #         "rolling_100",
-        #         "rolling_500",
-        #         "rolling_50",
-        #         "macs2_improved",
-        #         "encode_screen",
-        #         "1k1k",
-        #         "gene_body",
-        #         "stack",
-        #     ],
-        # ),
     ),
-    columns=["dataset", "peakcaller"],
+    columns=["dataset", "promoter", "peakcaller"],
 )
 dataset_peakcaller_combinations["promoter"] = "10k10k"
 
 dataset_splitter_combinations = pd.DataFrame.from_records(
     itertools.chain(
         itertools.product(
-            ["lymphoma"],
-            ["random_5fold", "celltype"],
+            ["pbmc10k"],
+            ["100k100k"],
+            [
+                "random_5fold",
+                "permutations_5fold5repeat",
+            ],
         ),
         itertools.product(
-            # ["morf_20"],
-            ["random_5fold", "overexpression"],
+            ["lymphoma"],
+            ["10k10k"],
+            ["random_5fold", "celltype"],
         ),
         itertools.product(
             [
@@ -89,12 +84,12 @@ dataset_splitter_combinations = pd.DataFrame.from_records(
                 "brain",
                 "alzheimer",
             ],
+            ["10k10k"],
             ["random_5fold", "leiden_0.1"],
         ),
     ),
-    columns=["dataset", "splitter"],
+    columns=["dataset", "promoter", "splitter"],
 )
-dataset_splitter_combinations["promoter"] = "10k10k"
 
 dataset_splitter_method_combinations = pd.concat(
     [
@@ -108,7 +103,6 @@ dataset_splitter_method_combinations = pd.concat(
                         "e18brain",
                         "brain",
                         "alzheimer",
-                        # "morf_20",
                     ]
                 )
             ],
@@ -138,7 +132,6 @@ dataset_splitter_peakcaller_predictor_combinations = chd.utils.crossing(
     pd.DataFrame(
         {
             "predictor": [
-                # "xgboost",
                 "linear",
             ]
         }
@@ -204,13 +197,11 @@ dataset_latent_combinations = pd.DataFrame.from_records(
                 "brain",
                 "alzheimer",
                 "pbmc10k_gran",
-                "GSE198467_H3K27ac",
-                "GSE198467_single_modality_H3K27me3",
+                "pbmc10k_eqtl",
             ],
             ["leiden_0.1"],
         ),
         itertools.product(
-            # ["morf_20"],
             ["overexpression"],
         ),
     ),
@@ -235,22 +226,11 @@ dataset_latent_method_combinations = pd.concat(
                         "brain",
                         "alzheimer",
                         "pbmc10k_gran",
-                        "GSE198467_single_modality_H3K27me3",
-                        # "morf_20",
+                        "pbmc10k_eqtl",
                     ]
                 )
             ],
             pd.DataFrame({"method": ["v9_128-64-32"]}),
-        ),
-        chd.utils.crossing(
-            dataset_latent_combinations.loc[
-                dataset_latent_combinations["dataset"].isin(
-                    [
-                        "GSE198467_H3K27ac",
-                    ]
-                )
-            ],
-            pd.DataFrame({"method": ["v9_64-32"]}),
         ),
     ]
 )

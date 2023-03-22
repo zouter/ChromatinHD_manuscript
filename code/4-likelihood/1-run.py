@@ -27,7 +27,7 @@ print(torch.cuda.memory_allocated(0))
 
 from chromatinhd_manuscript.designs import dataset_latent_method_combinations as design
 
-design = design.query("dataset == 'GSE198467_single_modality_H3K27me3'")
+design = design.query("dataset == 'pbmc10k_eqtl'")
 
 design["force"] = True
 

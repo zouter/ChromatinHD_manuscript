@@ -204,7 +204,7 @@ promoters["n"] = np.diff(motifscan.indptr).reshape((len(promoters), (window[1] -
 # distribution
 plt.plot(np.diff(motifscan.indptr).reshape((len(promoters), (window[1] - window[0]))).sum(0))
 
-# %% [markdown] tags=[] jp-MarkdownHeadingCollapsed=true jp-MarkdownHeadingCollapsed=true tags=[] jp-MarkdownHeadingCollapsed=true tags=[] jp-MarkdownHeadingCollapsed=true jp-MarkdownHeadingCollapsed=true tags=[]
+# %% [markdown] tags=[] jp-MarkdownHeadingCollapsed=true jp-MarkdownHeadingCollapsed=true tags=[] jp-MarkdownHeadingCollapsed=true tags=[] jp-MarkdownHeadingCollapsed=true jp-MarkdownHeadingCollapsed=true tags=[] jp-MarkdownHeadingCollapsed=true
 # ### Peakcounts
 
 # %%
@@ -278,7 +278,7 @@ peak_cluster_prob_diffs = np.log(peak_cluster_probs) - np.log(peak_cluster_probs
 # symbol = "CTLA4"
 # symbol = "JAK2"
 # symbol = "IRF7"
-# symbol = "CCL4"
+symbol = "CCL4"
 # symbol = "CD70"
 # symbol = "TCF7"
 # symbol = "CD8A"
@@ -287,7 +287,7 @@ peak_cluster_prob_diffs = np.log(peak_cluster_probs) - np.log(peak_cluster_probs
 # symbol = "HLA-DQA1"
 # symbol = "CD244" # Woohoo
 # symbol = "POU2AF1" # Yays
-symbol = "LRRC25"
+# symbol = "LRRC25"
 # symbol = "TCF3"
 # symbol = "SP140"
 # symbol = "TCF3"
@@ -844,10 +844,7 @@ if show_lower:
 fig.plot()
 
 # %%
-promoter.to_dict()
-
-# %%
-gene_ids = transcriptome.gene_id(["MZF1"])
+# !ls /home/wsaelens/NAS2/wsaelens/projects/chromatinhd/chromatinhd_manuscript/output/data/encode/immune
 
 # %%
 if transcriptome is not None:

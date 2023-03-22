@@ -327,8 +327,10 @@ ax.set_xscale("log")
 
 # %%
 genes_oi = adata.var.sort_values("dispersions_norm", ascending = False).index[:10]
-# genes_oi = transcriptome.gene_id(["Nrg1", "Nrg3", "Cdk1"])
-sc.pl.umap(adata, color=genes_oi, title = transcriptome.symbol(genes_oi))
+genes_oi = transcriptome.gene_id(["CTLA4"])
+sc.pl.umap(adata, color=genes_oi, title = transcriptome.symbol(genes_oi), 
+          layer = 'magic'
+          )
 
 # %%
 sc.pl.umap(adata, color="leiden", legend_loc="on data")
@@ -553,8 +555,9 @@ fragments_tabix = tabix.open(str(folder_data_preproc / "atac_fragments.tsv.gz"))
 # #### Define promoters
 
 # %%
-promoter_name, (padding_negative, padding_positive) = "4k2k", (2000, 4000)
-promoter_name, (padding_negative, padding_positive) = "10k10k", (10000, 10000)
+# promoter_name, (padding_negative, padding_positive) = "4k2k", (2000, 4000)
+# promoter_name, (padding_negative, padding_positive) = "10k10k", (10000, 10000)
+promoter_name, (padding_negative, padding_positive) = "100k100k", (100000, 100000)
 # promoter_name, (padding_negative, padding_positive) = "20kpromoter", (10000, 0)
 # promoter_name, (padding_negative, padding_positive) = "1k1k", (1000, 1000)
 
@@ -693,83 +696,6 @@ fragments.coordinates = coordinates
 # %%
 fragments.create_cellxgene_indptr()
 
-# %% [markdown] jp-MarkdownHeadingCollapsed=true tags=[]
-# ## Create training folds
-
-# %% [markdown]
-# ### Default
-
-# %%
-n_bins = 5
-
-# %%
-# train/test split
-cells_all = np.arange(fragments.n_cells)
-genes_all = np.arange(fragments.n_genes)
-
-cell_bins = np.floor((np.arange(len(cells_all))/(len(cells_all)/n_bins)))
-
-chromosome_gene_counts = transcriptome.var.groupby("chr").size().sort_values(ascending = False)
-chromosome_bins = np.cumsum(((np.cumsum(chromosome_gene_counts) % (chromosome_gene_counts.sum() / n_bins + 1)).diff() < 0))
-
-gene_bins = chromosome_bins[transcriptome.var["chr"]].values
-
-n_folds = 5
-folds = []
-for i in range(n_folds):
-    cells_train = cells_all[cell_bins != i]
-    cells_validation = cells_all[cell_bins == i]
-
-    chromosomes_train = chromosome_bins.index[~(chromosome_bins == i)]
-    chromosomes_validation = chromosome_bins.index[chromosome_bins == i]
-    genes_train = fragments.var["ix"][transcriptome.var.index[transcriptome.var["chr"].isin(chromosomes_train)]].values
-    genes_validation = fragments.var["ix"][transcriptome.var.index[transcriptome.var["chr"].isin(chromosomes_validation)]].values
-    
-    folds.append({
-        "cells_train":cells_train,
-        "cells_validation":cells_validation,
-        "genes_train":genes_train,
-        "genes_validation":genes_validation
-    })
-pickle.dump(folds, (fragments.path / "folds.pkl").open("wb"))
-
-# %% [markdown]
-# ### Random cells with train/validation/test
-
-# %%
-n_bins = 5
-
-# %%
-promoter_name = "10k10k"
-
-# %%
-transcriptome = chd.data.Transcriptome(folder_data_preproc / "transcriptome")
-fragments = chd.data.Fragments(folder_data_preproc / "fragments" / promoter_name)
-
-# %%
-(fragments.path / "folds").mkdir(exist_ok = True)
-
-# %%
-# train/test split
-cells_all = np.arange(fragments.n_cells)
-
-cell_bins = np.floor((np.arange(len(cells_all))/(len(cells_all)/n_bins)))
-
-n_folds = 5
-folds = []
-for i in range(n_folds):
-    cells_train = cells_all[cell_bins != i]
-    cells_validation_test = cells_all[cell_bins == i]
-    cells_validation = cells_validation_test[:(len(cells_validation_test)//2)]
-    cells_test = cells_validation_test[(len(cells_validation_test)//2):]
-    
-    folds.append({
-        "cells_train":cells_train,
-        "cells_validation":cells_validation,
-        "cells_test":cells_test,
-    })
-pickle.dump(folds, (fragments.path / "folds" / "random_5fold.pkl").open("wb"))
-
 # %% [markdown]
 # ## Fragment distribution
 
@@ -819,3 +745,21 @@ fig, ax = plt.subplots()
 ax.plot(xs, ys)
 ax.hist(sizes, range = (0, 1000), bins = 100, density = True)
 ax.set_xlim(0, 1000)
+
+# %% [markdown]
+# ## Add MAGIC
+
+# %%
+transcriptome = chd.data.Transcriptome(folder_data_preproc / "transcriptome")
+
+# %%
+adata = transcriptome.adata
+
+# %%
+import magic
+magic_operator = magic.MAGIC(knn = 30)
+X_smoothened = magic_operator.fit_transform(adata.X)
+adata.layers["magic"] = X_smoothened
+
+# %%
+transcriptome.adata = adata

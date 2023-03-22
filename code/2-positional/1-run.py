@@ -25,25 +25,23 @@ from chromatinhd_manuscript.designs import (
     dataset_splitter_method_combinations as design,
 )
 
-# design = design.loc[~design["dataset"].isin(["alzheimer"])]
-design = design.query("splitter == 'random_5fold'")
-# design = design.loc[
-#     design["splitter"].isin(["leiden_0.1", "celltype", "overexpression"])
-# ]
+design = design.query("splitter == 'permutations_5fold5repeat'")
 design = design.query("method == 'v20_initdefault'")
 design = design.query("dataset == 'pbmc10k'")
+design = design.query("promoter == '100k100k'")
 
 design = design.copy()
-design["force"] = False
+design["force"] = True
 
-for dataset_name, subdesign in design.groupby("dataset"):
+for (dataset_name, promoter_name), subdesign in design.groupby(["dataset", "promoter"]):
     print(f"{dataset_name=}")
     folder_data_preproc = folder_data / dataset_name
 
     # fragments
-    # promoter_name, window = "1k1k", np.array([-1000, 1000])
-    promoter_name, window = "10k10k", np.array([-10000, 10000])
-    # promoter_name, window = "20kpromoter", np.array([-10000, 0])
+    if promoter_name == "10k10k":
+        window = np.array([-100000, 100000])
+    elif promoter_name == "100k100k":
+        window = np.array([-1000000, 1000000])
     promoters = pd.read_csv(
         folder_data_preproc / ("promoters_" + promoter_name + ".csv"), index_col=0
     )
@@ -103,7 +101,6 @@ for dataset_name, subdesign in design.groupby("dataset"):
                     fold = get_folds_training(fragments, [copy.copy(fold)])[0]
 
                     # loaders
-                    print("collecting...")
                     if "loaders" in globals():
                         globals()["loaders"].terminate()
                         del globals()["loaders"]
@@ -116,7 +113,6 @@ for dataset_name, subdesign in design.groupby("dataset"):
                         import gc
 
                         gc.collect()
-                    print("collected")
                     loaders = chd.loaders.LoaderPool(
                         method_info["loader_cls"],
                         method_info["loader_parameters"],
@@ -160,7 +156,8 @@ for dataset_name, subdesign in design.groupby("dataset"):
 
                     loss = lambda x, y: -paircor(x, y).mean() * 100
 
-                    outcome = transcriptome.X.dense()
+                    # outcome = transcriptome.X.dense()
+                    outcome = torch.from_numpy(transcriptome.adata.layers["magic"])
 
                     trainer = Trainer(
                         model,

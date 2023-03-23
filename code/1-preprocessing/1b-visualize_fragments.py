@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.14.1
+#       jupytext_version: 1.14.5
 #   kernelspec:
 #     display_name: Python 3 (ipykernel)
 #     language: python
@@ -60,8 +60,8 @@ dataset_name = "pbmc10k"
 folder_data_preproc = folder_data / dataset_name
 
 # %%
-promoter_name, window = "10k10k", np.array([-10000, 10000])
-# promoter_name, window = "100k100k", np.array([-100000, 100000])
+# promoter_name, window = "10k10k", np.array([-10000, 10000])
+promoter_name, window = "100k100k", np.array([-100000, 100000])
 
 # %%
 transcriptome = chd.data.Transcriptome(folder_data_preproc / "transcriptome")
@@ -87,7 +87,8 @@ fragments = chd.data.Fragments(folder_data_preproc / "fragments" / promoter_name
 # gene_id = transcriptome.gene_id("AAK1")
 # gene_id = transcriptome.gene_id("BCL11B")
 # gene_id = transcriptome.gene_id("NFKBIA")
-gene_id = transcriptome.gene_id("CTLA4")
+# gene_id = transcriptome.gene_id("CTLA4")
+gene_id = transcriptome.gene_id("BACH2")
 # gene_id = transcriptome.gene_id("HOXD4")
 
 # %%
@@ -113,12 +114,12 @@ coordinates = coordinates[np.isin(mapping[:, 0], cells_oi)]
 mapping = mapping[np.isin(mapping[:, 0], cells_oi)]
 
 # %%
-# outcome = sc.get.obs_df(transcriptome.adata, gene_id)[cells_oi]
+outcome = sc.get.obs_df(transcriptome.adata, gene_id)[cells_oi]
 # outcome = transcriptome.adata.obs["oi"].cat.codes[cells_oi]
 # outcome = transcriptome.adata.obs["overexpressed"].cat.codes[cells_oi]
 # outcome = transcriptome.adata.obs["leiden"].cat.codes[cells_oi]
 # outcome = transcriptome.adata.obs["gene_overexpressed"].cat.codes[cells_oi]
-outcome = transcriptome.adata.obs["celltype"].cat.codes[cells_oi]
+# outcome = transcriptome.adata.obs["celltype"].cat.codes[cells_oi]
 cell_order = outcome.sort_values().index
 
 n_cells = len(cell_order)
@@ -129,9 +130,6 @@ obs["gex"] = outcome[cell_order]
 obs = obs.loc[cell_order]
 obs["y"] = np.arange(obs.shape[0])
 obs = obs.set_index("ix")
-
-# %%
-transcriptome.adata.obs["celltype"].cat.categories
 
 # %%
 # fig, (ax_fragments, ax_gex) = plt.subplots(1, 2, figsize = (15, n_cells/10), sharey = True, width_ratios = [2, 0.5])

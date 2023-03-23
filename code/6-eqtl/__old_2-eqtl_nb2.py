@@ -6,14 +6,14 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.14.1
+#       jupytext_version: 1.14.5
 #   kernelspec:
 #     display_name: Python 3 (ipykernel)
 #     language: python
 #     name: python3
 # ---
 
-# %% tags=[]
+# %%
 # %load_ext autoreload
 # %autoreload 2
 
@@ -78,42 +78,42 @@ for source_file, target_file in zip(source_files, target_files):
 # %% [markdown]
 # ## Load data
 
-# %% tags=[]
+# %%
 transcriptome = chd.data.transcriptome.transcriptome.ClusterTranscriptome(data_folder / "transcriptome")
 
-# %% tags=[]
+# %%
 adata2 = transcriptome.adata
 
-# %% tags=[]
+# %%
 variants_info = pd.read_pickle(data_folder / "variants_info.pkl")
 variants_info["ix"] = np.arange(len(variants_info))
 
-# %% tags=[]
+# %%
 donors_info = pd.read_csv(data_folder / "donors_info.csv", index_col = 0)
 
-# %% tags=[]
+# %%
 genes = pd.read_csv(data_folder / "genes.csv", index_col = 0)
 
-# %% tags=[]
+# %%
 cluster_info = pd.DataFrame({"cluster":transcriptome.obs["cluster"].unique().sort_values()}).set_index("cluster")
 cluster_info["ix"] = np.arange(len(cluster_info))
 
-# %% tags=[]
+# %%
 final_file = data_folder /"final.bcf.gz"
 
-# %% tags=[]
+# %%
 import cyvcf2
 vcf = cyvcf2.VCF(final_file)
 
-# %% tags=[]
+# %%
 adata2.var["std"] = adata2.X.std(0)
 adata2.var["mean"] = adata2.X.mean(0)
 
-# %% tags=[]
+# %%
 genes["std"] = adata2.var["std"]
 genes["mean"] = adata2.var["mean"]
 
-# %% tags=[]
+# %%
 (genes
      # .query("biotype == 'lncRNA'")
      .sort_values("std", ascending = False)
@@ -128,7 +128,7 @@ genes["mean"] = adata2.var["mean"]
 # this is not checked afterwards
 donors_info = donors_info.reset_index().set_index("old").loc[vcf.samples].reset_index().set_index("donor")
 
-# %% tags=[]
+# %%
 import xarray as xr
 
 # expression = pd.DataFrame(adata2.X, columns = adata2.var.index)
@@ -142,7 +142,7 @@ expression.values[np.isnan(expression.values)] = 0.
 expression = expression.sel(donor = donors_info.reset_index().set_index("old").loc[vcf.samples]["donor"].values)
 
 
-# %% tags=[]
+# %%
 def get_types(window):
     # f"{gene_oi.chr}:{window[0]}-{window[1]}"
     # get types
@@ -157,7 +157,7 @@ def get_types(window):
     return types, variant_ids
 
 
-# %% tags=[]
+# %%
 symbol = "CCR6"
 symbol = "KCNAB2"
 gene_oi = genes.query("symbol == @symbol").iloc[0]
@@ -177,10 +177,10 @@ gene_oi = genes.query("mean > 0.1").iloc[15]
 # gene_oi = genes.query("symbol == 'RGS1'").iloc[0]
 # gene_oi = genes.query("symbol == 'CLEC2D'").iloc[0]
 
-# %% tags=[]
+# %%
 expression_oi = expression.sel(gene = gene_oi.name).transpose("donor", "cluster")
 
-# %% tags=[]
+# %%
 window_size = 10**6
 window = (gene_oi["tss"] - window_size, gene_oi["tss"] + window_size)
 
@@ -191,10 +191,10 @@ genotype = xr.DataArray(genotype - 1, coords = [donors_info.index, pd.Index(vari
 # genotype = genotype.sel(variant = ["chr2:203830251:C:T"])
 genotype = genotype.sel(variant = genotype.coords["variant"].to_pandas()[variants_info.loc[genotype.coords["variant"]]["rsid"].isin(qtl_mapped["rsid"])].index)
 
-# %% tags=[]
+# %%
 variants_info_oi = variants_info.loc[genotype.coords["variant"].to_pandas()]
 
-# %% tags=[]
+# %%
 clusters_info = pd.DataFrame({"cluster":pd.Series(adata2.obs["cluster"].unique()).sort_values().dropna()}).set_index("cluster")
 clusters_info["ix"] = np.arange(len(clusters_info))
 cluster_to_cluster_ix = clusters_info["ix"].to_dict()
@@ -218,21 +218,21 @@ donors_info = donors_info
 # %% [markdown]
 # ### Start modeling
 
-# %% tags=[]
+# %%
 import torch
 
 # %%
 from chromatinhd.models.eqtl.mapping.v1 import Model
 
-# %% tags=[]
+# %%
 lib = (expression.sum("gene")).transpose("donor", "cluster").astype(np.float32)
 
-# %% tags=[]
+# %%
 n_clusters = len(clusters_info)
 n_donors = len(donors_info)
 n_variants = len(variants_info_oi)
 
-# %% tags=[]
+# %%
 genotype_torch = torch.from_numpy(genotype.values)
 expression_oi_torch = torch.from_numpy(expression_oi.values)
 
@@ -370,7 +370,7 @@ chr = gene_oi["chr"]
 # %%
 chromosome_start = fragments.chromosomes.loc[chr]["position_start"]
 
-# %% tags=[]
+# %%
 window_chunks = (
     (chromosome_start + window[0]) // fragments.chunk_size,
     (chromosome_start + window[1]) // fragments.chunk_size

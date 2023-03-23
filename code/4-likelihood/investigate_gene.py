@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.14.1
+#       jupytext_version: 1.14.5
 #   kernelspec:
 #     display_name: Python 3 (ipykernel)
 #     language: python
@@ -204,7 +204,7 @@ promoters["n"] = np.diff(motifscan.indptr).reshape((len(promoters), (window[1] -
 # distribution
 plt.plot(np.diff(motifscan.indptr).reshape((len(promoters), (window[1] - window[0]))).sum(0))
 
-# %% [markdown] tags=[] jp-MarkdownHeadingCollapsed=true jp-MarkdownHeadingCollapsed=true tags=[] jp-MarkdownHeadingCollapsed=true tags=[] jp-MarkdownHeadingCollapsed=true jp-MarkdownHeadingCollapsed=true tags=[] jp-MarkdownHeadingCollapsed=true
+# %% [markdown] jp-MarkdownHeadingCollapsed=true
 # ### Peakcounts
 
 # %%
@@ -471,7 +471,7 @@ for motif in motifs_oi.index:
 motifdata = pd.DataFrame(motifdata, columns = ["position", "motif"])
 print(len(motifdata))
 
-# %% [markdown] tags=[]
+# %% [markdown]
 # ### Extract peaks
 
 # %%
@@ -766,7 +766,7 @@ cmap_atac_diff = mpl.cm.RdBu_r
 # %% [markdown]
 # ### Plot
 
-# %% tags=[]
+# %%
 import chromatinhd.grid
 main = chd.grid.Grid(3, 3, padding_width = 0.1, padding_height = 0.1)
 fig = chd.grid.Figure(main)
@@ -1228,7 +1228,7 @@ sns.heatmap(logodds_norm)
 # %%
 motifscores_all.query("cluster == 'leiden_4'").sort_values("logodds_region", ascending = False).head(20)
 
-# %% [markdown] tags=[]
+# %% [markdown]
 # ### Extract peak counts and probs
 
 # %%

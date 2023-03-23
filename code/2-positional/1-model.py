@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.14.1
+#       jupytext_version: 1.14.5
 #   kernelspec:
 #     display_name: Python 3 (ipykernel)
 #     language: python
@@ -452,7 +452,7 @@ model = design_row["model_cls"](**design_row["model_parameters"])
 # %%
 from chromatinhd.models.positional.trainer import Trainer
 
-# %% tags=[]
+# %%
 # optimization
 optimize_every_step = 1
 lr = 1e-3  # / optimize_every_step

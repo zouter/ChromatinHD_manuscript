@@ -6,14 +6,14 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.14.1
+#       jupytext_version: 1.14.5
 #   kernelspec:
 #     display_name: Python 3 (ipykernel)
 #     language: python
 #     name: python3
 # ---
 
-# %% tags=[]
+# %%
 # %load_ext autoreload
 # %autoreload 2
 
@@ -53,10 +53,10 @@ dataset_folder.mkdir(exist_ok=True, parents=True)
 # %% [markdown]
 # ## Load data
 
-# %% tags=[]
+# %%
 transcriptome = chd.data.transcriptome.transcriptome.ClusterTranscriptome(genotype_data_folder / "transcriptome")
 
-# %% tags=[]
+# %%
 adata2 = transcriptome.adata
 
 # %%
@@ -67,7 +67,7 @@ adata2.var["mean"] = adata2.X.mean(0)
 clusters_info = pd.read_pickle(chd.get_output() / "data" / fragment_dataset_name / "clusters_info.pkl") 
 clusters_info["ix"] = np.arange(len(clusters_info))
 
-# %% tags=[]
+# %%
 vcf_file = genotype_data_folder /"final.bcf.gz"
 
 # %%
@@ -99,7 +99,7 @@ folder_qtl = chd.get_output() / "data" / "qtl" / "hs" / "gwas"
 folder_qtl.mkdir(exist_ok = True, parents=True)
 qtl_mapped = pd.read_pickle(folder_qtl / ("qtl_mapped_" + qtl_name + ".pkl"))
 
-# %% tags=[]
+# %%
 window_size = 10**6
 
 # %%
@@ -164,7 +164,7 @@ genotype.variants_info = variants_info
 # %% [markdown]
 # ## Select genes
 
-# %% tags=[]
+# %%
 genes = pd.read_csv(genotype_data_folder / "genes.csv", index_col = 0)
 
 # %%
@@ -226,7 +226,7 @@ donors_info["ix"] = np.arange(len(donors_info))
 adata2.obs["cluster_ix"] = clusters_info["ix"][adata2.obs["cluster"]].values
 adata2.obs["donor_ix"] = donors_info["ix"][adata2.obs["donor"]].values
 
-# %% tags=[]
+# %%
 import xarray as xr
 
 # expression = pd.DataFrame(adata2.X, columns = adata2.var.index)
@@ -686,11 +686,11 @@ class ExpressionPredictor(torch.nn.Module):
         return elbo
 
 
-# %% tags=[]
+# %%
 lib = transcriptome.X.sum(-1).astype(np.float32)
 lib_torch = torch.from_numpy(lib)
 
-# %% tags=[]
+# %%
 n_clusters = len(transcriptome.clusters_info)
 n_donors = len(transcriptome.donors_info)
 n_variants = len(genotype.variants_info)

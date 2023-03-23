@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.14.1
+#       jupytext_version: 1.14.5
 #   kernelspec:
 #     display_name: Python 3 (ipykernel)
 #     language: python
@@ -204,7 +204,7 @@ bc = torch.bincount(fragments.genemapping)
 # %%
 import torch
 
-# %% jp-MarkdownHeadingCollapsed=true tags=[]
+# %% jp-MarkdownHeadingCollapsed=true
 model = model.to(device)
 
 ## Plot prior distribution
@@ -288,7 +288,7 @@ ax.set_xlabel("Resolution")
 
 fig.plot()
 
-# %% [markdown] tags=[]
+# %% [markdown]
 # ### Train
 
 # %%
@@ -439,7 +439,7 @@ symbol = "SAT1"
     
 gene_oi = int(transcriptome.gene_ix(symbol));gene_id = transcriptome.var.index[gene_oi]
 
-# %% jp-MarkdownHeadingCollapsed=true tags=[]
+# %% jp-MarkdownHeadingCollapsed=true
 model = model.to(device)
 
 ## Plot prior distribution

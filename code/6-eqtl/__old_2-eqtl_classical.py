@@ -6,14 +6,14 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.14.4
+#       jupytext_version: 1.14.5
 #   kernelspec:
 #     display_name: Python 3 (ipykernel)
 #     language: python
 #     name: python3
 # ---
 
-# %% tags=[]
+# %%
 # %load_ext autoreload
 # %autoreload 2
 
@@ -39,50 +39,50 @@ import chromatinhd as chd
 import tempfile
 import requests
 
-# %% tags=[]
+# %%
 data_folder = chd.get_output() / "data" / "eqtl" / "onek1k"
 raw_data_folder = data_folder / "raw"
 
 # %% [markdown]
 # ## Load data
 
-# %% tags=[]
+# %%
 data_folder = chd.get_output() / "data" / "eqtl" / "onek1k"
 
-# %% tags=[]
+# %%
 transcriptome = chd.data.transcriptome.transcriptome.ClusterTranscriptome(data_folder / "transcriptome")
 
-# %% tags=[]
+# %%
 adata2 = transcriptome.adata
 
-# %% tags=[]
+# %%
 variants_info = pd.read_pickle(data_folder / "variants_info.pkl")
 variants_info["ix"] = np.arange(len(variants_info))
 
-# %% tags=[]
+# %%
 donors_info = pd.read_csv(data_folder / "donors_info.csv", index_col = 0)
 
-# %% tags=[]
+# %%
 genes = pd.read_csv(data_folder / "genes.csv", index_col = 0)
 
-# %% tags=[]
+# %%
 cluster_info = pd.DataFrame({"cluster":transcriptome.obs["cluster"].unique().sort_values()}).set_index("cluster")
 cluster_info["ix"] = np.arange(len(cluster_info))
 
-# %% tags=[]
+# %%
 final_file = data_folder /"final.bcf.gz"
 
-# %% tags=[]
+# %%
 import cyvcf2
 vcf = cyvcf2.VCF(final_file)
 
-# %% tags=[]
+# %%
 adata2.var["std"] = adata2.X.std(0)
 
-# %% tags=[]
+# %%
 genes["std"] = adata2.var["std"]
 
-# %% tags=[]
+# %%
 (genes
      # .query("biotype == 'lncRNA'")
      .sort_values("std", ascending = False)
@@ -92,10 +92,10 @@ genes["std"] = adata2.var["std"]
 # %% [markdown]
 # ## Run for all
 
-# %% tags=[]
+# %%
 expression
 
-# %% tags=[]
+# %%
 cluster_info = pd.DataFrame({"cluster":pd.Series(adata2.obs["cluster"].unique()).sort_values().dropna()}).set_index("cluster")
 cluster_info["ix"] = np.arange(len(cluster_info))
 cluster_to_cluster_ix = cluster_info["ix"].to_dict()
@@ -109,7 +109,7 @@ variant_to_variant_ix = variants_info["ix"].to_dict()
 donors_info = donors_info
 
 
-# %% tags=[]
+# %%
 def get_types(window):
     # f"{gene_oi.chr}:{window[0]}-{window[1]}"
     # get types
@@ -132,14 +132,14 @@ def get_expression(gene_id):
     return expression
 
 
-# %% tags=[]
+# %%
 # genes_oi = genes.iloc[:1000]
 genes_oi = genes.query("symbol == 'BACH2'")
 
-# %% tags=[]
+# %%
 import chromatinhd.qtl.mapping
 
-# %% tags=[]
+# %%
 data = {"p":[], "cluster_ix":[], "slope":[], "variant_ix":[], "gene_ix":[]}
 for _, gene_oi in tqdm.tqdm(genes_oi.iterrows(), total = len(genes_oi)):
     window_size = 10**6
@@ -169,47 +169,47 @@ for _, gene_oi in tqdm.tqdm(genes_oi.iterrows(), total = len(genes_oi)):
     
 # scores = pd.DataFrame(scores)
 
-# %% tags=[]
+# %%
 scores = pd.DataFrame({k:np.concatenate(v) for k, v in data.items()})
 
-# %% tags=[]
+# %%
 scores["cluster"] = pd.Categorical.from_codes(scores["cluster_ix"], categories = cluster_info.index)
 scores["variant"] = pd.Categorical.from_codes(scores["variant_ix"], categories = variants_info.index)
 scores["gene"] = pd.Categorical.from_codes(scores["gene_ix"], categories = genes.index)
 
-# %% tags=[]
+# %%
 scores = scores.dropna(subset = ["p"]).copy()
 
-# %% tags=[]
+# %%
 import statsmodels.stats.multitest
 scores["q"] = statsmodels.stats.multitest.fdrcorrection(scores["p"])[1]
 scores["log10q"] = np.log10(scores["q"])
 
-# %% tags=[]
+# %%
 scores["variant_rsid"] = pd.Categorical(variants_info["rsid"].iloc[scores["variant_ix"]])
 
-# %% tags=[]
+# %%
 scores["significant"] = scores["q"] < 0.05
 
-# %% tags=[]
+# %%
 scores.groupby("cluster")["significant"].sum().plot(kind = "bar")
 
-# %% tags=[]
+# %%
 scores.sort_values("p")
 
-# %% tags=[]
+# %%
 scores.query("variant == 'chr2:203234499:A:G'")
 
 # %% [markdown]
 # ### Interpret
 
-# %% tags=[]
+# %%
 scores["significant"] = scores["q"] < 0.05
 
-# %% tags=[]
+# %%
 scores.groupby("cluster")["significant"].sum()
 
-# %% tags=[]
+# %%
 # score_oi = scores.query("(q < 0.05) & (cluster == 'Monocytes')").sort_values("q").iloc[10]
 score_oi = scores.query("(variant == 'chr6:89899164:T:C') & (cluster == 'Monocytes')").iloc[0]
 gene_oi = genes.loc[score_oi["gene"]]
@@ -217,10 +217,10 @@ variant_info = variants_info.loc[score_oi["variant"]]
 
 scores.query("(variant == @variant_info.name) & (gene == @gene_oi.name)").head(10).style.bar(subset = ["slope"])
 
-# %% tags=[]
+# %%
 expression = get_expression(gene_oi.name)
 
-# %% tags=[]
+# %%
 variant = list(vcf(f"{variant_info.chr}:{variant_info.start}-{variant_info.end}"))[0]
 
 expression_clusters = {}
@@ -240,30 +240,30 @@ for cluster, (y_all, samples_profiled) in expression_clusters.items():
     plotdata.append(pd.DataFrame({"genotype":gt, "expression":y_all, "cluster":cluster}))
 plotdata = pd.concat(plotdata)
 
-# %% tags=[]
+# %%
 plotdata = plotdata.dropna()
 
-# %% tags=[]
+# %%
 sns.boxplot(data = plotdata, x = "cluster", y = "expression", hue = "genotype")
 
-# %% tags=[]
+# %%
 sc.pl.pca(adata2, color = ["cluster", gene_oi.name])
 
-# %% tags=[]
+# %%
 cluster = "Monocytes"
 cluster = "CD4 T"
 scores_oi = scores.query("cluster == @cluster").join(variants_info, on = "variant")
 
-# %% tags=[]
+# %%
 fig, ax = plt.subplots()
 ax.scatter(scores_oi["pos"], -scores_oi["log10q"])
 ax.axhline(-np.log10(0.05))
 
-# %% tags=[]
+# %%
 fig, ax = plt.subplots()
 ax.scatter(scores_oi["pos"], scores_oi["r"], c = scores_oi["log10q"])
 
-# %% tags=[]
+# %%
 cluster_1 = "CD4 T";cluster_2 = "CD8 T" # IRF7
 cluster_1 = "Monocytes";cluster_2 = "B" # RGS1
 cluster_1 = "CD4 T";cluster_2 = "CD8 T" # XBP1
@@ -271,7 +271,7 @@ cluster_1 = "CD4 T";cluster_2 = "CD8 T" # XBP1
 scores_oi_1 = scores.query("cluster == @cluster_1").join(variants_info, on = "variant")
 scores_oi_2 = scores.query("cluster == @cluster_2").join(variants_info, on = "variant")
 
-# %% tags=[]
+# %%
 fig, ax = plt.subplots()
 ax.scatter(-scores_oi_1["log10q"], -scores_oi_2["log10q"], c = scores_oi_1["r"])
 

@@ -154,10 +154,17 @@ latent = np.random.rand(fragments.n_cells).astype(np.float32)
 
 # %%
 import chromatinhd.models.likelihood_pseudotime.v1 as likelihood_model
-model = likelihood_model.Decoding(fragments, torch.from_numpy(latent), nbins = (32, ))
-
+nbins = (128, 64, 32, )
+model = likelihood_model.Model(fragments, latent, nbins = nbins)
 # %%
 model.latent
 
 # %%
 model.forward(data)
+
+#%%
+model = model.to('cpu').train()
+loaders_train.restart()
+loaders_validation.restart()
+trainer = chd.train.Trainer(model, loaders_train, loaders_validation, optimizer, n_epochs = 50, checkpoint_every_epoch=1, optimize_every_step = 1, hooks_checkpoint = hooks)
+trainer.train()

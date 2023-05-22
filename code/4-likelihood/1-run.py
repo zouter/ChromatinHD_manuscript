@@ -66,7 +66,7 @@ for dataset_name, design_dataset in design.groupby("dataset"):
             method_info = methods_info[method_name]
 
             print(f"{dataset_name=} {promoter_name=} {method_name=}")
-            prediction = Prediction(
+            prediction = chd.flow.Flow(
                 chd.get_output()
                 / "prediction_likelihood"
                 / dataset_name

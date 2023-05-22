@@ -95,7 +95,7 @@ fold_slice = slice(0, 10)
 # score
 for prediction_name, design_row in design.items():
     print(prediction_name)
-    prediction = Prediction(
+    prediction = chd.flow.Flow(
         chd.get_output()
         / "prediction_sequence"
         / dataset_name

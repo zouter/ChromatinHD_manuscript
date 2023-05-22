@@ -24,10 +24,11 @@ from chromatinhd_manuscript.designs import (
     dataset_latent_peakcaller_diffexp_method_combinations as design,
 )
 
-design = design.query("dataset == 'GSE198467_H3K27ac'")
+# design = design.query("dataset == 'GSE198467_H3K27ac'")
+design = design.query("dataset in ['pbmc10k']")
 # design = design.query("dataset in ['lymphoma', 'e18brain']")
 # design = design.query("peakcaller in ['stack', '1k1k']")
-# design = design.query("diffexp in ['signac']")
+design = design.query("diffexp in ['scanpy']")
 # design = design.query("peakcaller == 'encode_screen'")
 
 design["force"] = True
@@ -57,7 +58,7 @@ for dataset_name, design_dataset in design.groupby("dataset"):
         latent_folder = folder_data_preproc / "latent"
 
         for method_name, subdesign in subdesign.groupby("method"):
-            prediction = Prediction(
+            prediction = chd.flow.Flow(
                 chd.get_output()
                 / "prediction_likelihood"
                 / dataset_name
@@ -152,29 +153,29 @@ for dataset_name, design_dataset in design.groupby("dataset"):
                             )
                             basepair_ranking[probs_interpolated < prob_cutoff] = -99999
 
-                            filter_background = True
-                            background_window = 250
-                            if filter_background:
+                            # filter_background = True
+                            # background_window = 250
+                            # if filter_background:
 
-                                def moving_average(a, n=3):
-                                    dim = -1
-                                    a_padded = torch.nn.functional.pad(
-                                        a, (n // 2, n // 2), mode="replicate"
-                                    )
-                                    ret = torch.cumsum(a_padded, axis=dim)
-                                    ret[..., :-n] = ret[..., n:] - ret[..., :-n]
+                            #     def moving_average(a, n=3):
+                            #         dim = -1
+                            #         a_padded = torch.nn.functional.pad(
+                            #             a, (n // 2, n // 2), mode="replicate"
+                            #         )
+                            #         ret = torch.cumsum(a_padded, axis=dim)
+                            #         ret[..., :-n] = ret[..., n:] - ret[..., :-n]
 
-                                    return ret[..., : a.shape[dim]] / n
+                            #         return ret[..., : a.shape[dim]] / n
 
-                                n = (background_window // basepair_step) + 1
-                                x = torch.from_numpy(np.exp(probs_interpolated))
-                                probs_smoothened = moving_average(x, n).numpy()
+                            #     n = (background_window // basepair_step) + 1
+                            #     x = torch.from_numpy(np.exp(probs_interpolated))
+                            #     probs_smoothened = moving_average(x, n).numpy()
 
-                                mask = (
-                                    np.exp(probs_interpolated) / probs_smoothened
-                                ) < 1.2
-                                print(mask.mean())
-                                basepair_ranking[mask] = -99999
+                            #     mask = (
+                            #         np.exp(probs_interpolated) / probs_smoothened
+                            #     ) < 1.2
+                            #     print(mask.mean())
+                            #     basepair_ranking[mask] = -99999
 
                         # set cutoffs for each cluster to get the same # of nucleotides in each
                         cutoffs = []
@@ -191,9 +192,12 @@ for dataset_name, design_dataset in design.groupby("dataset"):
                             cutoff = np.quantile(
                                 basepair_ranking[:, cluster_ix], 1 - perc
                             )
+                            print(perc)
                             assert not pd.isnull(cutoff), cluster_ix
                             cutoffs.append(cutoff)
                         cutoffs = np.array(cutoffs)
+
+                        print(cutoffs)
 
                         # call differential regions
                         regionresult = (

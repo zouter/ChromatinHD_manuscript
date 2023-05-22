@@ -29,25 +29,28 @@ from chromatinhd_manuscript.designs import (
 
 # design = design.query("dataset != 'alzheimer'")
 # design = design.query("dataset == 'morf_20'")
-design = design.query("peakcaller in ['macs2_improved']")
-# design = design.query("diffexp in ['signac']")
-design = design.query("dataset == 'GSE198467_H3K27ac'")
+design = design.query("peakcaller in ['encode_screen']")
+# design = design.query("diffexp in ['scanpy_logreg']")
+# design = design.query("diffexp in ['scanpy_logreg']")
+# design = design.query("dataset == 'GSE198467_H3K27ac'")
 
 
 # design = design.query("dataset in ['lymphoma', 'e18brain']")
 # design = design.query("dataset == 'brain'")
-design = design.query("enricher == 'cluster_vs_clusters'")
+# design = design.query("enricher == 'cluster_vs_clusters'")
 # design = design.query("enricher == 'cluster_vs_background'")
 
 ## QTL
-# from chromatinhd_manuscript.designs import (
-#     dataset_latent_peakcaller_diffexp_method_qtl_enricher_combinations as design,
-# )
+from chromatinhd_manuscript.designs import (
+    dataset_latent_peakcaller_diffexp_method_qtl_enricher_combinations as design,
+)
 
-# design = design.query("dataset == 'pbmc10k_gran'")
+design = design.query("dataset == 'pbmc10k'")
 # design = design.query("peakcaller == 'cellranger'")
-# design = design.query("motifscan == 'gwas_immune'")
+# design = design.query("motifscan == 'gwas_immune2'")
 # design = design.query("motifscan == 'onek1k_0.2'")
+design = design.query("diffexp == 'scanpy'")
+# design = design.query("diffexp == 'signac'")
 ##
 
 design["force"] = True
@@ -78,7 +81,7 @@ for dataset_name, design_dataset in design.groupby("dataset"):
 
         for method_name, subdesign in subdesign.groupby("method"):
             print(f"{dataset_name=} {promoter_name=} {method_name=}")
-            prediction = Prediction(
+            prediction = chd.flow.Flow(
                 chd.get_output()
                 / "prediction_likelihood"
                 / dataset_name

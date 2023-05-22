@@ -91,7 +91,7 @@ for dataset_name in [
 
         for prediction_name, design_row in design.items():
             print(f"{dataset_name=} {promoter_name=} {peaks_name=} {prediction_name=}")
-            prediction = Prediction(
+            prediction = chd.flow.Flow(
                 chd.get_output()
                 / "prediction_vae"
                 / dataset_name

@@ -14,8 +14,11 @@
 # ---
 
 # %%
-# %load_ext autoreload
-# %autoreload 2
+from IPython import get_ipython
+
+if get_ipython():
+    get_ipython().run_line_magic("load_ext", "autoreload")
+    get_ipython().run_line_magic("autoreload", "2")
 
 import numpy as np
 import pandas as pd
@@ -45,7 +48,9 @@ import itertools
 # ### Method info
 
 # %%
-from chromatinhd_manuscript.designs import dataset_latent_peakcaller_diffexp_method_qtl_enricher_combinations as design
+from chromatinhd_manuscript.designs import (
+    dataset_latent_peakcaller_diffexp_method_qtl_enricher_combinations as design,
+)
 
 # %%
 promoter_name = "10k10k"
@@ -53,8 +58,22 @@ promoter_name = "10k10k"
 
 # %%
 def get_score_folder(x):
-    return chd.get_output() / "prediction_likelihood" / x.dataset / promoter_name / x.latent / x.method / "scoring" / x.peakcaller / x.diffexp / x.motifscan / x.enricher
-design["score_folder"] = design.apply(get_score_folder, axis = 1)
+    return (
+        chd.get_output()
+        / "prediction_likelihood"
+        / x.dataset
+        / promoter_name
+        / x.latent
+        / x.method
+        / "scoring"
+        / x.peakcaller
+        / x.diffexp
+        / x.motifscan
+        / x.enricher
+    )
+
+
+design["score_folder"] = design.apply(get_score_folder, axis=1)
 
 # %%
 import scipy.stats
@@ -67,7 +86,6 @@ design_row = (
     # .query("dataset == 'e18brain'")
     # .query("dataset == 'alzheimer'")
     .query("dataset == 'brain'")
-    
     .query("peakcaller == 'rolling_50'")
     .query("enricher == 'cluster_vs_all'")
     # .query("motifscan == 'gtex_immune'")
@@ -83,33 +101,43 @@ score_folder = design_row["score_folder"]
 
 # %%
 print(score_folder)
-scores_peaks = pd.read_pickle(
-    score_folder / "scores_peaks.pkl"
-)
-scores_regions = pd.read_pickle(
-    score_folder / "scores_regions.pkl"
-)
+scores_peaks = pd.read_pickle(score_folder / "scores_peaks.pkl")
+scores_regions = pd.read_pickle(score_folder / "scores_regions.pkl")
 
 # scores[ix] = scores_peaks
-motifscores = pd.merge(scores_peaks, scores_regions, on = scores_peaks.index.names, suffixes = ("_peak", "_region"), how = "outer")
+motifscores = pd.merge(
+    scores_peaks,
+    scores_regions,
+    on=scores_peaks.index.names,
+    suffixes=("_peak", "_region"),
+    how="outer",
+)
 
 # %%
-(motifscores.query("n_peak > 100")["in_region"]).mean(), (motifscores.query("n_region > 100")["in_peak"]).mean()
+(motifscores.query("n_peak > 100")["in_region"]).mean(), (
+    motifscores.query("n_region > 100")["in_peak"]
+).mean()
 
 # %%
 motifscores["in_region"].mean(), motifscores["in_peak"].mean()
 
 # %%
-sns.histplot(motifscores.query("n_peak > 0")["pval_region"], bins = 10)
-sns.histplot(motifscores.query("n_peak > 0")["pval_peak"], bins = 10)
+sns.histplot(motifscores.query("n_peak > 0")["pval_region"], bins=10)
+sns.histplot(motifscores.query("n_peak > 0")["pval_peak"], bins=10)
 
 # %%
 # motifscores_oi = motifscores.loc["Monocytes"].xs("monoc", level = "cell_id")
 motifscores_oi = motifscores
-(motifscores_oi.query("n_region > 0")["pval_region"] < 0.05).sum() / (motifscores_oi.query("n_peak > 0")["pval_peak"] < 0.05).sum()
+(motifscores_oi.query("n_region > 0")["pval_region"] < 0.05).sum() / (
+    motifscores_oi.query("n_peak > 0")["pval_peak"] < 0.05
+).sum()
 
 # %%
-(motifscores_oi.query("n_region > 0")["in_region"]).mean() / (motifscores_oi.query("n_region > 0")["in_peak"]).mean()
+(motifscores_oi.query("n_region > 0")["in_region"]).mean() / (
+    motifscores_oi.query("n_region > 0")["in_peak"]
+).mean()
 
 # %%
-(motifscores_oi.query("n_peak > 0")["pval_peak"] < 0.05).sum(), (motifscores_oi.query("n_region > 0")["pval_region"] < 0.05).sum()
+(motifscores_oi.query("n_peak > 0")["pval_peak"] < 0.05).sum(), (
+    motifscores_oi.query("n_region > 0")["pval_region"] < 0.05
+).sum()

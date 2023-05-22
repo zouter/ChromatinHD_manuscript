@@ -14,8 +14,11 @@
 # ---
 
 # %%
-# %load_ext autoreload
-# %autoreload 2
+from IPython import get_ipython
+
+if get_ipython():
+    get_ipython().run_line_magic("load_ext", "autoreload")
+    get_ipython().run_line_magic("autoreload", "2")
 
 import numpy as np
 import pandas as pd
@@ -38,13 +41,17 @@ import chromatinhd as chd
 folder_root = chd.get_output()
 folder_data = folder_root / "data"
 
-dataset_name = "pbmc10k"; genome = "GRCh38.107"
-dataset_name = "pbmc10k_gran"; genome = "GRCh38.107"
+dataset_name = "pbmc10k"
+genome = "GRCh38.107"
+dataset_name = "pbmc10k_gran"
+genome = "GRCh38.107"
 # dataset_name = "e18brain"; genome = "mm10"
 # dataset_name = "lymphoma"; genome = "GRCh38.107"
 # dataset_name = "alzheimer"; genome = "mm10"
 # dataset_name = "brain"; genome = "GRCh38.107"
-dataset_name = "GSE198467_H3K27ac"; organism = "mm"; genome = "mm10"
+dataset_name = "GSE198467_H3K27ac"
+organism = "mm"
+genome = "mm10"
 
 # dataset_name = "FLI1_7"
 # dataset_name = "PAX2_7"

@@ -14,8 +14,14 @@
 # ---
 
 # %%
-# %load_ext autoreload
-# %autoreload 2
+import IPython
+
+if IPython.get_ipython():
+    IPython.get_ipython().run_line_magic("load_ext", "autoreload")
+    IPython.get_ipython().run_line_magic("autoreload", "2")
+    IPython.get_ipython().run_line_magic(
+        "config", "InlineBackend.figure_format='retina'"
+    )
 
 import numpy as np
 import pandas as pd
@@ -25,13 +31,10 @@ import matplotlib as mpl
 
 import seaborn as sns
 sns.set_style('ticks')
-# %config InlineBackend.figure_format='retina'
 
 import pickle
 
 import scanpy as sc
-
-import pathlib
 
 import torch
 
@@ -39,7 +42,10 @@ import tqdm.auto as tqdm
 
 # %%
 import chromatinhd as chd
-import tempfile
+import chromatinhd_manuscript as chdm
+from manuscript import Manuscript
+
+manuscript = Manuscript(chd.get_git_root() / "manuscript")
 
 # %% [markdown]
 # ## Data
@@ -110,7 +116,7 @@ cluster_info["lib"] = fragments.obs.groupby("cluster")["lib"].sum().values
 method_name = 'v9_128-64-32'
 class Prediction(chd.flow.Flow):
     pass
-prediction = Prediction(chd.get_output() / "prediction_likelihood" / dataset_name / promoter_name / latent_name / method_name)
+prediction = chd.flow.Flow(chd.get_output() / "prediction_likelihood" / dataset_name / promoter_name / latent_name / method_name)
 
 # %%
 model = pickle.load((prediction.path / "model_0.pkl").open("rb"))
@@ -164,7 +170,7 @@ pd.DataFrame({
     "prob_diff_up":(probs_diff_masked > np.log(2)).mean(-1).sum(-1),
     "nonmasked":(mask).mean(-1).mean(-1),
     "gene":fragments.var.index,
-    "symbol":promoters["symbol"],
+    "symbol":transcriptome.symbol(promoters.index),
     "ix":np.arange(len(promoters))
 }).sort_values("prob_diff_up", ascending = False).head(20)
 
@@ -181,10 +187,10 @@ genes = pd.read_csv(folder_data_preproc / "genome/genes.csv", index_col = 0)
 # ### Motifscan
 
 # %%
-# motifscan_name = "cutoff_0001"
+motifscan_name = "cutoff_0001"
 # motifscan_name = "cutoff_001"
 # motifscan_name = "onek1k_0.2"
-motifscan_name = "gwas_immune"
+# motifscan_name = "gwas_immune"
 # motifscan_name = "gwas_lymphoma"
 # motifscan_name = "gwas_cns"
 # motifscan_name = "gtex_immune"
@@ -208,46 +214,72 @@ plt.plot(np.diff(motifscan.indptr).reshape((len(promoters), (window[1] - window[
 # ### Peakcounts
 
 # %%
-import chromatinhd.peakcounts
+# import chromatinhd.peakcounts
 
-# %%
-peaks_name = "macs2_improved"
-peakcounts = chd.peakcounts.FullPeak(folder = chd.get_output() / "peakcounts" / dataset_name / peaks_name)
+# # %%
+# peaks_name = "macs2_improved"
+# peakcounts = chd.peakcounts.FullPeak(folder = chd.get_output() / "peakcounts" / dataset_name / peaks_name)
 
-# %%
-peak_diffexp = pd.read_csv(peakcounts.path / ("diffexp_" + latent_name + ".csv"), index_col = 0)
-peak_lfc = peak_diffexp.set_index(["cluster", "peak"])["logFC"].unstack()
-peak_lfc = peak_lfc.loc[cluster_info["dimension"]]
-peak_lfc = peak_lfc.set_index(cluster_info.index)
+# # %%
+# peak_diffexp = pd.read_csv(peakcounts.path / ("diffexp_" + latent_name + ".csv"), index_col = 0)
+# peak_lfc = peak_diffexp.set_index(["cluster", "peak"])["logFC"].unstack()
+# peak_lfc = peak_lfc.loc[cluster_info["dimension"]]
+# peak_lfc = peak_lfc.set_index(cluster_info.index)
 
-# %%
-peak_cluster_counts = pd.DataFrame(peakcounts.counts.todense(), index = cluster_info.reset_index().set_index("dimension").reindex(fragments.obs["cluster"])["cluster"], columns = peakcounts.var.index).groupby(level = 0).sum()
+# # %%
+# peak_cluster_counts = pd.DataFrame(peakcounts.counts.todense(), index = cluster_info.reset_index().set_index("dimension").reindex(fragments.obs["cluster"])["cluster"], columns = peakcounts.var.index).groupby(level = 0).sum()
 
-# %%
-# peak_cluster_probs = peak_cluster_counts / cluster_info["lib"].values[:, None] * fragments.obs["lib"].mean()
+# # %%
+# # peak_cluster_probs = peak_cluster_counts / cluster_info["lib"].values[:, None] * fragments.obs["lib"].mean()
 
-# %%
-var = peakcounts.var
-var["size"] = (peakcounts.peaks.groupby("peak").first()["end"] - peakcounts.peaks.groupby("peak").first()["start"])
+# # %%
+# var = peakcounts.var
+# var["size"] = (peakcounts.peaks.groupby("peak").first()["end"] - peakcounts.peaks.groupby("peak").first()["start"])
 
-# %%
-peak_probs = pd.Series(np.array(peakcounts.counts.sum(0))[0] / fragments.obs["lib"].sum() * fragments.obs["lib"].mean() * var["size"] / (window[1] - window[0]), index = peakcounts.var.index)
+# # %%
+# peak_probs = pd.Series(np.array(peakcounts.counts.sum(0))[0] / fragments.obs["lib"].sum() * fragments.obs["lib"].mean() * var["size"] / (window[1] - window[0]), index = peakcounts.var.index)
 
-# %%
-peak_cluster_probs = peak_probs.values[None, :] * 2**peak_lfc[peak_probs.index]
+# # %%
+# peak_cluster_probs = peak_probs.values[None, :] * 2**peak_lfc[peak_probs.index]
 
-# %%
-peak_cluster_prob_diffs = np.log(peak_cluster_probs) - np.log(peak_cluster_probs).mean(0)
+# # %%
+# peak_cluster_prob_diffs = np.log(peak_cluster_probs) - np.log(peak_cluster_probs).mean(0)
 
 # %% [markdown]
 # ## Choose gene
 
 # %%
-# peaks_name = "cellranger"
-# scores_dir = (prediction.path / "scoring" / peaks_name / motifscan_name)
-# genemotifscores_all = pd.read_pickle(scores_dir / "genemotifscores_all.pkl")
+peaks_name = "cellranger"
+scores_dir = (prediction.path / "scoring" / peaks_name / "scanpy"/ "cutoff_0001" / "cluster_vs_clusters")
+genemotifscores_all = pd.read_pickle(scores_dir / "scores_regions.pkl")
 # # genemotifscores_all.xs(motifs_oi.index[1], level = "motif").sort_values("n_region", ascending = False).assign(symbol = lambda x:transcriptome.symbol(x.index).values)
 # genemotifscores_all.sort_values("n_region", ascending = False).assign(symbol = lambda x:transcriptome.symbol(x.index.get_level_values("gene")).values)
+
+# %%
+# plt.scatter(
+#     genemotifscores_all.loc["B"]["logodds"], 
+#     genemotifscores_all.loc["Lymphoma"]["logodds"],
+# )
+
+motifs_oi2 = [
+    motifs.loc[motifs.index.str.contains("PO2F2")].index[0],
+    motifs.loc[motifs.index.str.contains("PO5F1")].index[0],
+    motifs.loc[motifs.index.str.contains("PAX5")].index[0],
+    motifs.loc[motifs.index.str.contains("TFE2")].index[0],
+    motifs.loc[motifs.index.str.contains("DLX3")].index[0],
+    motifs.loc[motifs.index.str.contains("SNAI1")].index[0],
+]
+for motif in motifs_oi2:
+    plt.annotate(
+        motif.split("_")[0],
+        (genemotifscores_all.loc["B"]["logodds"].loc[motif], 
+        genemotifscores_all.loc["Lymphoma"]["logodds"].loc[motif]),
+        ha = "center",
+        bbox = dict(boxstyle='round', facecolor='wheat', alpha=0.5),
+    )
+
+# %%
+transcriptome.var.loc[transcriptome.var.symbol.str.contains("CD274")]
 
 # %%
 # gene_oi = 0; symbol = transcriptome.var.iloc[gene_oi]["symbol"];gene_id = transcriptome.var.index[gene_oi]
@@ -255,7 +287,7 @@ peak_cluster_prob_diffs = np.log(peak_cluster_probs) - np.log(peak_cluster_probs
 # symbol = "ZFP36"
 # symbol = "IL3RA"
 # symbol = "CCL4"
-# symbol = "AAK1"
+# symbol = "TNFRSF9"
 # symbol = "RGS1"
 # symbol = "POU2AF1"
 # symbol = "CD74"
@@ -278,7 +310,7 @@ peak_cluster_prob_diffs = np.log(peak_cluster_probs) - np.log(peak_cluster_probs
 # symbol = "CTLA4"
 # symbol = "JAK2"
 # symbol = "IRF7"
-symbol = "CCL4"
+# symbol = "CCL4"
 # symbol = "CD70"
 # symbol = "TCF7"
 # symbol = "CD8A"
@@ -291,9 +323,28 @@ symbol = "CCL4"
 # symbol = "TCF3"
 # symbol = "SP140"
 # symbol = "TCF3"
-
-
 # symbol = "TNFRSF13C" # Certainly interesting, the promoter is opening up everywhere, no wonder with PU1 binding sites littered all over the place
+
+# Runx3 https://www.nature.com/articles/s41590-022-01273-4
+symbol = "CD101" # nope
+symbol = "CDH1" # nope
+symbol = "XCL1" # nope
+symbol = "RGS2" # nope
+symbol = "ITGAE" # perhaps
+symbol = "ADGRG1" # nope
+symbol = "TNFRSF9"
+symbol = "TNFAIP2"
+symbol = "IL10"
+symbol = "CD274"
+symbol = "CD79B"
+symbol = "CLEC17A"
+symbol = "CD38"
+symbol = "ZAP70"
+symbol = "ITGA4"
+symbol = "BCL2"
+# symbol = "CTLA4"
+# symbol = "IRF8"
+
 
 # symbol = "Foxc1"
 # symbol = "Neurod1"
@@ -384,10 +435,7 @@ if transcriptome is not None:
     sc.pl.umap(transcriptome.adata, color = gene_ids, title = transcriptome.symbol(gene_ids))
 
 # %%
-gene_id
-
-# %%
-# sc.pl.umap(transcriptome.adata, color = transcriptome.gene_id(["TCF7"]), legend_loc = "on data")
+sc.pl.umap(transcriptome.adata, color = transcriptome.gene_id(["POU2F2"]), legend_loc = "on data")
 
 # %% [markdown]
 # ## Plot gene
@@ -402,22 +450,39 @@ import itertools
 # motifs_oi = pd.DataFrame([], columns = ["motif", "clusters"]).set_index("motif")
 
 if motifscan_name in ["cutoff_0001", "cutoff_001"]:
+    if dataset_name == "pbmc10k":
+        motifs_oi = pd.DataFrame([
+            [motifs.loc[motifs.index.str.contains("SPI1")].index[0], ["B", "Monocytes", "cDCs"]],
+            [motifs.loc[motifs.index.str.contains("CEBPB")].index[0], ["Monocytes", "cDCs"]],
+            [motifs.loc[motifs.index.str.contains("PEBB")].index[0], ["NK"]],
+            [motifs.loc[motifs.index.str.contains("RUNX2")].index[0], ["NK"]],
+            [motifs.loc[motifs.index.str.contains("IRF8")].index[0], ["cDCs"]],
+            [motifs.loc[motifs.index.str.contains("IRF4")].index[0], ["cDCs", "B", "pDCs", "CD4 T", "CD8 T"]],
+            [motifs.loc[motifs.index.str.contains("TFE2")].index[0], ["B", "pDCs"]], # TCF3
+            [motifs.loc[motifs.index.str.contains("BHA15")].index[0], ["pDCs"]],   
+            [motifs.loc[motifs.index.str.contains("BC11A")].index[0], ["pDCs"]],
+            [motifs.loc[motifs.index.str.contains("PO2F2")].index[0], ["B"]],
+            [motifs.loc[motifs.index.str.contains("NFKB2")].index[0], ["B"]],
+            [motifs.loc[motifs.index.str.contains("RUNX1")].index[0], ["CD4 T", "CD8 T", "MAIT"]],
+            [motifs.loc[motifs.index.str.contains("RUNX3")].index[0], ["CD4 T", "CD8 T", "MAIT"]],
+            [motifs.loc[motifs.index.str.contains("GATA3")].index[0], ["CD4 T", "CD8 T", "MAIT"]],
+            [motifs.loc[motifs.index.str.contains("TCF7")].index[0], ["CD4 T", "CD8 T", "MAIT"]],
+        ], columns = ["motif", "clusters"]).set_index("motif")
+    elif dataset_name == "lymphoma":
+        motifs_oi = pd.DataFrame([
+            # [motifs.loc[motifs.index.str.contains("SPI1")].index[0], ["Monocytes"]],
+            # [motifs.loc[motifs.index.str.contains("RUNX3")].index[0], ["T"]],
+            [motifs.loc[motifs.index.str.contains("PO2F2")].index[0], ["Lymphoma", "Lymphoma cycling"]],
+            [motifs.loc[motifs.index.str.contains("PO5F1")].index[0], ["Lymphoma", "Lymphoma cycling"]],
+            [motifs.loc[motifs.index.str.contains("TFE2")].index[0], ["Lymphoma", "Lymphoma cycling"]],
+            [motifs.loc[motifs.index.str.contains("SNAI1")].index[0], ["Lymphoma", "Lymphoma cycling"]],
+            # [motifs.loc[motifs.index.str.contains("PAX5")].index[0], ["Lymphoma", "Lymphoma cycling"]],
+        ], columns = ["motif", "clusters"]).set_index("motif")
+        motifs_oi["label"] = motifscan.motifs.loc[motifs_oi.index, "gene_label"]
+
+elif motifscan_name.startswith("gwas"):
     motifs_oi = pd.DataFrame([
-        [motifs.loc[motifs.index.str.contains("SPI1")].index[0], ["B", "Monocytes", "cDCs"]],
-        [motifs.loc[motifs.index.str.contains("CEBPB")].index[0], ["Monocytes", "cDCs"]],
-        [motifs.loc[motifs.index.str.contains("PEBB")].index[0], ["NK"]],
-        [motifs.loc[motifs.index.str.contains("RUNX2")].index[0], ["NK"]],
-        [motifs.loc[motifs.index.str.contains("IRF8")].index[0], ["cDCs"]],
-        [motifs.loc[motifs.index.str.contains("IRF4")].index[0], ["cDCs", "B", "pDCs", "CD4 T", "CD8 T"]],
-        [motifs.loc[motifs.index.str.contains("TFE2")].index[0], ["B", "pDCs"]], # TCF3
-        [motifs.loc[motifs.index.str.contains("BHA15")].index[0], ["pDCs"]],   
-        [motifs.loc[motifs.index.str.contains("BC11A")].index[0], ["pDCs"]],
-        [motifs.loc[motifs.index.str.contains("PO2F2")].index[0], ["B"]],
-        [motifs.loc[motifs.index.str.contains("NFKB2")].index[0], ["B"]],
-        [motifs.loc[motifs.index.str.contains("RUNX1")].index[0], ["CD4 T", "CD8 T", "MAIT"]],
-        [motifs.loc[motifs.index.str.contains("RUNX3")].index[0], ["CD4 T", "CD8 T", "MAIT"]],
-        [motifs.loc[motifs.index.str.contains("GATA3")].index[0], ["CD4 T", "CD8 T", "MAIT"]],
-        [motifs.loc[motifs.index.str.contains("TCF7")].index[0], ["CD4 T", "CD8 T", "MAIT"]],
+        [x, [cluster_info.index[i]]] for x, i in zip(motifs.index, itertools.chain(range(len(cluster_info.index)), range(len(cluster_info.index))))
     ], columns = ["motif", "clusters"]).set_index("motif")
 
 # motifs_oi = pd.DataFrame([
@@ -438,11 +503,6 @@ if motifscan_name in ["cutoff_0001", "cutoff_001"]:
 #     ["bmem", ["B"]],
 # ], columns = ["motif", "clusters"]).set_index("motif")
 
-if motifscan_name in ["gwas_immune"]:
-    motifs_oi = pd.DataFrame([
-        [x, [cluster_info.index[i]]] for x, i in zip(motifs.index, itertools.chain(range(len(cluster_info.index)), range(len(cluster_info.index))))
-    ], columns = ["motif", "clusters"]).set_index("motif")
-
 # motifs_oi = pd.DataFrame([
 #     [motifs.loc[motifs.index.str.contains("NDF2")].index[0], ["leiden_2"]],
 #     [motifs.loc[motifs.index.str.contains("DLX3")].index[0], ["leiden_4"]],
@@ -453,8 +513,8 @@ if motifscan_name in ["gwas_immune"]:
 motifs_oi["ix"] = motifs.loc[motifs_oi.index, "ix"].values
 assert len(motifs_oi) == len(motifs_oi.index.unique())
 motifs_oi["color"] = sns.color_palette(n_colors = len(motifs_oi))
-# motifs_oi["label"] = motifs.loc[motifs_oi.index, "gene_label"]
-motifs_oi["label"] = motifs_oi.index
+if "label" not in motifs_oi:
+    motifs_oi["label"] = motifs_oi.index
 
 # %%
 indptr_start = gene_oi * (window[1] - window[0])
@@ -471,146 +531,14 @@ for motif in motifs_oi.index:
 motifdata = pd.DataFrame(motifdata, columns = ["position", "motif"])
 print(len(motifdata))
 
+motifdata.loc[motifdata["motif"] == "PO5F1_HUMAN.H11MO.0.A", "motif"] = "PO2F2_HUMAN.H11MO.0.A"
+motifs_oi = motifs_oi.loc[motifs_oi.index != "PO5F1_HUMAN.H11MO.0.A"]
+
 # %% [markdown]
-# ### Extract peaks
+# ### Extract peaks and peaks
 
 # %%
 promoter = promoters.loc[gene_id]
-
-
-# %%
-def center_peaks(peaks, promoter):
-    if peaks.shape[0] == 0:
-        peaks = pd.DataFrame(columns = ["start", "end", "method"])
-    else:
-        peaks[["start", "end"]] = [
-            [
-                (peak["start"] - promoter["tss"]) * promoter["strand"],
-                (peak["end"] - promoter["tss"]) * promoter["strand"]
-            ][::promoter["strand"]]
-
-            for _, peak in peaks.iterrows()
-        ]
-    return peaks
-
-
-# %%
-peaks = []
-
-import pybedtools
-promoter_bed = pybedtools.BedTool.from_dataframe(pd.DataFrame(promoter).T[["chr", "start", "end"]])
-
-peak_methods = []
-
-for peaks_name in [
-    "cellranger",
-    "macs2",
-    "macs2_improved",
-    "macs2_leiden_0.1",
-    "macs2_leiden_0.1_merged",
-    "genrich",
-    # "rolling_500",
-    # "rolling_50",
-    "encode_screen",
-]:
-    peaks_bed = pybedtools.BedTool(chd.get_output() / "peaks" / dataset_name / peaks_name / "peaks.bed")
-    
-    if peaks_name in ["macs2_leiden_0.1"]:
-        usecols = [0, 1, 2, 6]
-        names = ["chr", "start", "end", "name"]
-    else:
-        usecols = [0, 1, 2]
-        names = ["chr", "start", "end"]
-    peaks_cellranger = promoter_bed.intersect(peaks_bed, wb = True, nonamecheck = True).to_dataframe(usecols = usecols, names = names)
-    
-    if peaks_name in ["macs2_leiden_0.1"]:
-        peaks_cellranger = peaks_cellranger.rename(columns = {"name":"cluster"})
-        peaks_cellranger["cluster"] = peaks_cellranger["cluster"].astype(int)
-        
-    # peaks_cellranger = promoter_bed.intersect(peaks_bed).to_dataframe()
-    if len(peaks_cellranger) > 0:
-        peaks_cellranger["peak"] = peaks_cellranger["chr"] + ":" + peaks_cellranger["start"].astype(str) + "-" + peaks_cellranger["end"].astype(str)
-        peaks_cellranger["method"] = peaks_name
-        peaks_cellranger = center_peaks(peaks_cellranger, promoter)
-        peaks.append(peaks_cellranger.set_index("peak"))
-    peak_methods.append({"method":peaks_name})
-
-peaks = pd.concat(peaks).reset_index().set_index(["method", "peak"])
-peaks["size"] = peaks["end"] - peaks["start"]
-
-peak_methods = pd.DataFrame(peak_methods).set_index("method")
-peak_methods = peak_methods.loc[peak_methods.index.isin(peaks.index.get_level_values("method"))]
-peak_methods["ix"] = np.arange(peak_methods.shape[0])
-peak_methods["label"] = peak_methods.index
-
-# %%
-fig, ax = plt.subplots(figsize = (2, 0.5))
-ax.set_xlim(*window)
-for i, (_, peak) in enumerate(peaks.query("method == @peaks_name").iterrows()):
-    ax.plot([peak["start"], peak["end"]], [i, i])
-
-
-# %% [markdown]
-# ### Extract genes
-
-# %%
-def center(coords, promoter):
-    coords = coords.copy()
-    if promoter.strand == 1:
-        coords["start"] = coords["start"] - promoter["start"] + window[0]
-        coords["end"] = coords["end"] - promoter["start"] + window[0]
-    else:
-        coords["start"] = (window[1] - window[0]) - (coords["start"] - promoter["start"]) + window[0]
-        coords["end"] = (window[1] - window[0]) - (coords["end"] - promoter["start"]) + window[0]
-
-        coords = coords.rename(columns = {"start":"end", "end":"start"})
-        
-    return coords
-
-
-# %%
-genes = genes.rename(columns = {"Strand":"strand"})
-
-# %%
-plotdata_genes = center(genes.loc[genes["chr"] == promoter["chr"]].query("~((start > @promoter.end) | (end < @promoter.start))").copy(), promoter)
-plotdata_genes["ix"] = np.arange(len(plotdata_genes))
-
-# %%
-gene_ids = plotdata_genes.index
-
-# %%
-query = f"""<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE Query>
-<Query  virtualSchemaName = "default" formatter = "TSV" header = "1" uniqueRows = "0" count = "" datasetConfigVersion = "0.6" >
-			
-	<Dataset name = "hsapiens_gene_ensembl" interface = "default" >
-		<Filter name = "ensembl_gene_id" value = "{','.join(gene_ids)}"/>
-		<Filter name = "transcript_tsl" excluded = "0"/>
-        <Filter name = "transcript_is_canonical" excluded = "0"/>
-
-		<Attribute name = "ensembl_gene_id" />
-		<Attribute name = "ensembl_gene_id_version" />
-		<Attribute name = "exon_chrom_start" />
-		<Attribute name = "exon_chrom_end" />
-		<Attribute name = "genomic_coding_start" />
-		<Attribute name = "genomic_coding_end" />
-		<Attribute name = "ensembl_transcript_id" />
-		<Attribute name = "ensembl_transcript_id_version" />
-	</Dataset>
-</Query>"""
-url = "http://www.ensembl.org/biomart/martservice?query=" + query.replace("\t", "").replace("\n", "")
-from io import StringIO
-import requests
-session = requests.Session()
-session.headers.update({'User-Agent': 'Custom user agent'})
-r = session.get(url)
-result = pd.read_table(StringIO(r.content.decode("utf-8")))
-# result = result.dropna().copy()
-plotdata_exons = result[["Gene stable ID", "Exon region start (bp)", "Exon region end (bp)"]].rename(columns = {"Gene stable ID":"gene", "Exon region start (bp)":"start", "Exon region end (bp)":"end"}).dropna()
-plotdata_exons = center(plotdata_exons, promoter)
-
-plotdata_coding = result.rename(columns = {"Gene stable ID":"gene", "Genomic coding start":"start", "Genomic coding end":"end"}).dropna()
-plotdata_coding = center(plotdata_coding, promoter)
 
 # %% [markdown]
 # ### Empirical density
@@ -685,9 +613,6 @@ plotdata_conservation = pd.DataFrame({
 # ### Extract GC
 
 # %%
-import chromatinhd.conservation
-
-# %%
 onehot_promoters = pickle.load((folder_data_preproc / ("onehot_promoters_" + promoter_name + ".pkl")).open("rb"))
 
 # %%
@@ -718,6 +643,19 @@ metadata = pd.read_csv(raw_folder / "metadata.csv", index_col = 0)
 import pybedtools
 
 # %%
+def center_peaks(peaks, promoter):
+    if peaks.shape[0] == 0:
+        peaks = pd.DataFrame(columns=["start", "end", "method"])
+    else:
+        peaks[["start", "end"]] = [
+            [
+                (peak["start"] - promoter["tss"]) * promoter["strand"],
+                (peak["end"] - promoter["tss"]) * promoter["strand"],
+            ][:: promoter["strand"]]
+            for _, peak in peaks.iterrows()
+        ]
+    return peaks
+
 plotdata_chromatin_annot = []
 promoter_bed = pybedtools.BedTool.from_dataframe(pd.DataFrame.from_records([promoter])[["chr", "start", "end"]])
 for _, metadata_row in metadata.iterrows():
@@ -767,6 +705,9 @@ cmap_atac_diff = mpl.cm.RdBu_r
 # ### Plot
 
 # %%
+cluster_info_oi = cluster_info.loc[["B", "Lymphoma"]]
+
+# %%
 import chromatinhd.grid
 main = chd.grid.Grid(3, 3, padding_width = 0.1, padding_height = 0.1)
 fig = chd.grid.Figure(main)
@@ -776,14 +717,12 @@ resolution = 0.0005
 panel_width = (window[1] - window[0]) * resolution
 
 # gene annotation
-ax_gene = main[0, 1] = chd.differential.plot.Genes(
-    plotdata_genes,
-    plotdata_exons,
-    plotdata_coding,
-    gene_id,
-    promoter, 
-    window,
-    panel_width
+genome_folder = folder_data_preproc / "genome"
+ax_gene = main[0, 1] = chdm.plotting.Genes(
+    promoter,
+    genome_folder=genome_folder,
+    window=window,
+    width=panel_width,
 )
 
 panel_height = 0.5
@@ -792,7 +731,7 @@ panel_height = 0.5
 wrap_differential = main[1, 1] = chd.differential.plot.Differential(
     plotdata_genome,
     plotdata_genome_mean,
-    cluster_info,
+    cluster_info_oi,
     window,
     panel_width,
     panel_height,
@@ -812,7 +751,7 @@ if show_motifs:
     chd.differential.plot.MotifsHighlighting(wrap_differential, motifdata, motifs_oi, cluster_info)
     wrap_motiflegend = main[1, 2] = chd.differential.plot.MotifsLegend(
         motifs_oi,
-        cluster_info,
+        cluster_info_oi,
         1,
         panel_height,
         padding_height = padding_height
@@ -823,7 +762,7 @@ if show_expression:
     wrap_expression = main[1, 0] = chd.differential.plot.DifferentialExpression(
         plotdata_expression,
         plotdata_expression_clusters,
-        cluster_info,
+        cluster_info_oi,
         0.3,
         panel_height,
         padding_height = padding_height
@@ -831,13 +770,20 @@ if show_expression:
 
 show_peaks = True
 if show_peaks:
-    ax_peaks = main[2, 1] = chd.differential.plot.Peaks(peaks, peak_methods, window, panel_width)
+    peaks_folder = chd.get_output() / "peaks" / dataset_name
+    peaks_panel = main.add_under(chdm.plotting.Peaks(
+        promoter,
+        peaks_folder,
+        window=window,
+        width=panel_width,
+        row_height=0.4,
+    ), 1)
 
-show_lower = True
+show_lower = False
 if show_lower:
-    ax_conservation = main[3, 1] = chd.differential.plot.Conservation(plotdata_conservation, window, panel_width)
-    ax_gc = main[4, 1] = chd.differential.plot.GC(plotdata_gc, window, panel_width)
-    ax_annot = main[5, 1] = chd.differential.plot.Annot(plotdata_chromatin_annot, window, panel_width, cluster_info)
+    ax_conservation = main.add_under(chd.differential.plot.Conservation(plotdata_conservation, window, panel_width), 1)
+    ax_gc = main.add_under(chd.differential.plot.GC(plotdata_gc, window, panel_width), 1)
+    ax_annot = main.add_under(chd.differential.plot.Annot(plotdata_chromatin_annot, window, panel_width, cluster_info), 1)
     main[5, 2] = chd.differential.plot.AnnotLegend(ax_annot, width = 1)
 
 # set x ticks
@@ -853,6 +799,8 @@ if transcriptome is not None:
         symbol
     ])
     sc.pl.umap(transcriptome.adata, color = gene_ids, title = transcriptome.symbol(gene_ids))
+    symbols = ["POU2F2", "POU2AF1"]
+    sc.pl.umap(transcriptome.adata, color = transcriptome.gene_id(symbols), title = symbols)
 
 # %% [markdown]
 # ### Animated

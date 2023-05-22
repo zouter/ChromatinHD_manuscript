@@ -18,13 +18,18 @@ from chromatinhd_manuscript.designs import (
     dataset_latent_peakcaller_diffexp_combinations as design,
 )
 
-# design = design.query("diffexp == 'scanpy'")  #!
+# design = design.query("diffexp == 'scanpy_logreg'")  #!
+# design = design.query("diffexp == 'scanpy_wilcoxon'")  #!
+design = design.query("diffexp == 'scanpy'")  #!
 
 # design = design.query("dataset != 'alzheimer'")
 # design = design.query("dataset == 'morf_20'")
 # design = design.query("peakcaller == 'encode_screen'")
 # design = design.query("dataset == 'alzheimer'")
-design = design.query("dataset == 'pbmc10k_eqtl'")
+design = design.query("dataset == 'lymphoma'")
+# design = design.query("peakcaller == 'cellranger'")
+design = design.query("promoter == '10k10k'")
+# design = design.query("dataset == 'pbmc10k_eqtl'")
 
 design["force"] = True
 
@@ -45,14 +50,16 @@ for dataset_name, design_dataset in design.groupby("dataset"):
         latent = pickle.load((latent_folder / (latent_name + ".pkl")).open("rb"))
         cluster_info = pd.read_pickle(latent_folder / (latent_name + "_info.pkl"))
 
-        for peakcaller, subdesign in subdesign.groupby("peakcaller"):
+        for (peakcaller, diffexp), subdesign in subdesign.groupby(
+            ["peakcaller", "diffexp"]
+        ):
             scores_dir = (
                 chd.get_output()
                 / "prediction_differential"
                 / dataset_name
                 / promoter_name
                 / latent_name
-                / "scanpy"
+                / diffexp
                 / peakcaller
             )
             scores_dir.mkdir(parents=True, exist_ok=True)
@@ -83,16 +90,57 @@ for dataset_name, design_dataset in design.groupby("dataset"):
                         latent.columns[np.where(latent.values)[1]],
                         categories=latent.columns,
                     )
-                    sc.tl.rank_genes_groups(adata_atac, "cluster", method="t-test")
+
+                    if diffexp == "scanpy_logreg":
+                        sc.pp.scale(adata_atac)
+                    sc.tl.rank_genes_groups(
+                        adata_atac,
+                        "cluster",
+                        method={
+                            "scanpy": "t-test",
+                            "scanpy_logreg": "logreg",
+                            "scanpy_wilcoxon": "wilcoxon",
+                        }[diffexp],
+                        max_iter=500,
+                    )
 
                     peakscores = []
                     for cluster_oi in cluster_info.index:
-                        peakscores_cluster = (
-                            sc.get.rank_genes_groups_df(adata_atac, group=cluster_oi)
-                            .rename(columns={"names": "peak", "scores": "score"})
-                            .set_index("peak")
-                            .assign(cluster=cluster_oi)
-                        )
+                        if diffexp == "scanpy_logreg":
+                            peakscores_cluster = (
+                                pd.DataFrame(
+                                    {
+                                        "logfoldchanges": adata_atac.uns[
+                                            "rank_genes_groups"
+                                        ]["scores"][cluster_oi]
+                                        * 10,
+                                        "peak": adata_atac.uns["rank_genes_groups"][
+                                            "names"
+                                        ][cluster_oi],
+                                    }
+                                )
+                                .set_index("peak")
+                                .assign(cluster=cluster_oi)
+                            )
+                            peakscores_cluster["score"] = peakscores_cluster[
+                                "logfoldchanges"
+                            ]
+                            peakscores_cluster["pvals_adj"] = 0.0
+                            # import IPython
+
+                            # IPython.embed()
+                            # raise ValueError()
+                        elif diffexp in ["scanpy", "scanpy_wilcoxon"]:
+                            peakscores_cluster = (
+                                sc.get.rank_genes_groups_df(
+                                    adata_atac, group=cluster_oi
+                                )
+                                .rename(columns={"names": "peak", "scores": "score"})
+                                .set_index("peak")
+                                .assign(cluster=cluster_oi)
+                            )
+                        else:
+                            raise ValueError(diffexp)
                         peakscores_cluster = peakcounts.peaks.join(
                             peakscores_cluster, on="peak"
                         ).sort_values("score", ascending=False)
@@ -114,4 +162,5 @@ for dataset_name, design_dataset in design.groupby("dataset"):
                 except KeyboardInterrupt as e:
                     raise e
                 except BaseException as e:
-                    print(e)
+                    print("ERROR: ", e)
+                    raise e

@@ -14,8 +14,11 @@
 # ---
 
 # %%
-# %load_ext autoreload
-# %autoreload 2
+from IPython import get_ipython
+
+if get_ipython():
+    get_ipython().run_line_magic("load_ext", "autoreload")
+    get_ipython().run_line_magic("autoreload", "2")
 
 import numpy as np
 import pandas as pd
@@ -153,7 +156,7 @@ scores = {}
 for _, (dataset_name, latent_name, method_name, peaks_name, motifscan_name) in design[
     ["dataset", "latent", "method", "peaks", "motifscan"]
 ].iterrows():
-    prediction = Prediction(
+    prediction = chd.flow.Flow(
         chd.get_output()
         / "prediction_likelihood"
         / dataset_name
@@ -545,7 +548,7 @@ for _, (
 ) in design[
     ["dataset", "latent", "method", "peaks", "motifscan", "known_motif"]
 ].iterrows():
-    prediction = Prediction(
+    prediction = chd.flow.Flow(
         chd.get_output()
         / "prediction_likelihood"
         / dataset_name

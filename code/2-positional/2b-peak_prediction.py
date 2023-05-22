@@ -7,20 +7,27 @@ from chromatinhd_manuscript.designs import (
     dataset_splitter_peakcaller_predictor_combinations as design,
 )
 
-design["force"] = False
 
 predictors = {
-    "xgboost": chromatinhd.models.positional.peak.prediction.PeaksGene,
+    "xgboost": chromatinhd.models.positional.peak.prediction.PeaksGeneXGBoost,
     "linear": chromatinhd.models.positional.peak.prediction.PeaksGeneLinear,
     "polynomial": chromatinhd.models.positional.peak.prediction.PeaksGenePolynomial,
     "lasso": chromatinhd.models.positional.peak.prediction.PeaksGeneLasso,
 }
 
-design = design.loc[(design["peakcaller"].str.startswith("stack"))]
+# design = design.loc[(design["peakcaller"].str.startswith("stack"))]
 # design = design.loc[~(design["peakcaller"].str.startswith("rolling_"))]
-# design = design.loc[(design["predictor"] == "linear")]
-# design = design.loc[(design["dataset"] == "pbmc10k_gran")]
-design = design.loc[(design["splitter"] == "random_5fold")]
+# design = design.loc[(design["peakcaller"] == "cellranger")]
+# design = design.loc[(design["predictor"] == "xgboost")]
+design = design.loc[(design["predictor"] == "lasso")]
+# design = design.loc[(design["dataset"] != "alzheimer")]
+# design = design.loc[(design["dataset"].isin(["brain", "e18brain", "pbmc10k_gran"]))]
+design = design.loc[(design["promoter"] == "10k10k")]
+# design = design.loc[(design["promoter"] == "100k100k")]
+# design = design.loc[(design["splitter"] == "random_5fold")]
+
+design["force"] = True
+print(design)
 
 
 for _, design_row in design.iterrows():

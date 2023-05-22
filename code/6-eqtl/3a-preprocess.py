@@ -17,8 +17,11 @@
 # # Preprocess
 
 # %%
-# %load_ext autoreload
-# %autoreload 2
+from IPython import get_ipython
+
+if get_ipython():
+    get_ipython().run_line_magic("load_ext", "autoreload")
+    get_ipython().run_line_magic("autoreload", "2")
 
 import numpy as np
 import pandas as pd
@@ -27,7 +30,8 @@ import matplotlib.pyplot as plt
 import matplotlib as mpl
 
 import seaborn as sns
-sns.set_style('ticks')
+
+sns.set_style("ticks")
 
 import torch
 
@@ -46,11 +50,12 @@ folder_root = chd.get_output()
 folder_data = folder_root / "data"
 
 original_dataset_name = "pbmc10k"
-dataset_name = "pbmc10k_eqtl"; genome = "GRCh38.107"
+dataset_name = "pbmc10k_eqtl"
+genome = "GRCh38.107"
 
 original_folder_data_preproc = folder_data / original_dataset_name
 folder_data_preproc = folder_data / dataset_name
-folder_data_preproc.mkdir(exist_ok = True, parents = True)
+folder_data_preproc.mkdir(exist_ok=True, parents=True)
 
 if not (folder_data_preproc / "genome").exists():
     genome_folder = chd.get_output() / "data" / "genomes" / genome
@@ -62,6 +67,7 @@ if not (folder_data_preproc / "genome").exists():
 
 # %%
 import pathlib
+
 scores = pickle.load(pathlib.Path("scores.pkl").open("rb"))
 scores["significant"] = scores["bf"] > np.log(10)
 
@@ -72,7 +78,9 @@ variants_oi = variants_oi[variants_oi].index
 # %%
 fragment_dataset_name = "pbmc10k_leiden_0.1"
 genotyped_dataset_name = fragment_dataset_name + "_gwas"
-genotyped_dataset_folder = chd.get_output() / "datasets" / "genotyped" / genotyped_dataset_name
+genotyped_dataset_folder = (
+    chd.get_output() / "datasets" / "genotyped" / genotyped_dataset_name
+)
 genotype = chd.data.genotype.genotype.Genotype(genotyped_dataset_folder / "genotype")
 variants_info = genotype.variants_info.loc[variants_oi]
 
@@ -100,13 +108,15 @@ promoter_name, (padding_negative, padding_positive) = "10k10k", (10000, 10000)
 import pybedtools
 
 # %%
-promoters = pd.DataFrame({
-    "chr":variants_info["chr"],
-    "tss":variants_info["start"],
-    "start":variants_info["start"] - padding_negative,
-    "end":variants_info["end"] + padding_positive,
-    "strand":+1
-})
+promoters = pd.DataFrame(
+    {
+        "chr": variants_info["chr"],
+        "tss": variants_info["start"],
+        "start": variants_info["start"] - padding_negative,
+        "end": variants_info["end"] + padding_positive,
+        "strand": +1,
+    }
+)
 promoters.index.name = "gene"
 
 # %%
@@ -116,18 +126,23 @@ promoters.to_csv(folder_data_preproc / ("promoters_" + promoter_name + ".csv"))
 # #### Create fragments
 
 # %%
-promoters = pd.read_csv(folder_data_preproc / ("promoters_" + promoter_name + ".csv"), index_col = 0)
+promoters = pd.read_csv(
+    folder_data_preproc / ("promoters_" + promoter_name + ".csv"), index_col=0
+)
 
 # %%
-transcriptome = chromatinhd.data.Transcriptome(original_folder_data_preproc / "transcriptome")
+transcriptome = chromatinhd.data.Transcriptome(
+    original_folder_data_preproc / "transcriptome"
+)
 
 # %%
 import pathlib
 import chromatinhd.data
+
 fragments = chd.data.Fragments(folder_data_preproc / "fragments" / promoter_name)
 
 # %%
-var = pd.DataFrame(index = promoters.index)
+var = pd.DataFrame(index=promoters.index)
 var["ix"] = np.arange(var.shape[0])
 
 n_genes = var.shape[0]
@@ -139,7 +154,9 @@ obs["ix"] = np.arange(obs.shape[0])
 
 if "cell_original" in transcriptome.adata.obs.columns:
     cell_ix_to_cell = transcriptome.adata.obs["cell_original"].explode()
-    cell_to_cell_ix = pd.Series(cell_ix_to_cell.index.astype(int), cell_ix_to_cell.values)
+    cell_to_cell_ix = pd.Series(
+        cell_ix_to_cell.index.astype(int), cell_ix_to_cell.values
+    )
 else:
     cell_to_cell_ix = obs["ix"].to_dict()
 
@@ -153,26 +170,27 @@ cell_to_fragments = [[] for i in obs["ix"]]
 coordinates_raw = []
 mapping_raw = []
 
-for i, (gene, promoter_info) in tqdm.tqdm(enumerate(promoters.iterrows()), total = promoters.shape[0]):
+for i, (gene, promoter_info) in tqdm.tqdm(
+    enumerate(promoters.iterrows()), total=promoters.shape[0]
+):
     gene_ix = var.loc[gene, "ix"]
     fragments_promoter = fragments_tabix.query(*promoter_info[["chr", "start", "end"]])
-    
+
     for fragment in fragments_promoter:
         cell = fragment[3]
-        
+
         # only store the fragment if the cell is actually of interest
         if cell in cell_to_cell_ix:
             # add raw data of fragment relative to tss
-            coordinates_raw.append([
-                (int(fragment[1]) - promoter_info["tss"]) * promoter_info["strand"],
-                (int(fragment[2]) - promoter_info["tss"]) * promoter_info["strand"]
-            ][::promoter_info["strand"]])
+            coordinates_raw.append(
+                [
+                    (int(fragment[1]) - promoter_info["tss"]) * promoter_info["strand"],
+                    (int(fragment[2]) - promoter_info["tss"]) * promoter_info["strand"],
+                ][:: promoter_info["strand"]]
+            )
 
             # add mapping of cell/gene
-            mapping_raw.append([
-                cell_to_cell_ix[fragment[3]],
-                gene_ix
-            ])
+            mapping_raw.append([cell_to_cell_ix[fragment[3]], gene_ix])
 
 # %%
 fragments.var = var
@@ -182,8 +200,8 @@ fragments.obs = obs
 # Create fragments tensor
 
 # %%
-coordinates = torch.tensor(np.array(coordinates_raw, dtype = np.int64))
-mapping = torch.tensor(np.array(mapping_raw), dtype = torch.int64)
+coordinates = torch.tensor(np.array(coordinates_raw, dtype=np.int64))
+mapping = torch.tensor(np.array(mapping_raw), dtype=torch.int64)
 
 # %% [markdown]
 # Sort `coordinates` and `mapping` according to `mapping`

@@ -26,9 +26,12 @@ from chromatinhd_manuscript.designs import (
 )
 
 design = design.query("splitter == 'permutations_5fold5repeat'")
-design = design.query("method == 'v20_initdefault'")
-design = design.query("dataset == 'pbmc10k'")
-design = design.query("promoter == '100k100k'")
+design = design.query("method == 'v20'")
+# design = design.query("method == 'counter'")
+# design = design.query("dataset == 'pbmc10k'")
+design = design.query("dataset == 'pbmc3k'")
+# design = design.query("dataset == 'pbmc10k_gran'")
+design = design.query("promoter == '10k10k'")
 
 design = design.copy()
 design["force"] = True
@@ -74,7 +77,7 @@ for (dataset_name, promoter_name), subdesign in design.groupby(["dataset", "prom
         for method_name, subdesign in subdesign.groupby("method"):
             method_info = methods_info[method_name]
 
-            prediction = Prediction(
+            prediction = chd.flow.Flow(
                 chd.get_output()
                 / "prediction_positional"
                 / dataset_name

@@ -34,21 +34,24 @@ design.index = np.arange(len(design))
 # design = design.loc[
 #     ~((design["dataset"] == "alzheimer") & (design["peakcaller"] == "genrich"))
 # ]
-design = design.query("dataset == 'pbmc10k_eqtl'")
+design = design.query("dataset == 'pbmc10k'")
+design = design.query("promoter == '100k100k'")
 
 design["force"] = False
 print(design)
 
-for dataset_name, design_dataset in design.groupby("dataset"):
+for (dataset_name, promoter), design_dataset in design.groupby(["dataset", "promoter"]):
     # transcriptome
     folder_data_preproc = folder_data / dataset_name
 
     # fragments
     # promoter_name, window = "1k1k", np.array([-1000, 1000])
-    promoter_name, window = "10k10k", np.array([-10000, 10000])
-    # promoter_name, window = "20kpromoter", np.array([-10000, 0])
+    if promoter == "10k10k":
+        window = np.array([-10000, 10000])
+    elif promoter == "100k100k":
+        window = np.array([-100000, 100000])
 
-    fragments = chd.data.Fragments(folder_data_preproc / "fragments" / promoter_name)
+    fragments = chd.data.Fragments(folder_data_preproc / "fragments" / promoter)
     fragments.window = window
 
     for peakcaller, subdesign in design_dataset.groupby("peakcaller"):
@@ -64,7 +67,7 @@ for dataset_name, design_dataset in design.groupby("dataset"):
         if force:
             print(subdesign)
             promoters = pd.read_csv(
-                folder_data_preproc / ("promoters_" + promoter_name + ".csv"),
+                folder_data_preproc / ("promoters_" + promoter + ".csv"),
                 index_col=0,
             )
 

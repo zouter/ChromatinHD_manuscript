@@ -14,8 +14,11 @@
 # ---
 
 # %%
-# %load_ext autoreload
-# %autoreload 2
+from IPython import get_ipython
+
+if get_ipython():
+    get_ipython().run_line_magic("load_ext", "autoreload")
+    get_ipython().run_line_magic("autoreload", "2")
 
 import numpy as np
 import pandas as pd
@@ -48,8 +51,9 @@ import chromatinhd as chd
 folder_root = chd.get_output()
 folder_data = folder_root / "data"
 
-# dataset_name = "lymphoma"; organism = "hs"
-dataset_name = "pbmc10k"; organism = "hs"
+dataset_name = "lymphoma"
+organism = "hs"
+# dataset_name = "pbmc10k"; organism = "hs"
 # dataset_name = "e18brain"; organism = "mm"
 # dataset_name = "alzheimer"; organism = "mm"
 # dataset_name = "brain"; organism = "hs"
@@ -154,7 +158,9 @@ promoters = pd.read_csv(
 )
 
 # %%
-genome = pickle.load(gzip.GzipFile((folder_data_preproc / "genome" / "genome.pkl.gz"), "rb"))
+genome = pickle.load(
+    gzip.GzipFile((folder_data_preproc / "genome" / "genome.pkl.gz"), "rb")
+)
 
 # %%
 import math
@@ -446,7 +452,9 @@ motifscan.shape = motifscores.shape
 # ### Save motifs (with gene info)
 
 # %%
-biomart_dataset_name = "mmusculus_gene_ensembl" if organism == "mm" else "hsapiens_gene_ensembl"
+biomart_dataset_name = (
+    "mmusculus_gene_ensembl" if organism == "mm" else "hsapiens_gene_ensembl"
+)
 
 # %%
 query = f"""<?xml version="1.0" encoding="UTF-8"?>
@@ -458,16 +466,24 @@ query = f"""<?xml version="1.0" encoding="UTF-8"?>
         <Attribute name = "entrezgene_id" />
     </Dataset>
 </Query>"""
-url = "http://www.ensembl.org/biomart/martservice?query=" + query.replace("\t", "").replace("\n", "")
+url = "http://www.ensembl.org/biomart/martservice?query=" + query.replace(
+    "\t", ""
+).replace("\n", "")
 from io import StringIO
 import requests
+
 session = requests.Session()
-session.headers.update({'User-Agent': 'Custom user agent'})
+session.headers.update({"User-Agent": "Custom user agent"})
 r = session.get(url)
 result = pd.read_table(StringIO(r.content.decode("utf-8")))
 
 # %%
-result = result.rename(columns = {"NCBI gene (formerly Entrezgene) ID":"EntrezGene", "Gene stable ID":"gene"})
+result = result.rename(
+    columns={
+        "NCBI gene (formerly Entrezgene) ID": "EntrezGene",
+        "Gene stable ID": "gene",
+    }
+)
 result = result.dropna()
 result = result.reset_index()
 result["EntrezGene"] = result["EntrezGene"].astype(int).astype(str)

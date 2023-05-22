@@ -105,7 +105,7 @@ for dataset_name, subdesign in design.groupby("dataset"):
                     class Prediction(chd.flow.Flow):
                         pass
 
-                    prediction = Prediction(
+                    prediction = chd.flow.Flow(
                         chd.get_output()
                         / "prediction_likelihood"
                         / dataset_name

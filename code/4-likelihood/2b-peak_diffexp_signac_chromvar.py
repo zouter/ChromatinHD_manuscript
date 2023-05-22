@@ -19,13 +19,17 @@ from chromatinhd_manuscript.designs import (
     dataset_latent_peakcaller_diffexp_combinations as design,
 )
 
-design = design.query("diffexp == 'signac'")  #!
+# design = design.query("diffexp == 'signac'")  #!
+design = design.query("diffexp == 'chromvar'")  #!
 
-design = design.query("dataset != 'alzheimer'")
-# design = design.query("dataset == 'pbmc10k'")
+# design = design.query("dataset != 'alzheimer'")
+design = design.query("dataset == 'pbmc10k'")
 
 R_location = "/data/peak_free_atac/software/R-4.2.2/bin/"
 signac_script_location = chd.get_code() / "1-preprocessing" / "peaks" / "run_signac.R"
+chromvar_script_location = (
+    chd.get_code() / "1-preprocessing" / "peaks" / "run_chromvar.R"
+)
 
 design["force"] = False
 
@@ -45,14 +49,16 @@ for dataset_name, design_dataset in design.groupby("dataset"):
         latent = pickle.load((latent_folder / (latent_name + ".pkl")).open("rb"))
         cluster_info = pd.read_pickle(latent_folder / (latent_name + "_info.pkl"))
 
-        for peakcaller, subdesign in subdesign.groupby("peakcaller"):
+        for (peakcaller, diffexp), subdesign in subdesign.groupby(
+            ["peakcaller", "diffexp"]
+        ):
             scores_dir = (
                 chd.get_output()
                 / "prediction_differential"
                 / dataset_name
                 / promoter_name
                 / latent_name
-                / "signac"  ##
+                / diffexp
                 / peakcaller
             )
             scores_dir.mkdir(parents=True, exist_ok=True)
@@ -85,6 +91,7 @@ for dataset_name, design_dataset in design.groupby("dataset"):
 
                     with tempfile.TemporaryDirectory() as tmpdirname:
                         tempfolder = pathlib.Path(tmpdirname)
+                        tempfolder = pathlib.Path("/tmp/")
 
                         import scipy.io
 
@@ -106,8 +113,14 @@ for dataset_name, design_dataset in design.groupby("dataset"):
                         # run R script
                         import os
 
+                        script_location = (
+                            signac_script_location
+                            if diffexp == "signac"
+                            else chromvar_script_location
+                        )
+
                         os.system(
-                            f"{R_location}/Rscript {signac_script_location} {tempfolder}"
+                            f"{R_location}/Rscript {script_location} {tempfolder}"
                         )
 
                         import shutil

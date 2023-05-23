@@ -192,18 +192,6 @@ plt.savefig(folder_data_preproc / 'plots/UMAP_MV2_ro_g2m_genes.pdf')
 # %%
 # sc.pl.umap(adata_rna2, color=['CD34', 'ATXN1'], title=['CD34', 'ATXN1'], use_raw=True)
 #%%
-# annotation = {
-#     '3': 'LMPP', #
-#     '2': 'HSC', #
-#     '8': 'MEP', # 
-#     '1': 'MPP', #
-#     '0': 'Erythrocyte', #
-#     '4': 'GMP', # 
-#     '5': 'Prog MK', #
-#     '6': 'Granulocyte', #
-#     '9': 'Prog DC', #
-#     '7': 'Prog B', # 
-# }
 annotation = {
     '0': 'LMPP', 
     '3': 'HSC', 
@@ -216,6 +204,7 @@ annotation = {
     '9': 'Prog DC', 
     '8': 'Prog B', 
 }
+
 df_annotation = pd.DataFrame({'leiden': list(annotation.keys()), 'celltype': list(annotation.values())}).set_index("celltype")
 df_annotation = df_annotation["leiden"].str.split(",").explode().to_frame().reset_index().set_index("leiden")["celltype"]
 df_annotation = df_annotation.reindex(adata_rna2.obs["leiden"].unique())
@@ -224,6 +213,9 @@ adata_rna2.obs["celltype"] = df_annotation.loc[adata_rna2.obs["leiden"]].values
 
 sc.pl.umap(adata_rna2, color="celltype", legend_loc="on data", show=False)
 plt.savefig(folder_data_preproc / 'plots/UMAP_MV2_ro_celltypes.pdf')
+
+#%%
+adata_rna2.obs["celltype"].to_csv(folder_data_preproc / "MV2_celltypes.csv")
 
 #%%
 adata_rna2.obs_names.to_frame().to_csv(folder_data_preproc / 'filtered_cells.txt', header=False, index=False)

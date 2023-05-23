@@ -1,16 +1,28 @@
 #%%
+import IPython
+if IPython.get_ipython() is not None:
+    IPython.get_ipython().magic('load_ext autoreload')
+    IPython.get_ipython().magic('autoreload 2')
+
+import gc
 import torch
+import torch_scatter
 import pickle
 import pathlib
 import tempfile
+import scipy.stats
 import numpy as np
 import pandas as pd
 import scanpy as sc
 import tqdm.auto as tqdm
-import chromatinhd as chd
 
-import matplotlib as mpl
+import chromatinhd as chd
+import chromatinhd.loaders.fragments
+import chromatinhd.models.likelihood.v9 as vae_model
+
+import plotly.express as px
 import matplotlib.pyplot as plt
+import matplotlib as mpl
 import seaborn as sns
 sns.set_style('ticks')
 # %config InlineBackend.figure_format='retina'
@@ -20,20 +32,19 @@ folder_root = chd.get_output()
 folder_data = folder_root / "data"
 dataset_name = "hspc"
 folder_data_preproc = folder_data / dataset_name
-promoter_name, window = "10k10k", np.array([-10000, 10000])
 
 # %%
+promoter_name, window = "10k10k", np.array([-10000, 10000])
 promoters = pd.read_csv(folder_data_preproc / ("promoters_" + promoter_name + ".csv"), index_col = 0)
 folds = pd.read_pickle(folder_data_preproc / "fragments_myeloid" / promoter_name / "folds.pkl")
 fragments = chd.data.Fragments(folder_data_preproc / "fragments_myeloid" / promoter_name)
 fragments.window = window
- 
+
 cells_train = folds[0]['cells_train']
 cells_validation = folds[0]['cells_validation']
 
 # %% 
 # ## Create loaders
-import chromatinhd.loaders.fragments
 
 n_cells_step = 100
 n_genes_step = 50
@@ -85,6 +96,8 @@ latent_name = "latent_time"
 latent_folder = folder_data_preproc / "latent"
 df = pd.read_csv(folder_data_preproc / "MV2_latent_time_myeloid.csv", index_col = 0)
 df['quantile'] = pd.qcut(df['latent_time'], q=10, labels=False)
+fragments.obs["cluster"] = df['quantile']
+
 latent = pd.get_dummies(df['quantile'], prefix='quantile')
 latent_torch = torch.from_numpy(latent.values).to(torch.float)
 n_latent_dimensions = latent.shape[-1]
@@ -96,12 +109,8 @@ cluster_info['dimension'] = range(n_latent_dimensions)
 cluster_info["color"] = sns.color_palette("husl", latent.shape[1])
 cluster_info.set_index('cluster', inplace=True)
 
-fragments.obs["cluster"] = df['quantile']
-
-# #%%
+# TODO move this to separate script
 # latent_name = "celltype"
-
-# folder_data_preproc = folder_data / dataset_name
 # latent_folder = folder_data_preproc / "latent"
 # latent = pickle.load((latent_folder / (latent_name + ".pkl")).open("rb"))
 # latent_torch = torch.from_numpy(latent.values).to(torch.float)
@@ -117,11 +126,7 @@ reflatent = torch.eye(n_latent_dimensions).to(torch.float)
 reflatent_idx = torch.from_numpy(np.where(latent.values)[1])
 
 # %%
-import chromatinhd.models.likelihood.v9 as vae_model
-model = vae_model.Decoding(fragments, torch.from_numpy(latent.values), nbins = (  128, 64, 32, ))
-# model = vae_model.Decoding(fragments, torch.from_numpy(latent.values), nbins = (32, ))
-
-# model = pickle.load((chd.get_output() / "prediction_likelihood/GSE198467_H3K27ac/10k10k/leiden_0.1/v9_128-64-32/model_0.pkl").open("rb"))
+model = vae_model.Decoding(fragments, torch.from_numpy(latent.values), nbins = (128, 64, 32, ))
 
 # %% [markdown]
 # ### Prior distribution
@@ -135,63 +140,67 @@ fragments.create_cut_data()
 
 # %%
 gene_oi = 0
-# gene_oi = promoters["symbol"].tolist().index("Neurod1")
-# gene_oi = int(transcriptome.gene_ix("Neurod1"));gene_id = transcriptome.var.index[gene_oi]
-# gene_oi = int(transcriptome.gene_ix("IL1B"));gene_id = transcriptome.var.index[gene_oi]
-# gene_oi = "ENSG00000005379";gene_ix = int(transcriptome.gene_ix(transcriptome.symbol(gene_oi)))
 
 # %%
 model.n_genes = fragments.n_genes
 
 # %%
 bc = torch.bincount(fragments.genemapping)
-(bc / bc.sum())[gene_oi] * fragments.n_genes
-
-# %% jp-MarkdownHeadingCollapsed=true tags=[]
-model = model.to(device)
-
-## Plot prior distribution
-fig, axes = plt.subplots(latent.shape[1], 1, figsize=(20, 1*latent.shape[1]), sharex = True, sharey = True)
-
-probs = []
-
-pseudocoordinates = torch.linspace(0, 1, 1000).to(device)
-
-bins = np.linspace(0, 1, 500)
-binmids = (bins[1:] + bins[:-1])/2
-binsize = binmids[1] - binmids[0]
-
-fragments_oi_all = (fragments.cut_local_gene_ix == gene_oi)
-print(fragments_oi_all.sum())
-for i, ax in zip(range(latent.shape[1]), axes):
-    lib_all = model.libsize.cpu().numpy()
-    
-    cells_oi = torch.where(latent_torch[:, i])[0]
-    lib_oi = model.libsize[cells_oi].cpu().numpy()
-    n_cells = latent_torch[:, i].sum()
-    
-    color = cluster_info.iloc[i]["color"]
-    fragments_oi = (latent_torch[fragments.cut_local_cell_ix, i] != 0) & (fragments.cut_local_gene_ix == gene_oi)
-    
-    bincounts, _ = np.histogram(fragments.cut_coordinates[fragments_oi].cpu().numpy(), bins = bins)
-    ax.bar(binmids, bincounts / n_cells * len(bins), width = binsize, color = "#888888", lw = 0)
-
-    # Plot initial posterior distribution
-    pseudolatent = torch.zeros((len(pseudocoordinates), latent.shape[1])).to(device)
-    pseudolatent[:, i] = 1.
-    
-    prob = model.evaluate_pseudo(pseudocoordinates.to(device), latent = pseudolatent.to(device), gene_oi = gene_oi)
-    ax.plot(pseudocoordinates.cpu().numpy(), np.exp(prob), label = i, color = color, lw = 2, zorder = 20)
-    ax.plot(pseudocoordinates.cpu().numpy(), np.exp(prob), label = i, color = "#FFFFFFFF", lw = 3, zorder = 10)
-    
-    # ax.set_ylabel(f"{cluster_info.iloc[i]['label']}\n# fragments={fragments_oi.sum()}\n {int(latent_torch[:, i].sum())}", rotation = 0, ha = "right", va = "center")
-    ax.set_ylabel(f"{cluster_info.iloc[i]['label']}\n freq={fragments_oi.sum()/n_cells}", rotation = 0, ha = "right", va = "center")
-    ax.set_ylim(0, 40)
-    
-    probs.append(prob)
-probs = np.stack(probs)
 
 # %%
+model = model.to(device)
+
+#%%
+def plot_distribution(latent, latent_torch, cluster_info, fragments, transcriptome, gene_oi, model, device, prior = True):
+    fig, axes = plt.subplots(latent.shape[1], 1, figsize=(20, 1*latent.shape[1]), sharex = True, sharey = True)
+
+    probs = []
+    pseudocoordinates = torch.linspace(0, 1, 1000).to(device)
+    bins = np.linspace(0, 1, 500)
+    binmids = (bins[1:] + bins[:-1])/2
+    binsize = binmids[1] - binmids[0]
+    fragments_oi_all = (fragments.cut_local_gene_ix == gene_oi)
+
+    gene_id = transcriptome.var.index[gene_oi]
+
+    for i, ax in zip(range(latent.shape[1]), axes):
+        lib_all = model.libsize.cpu().numpy()
+        
+        cells_oi = torch.where(latent_torch[:, i])[0]
+        lib_oi = model.libsize[cells_oi].cpu().numpy()
+        n_cells = latent_torch[:, i].sum()
+        
+        color = cluster_info.iloc[i]["color"]
+        fragments_oi = (latent_torch[fragments.cut_local_cell_ix, i] != 0) & (fragments.cut_local_gene_ix == gene_oi)
+        
+        bincounts, _ = np.histogram(fragments.cut_coordinates[fragments_oi].cpu().numpy(), bins = bins)
+        ax.bar(binmids, bincounts / n_cells * len(bins), width = binsize, color = "#888888", lw = 0)
+
+        # Plot initial posterior distribution
+        pseudolatent = torch.zeros((len(pseudocoordinates), latent.shape[1])).to(device)
+        pseudolatent[:, i] = 1.
+        
+        prob = model.evaluate_pseudo(pseudocoordinates.to(device), latent = pseudolatent.to(device), gene_oi = gene_oi)
+        ax.plot(pseudocoordinates.cpu().numpy(), np.exp(prob), label = i, color = color, lw = 2, zorder = 20)
+        ax.plot(pseudocoordinates.cpu().numpy(), np.exp(prob), label = i, color = "#FFFFFFFF", lw = 3, zorder = 10)
+        
+        ax.set_ylabel(f"{cluster_info.iloc[i]['label']}\n freq={fragments_oi.sum()/n_cells}", rotation = 0, ha = "right", va = "center")
+        ax.set_ylim(0, 40)
+        
+        probs.append(prob)
+
+    suffix = "_prior" if prior else ""
+    plt.savefig(folder_data_preproc / ("plots/evaluate_pseudo" + suffix) / (str(gene_oi) + ".pdf"))
+    probs = np.stack(probs)
+    return probs
+
+#%%
+probs = plot_distribution(latent, latent_torch, cluster_info, fragments, gene_oi, model, device, prior=True)
+
+# %%
+def plot_delta_heights(latent, latent_torch, cluster_info, fragments, gene_oi, model, device):
+    pass
+
 main = chd.grid.Grid(padding_height=0.1)
 fig = chd.grid.Figure(main)
 
@@ -231,18 +240,9 @@ ax.set_xlabel("Resolution")
 
 fig.plot()
 
-# %% [markdown] tags=[]
+# %%
 # ### Train
-
-# %%
 device = "cuda"
-# device = "cpu"
-
-# %%
-# model.mixture.transform.unnormalized_heights.data = model.mixture.transform.unnormalized_heights.data.to(torch.float64)
-# model.mixture.transform.unnormalized_widths.data = model.mixture.transform.unnormalized_widths.data.to(torch.float64)
-# model.decoder.logit_weight.data = model.decoder.logit_weight.data.to(torch.float64)
-# model.reflatent = model.reflatent.to(torch.float64)
 
 # %%
 optimizer = chd.optim.SparseDenseAdam(model.parameters_sparse(), model.parameters_dense(autoextend=True), lr = 1e-2)
@@ -250,12 +250,11 @@ optimizer = chd.optim.SparseDenseAdam(model.parameters_sparse(), model.parameter
 # %%
 loaders_train.restart()
 loaders_validation.restart()
-import gc
+
 gc.collect()
 torch.cuda.empty_cache()
 
 # %%
-import torch_scatter
 class GeneLikelihoodHook():
     def __init__(self, n_genes):
         self.n_genes = n_genes
@@ -277,13 +276,6 @@ hook_genelikelihood = GeneLikelihoodHook(fragments.n_genes)
 hooks = [hook_genelikelihood]
 
 # %%
-# torch.autograd.set_detect_anomaly(True)
-
-# %%
-# minibatches_train
-
-# %%
-# with torch.autograd.detect_anomaly():
 model = model.to(device).train()
 loaders_train.restart()
 loaders_validation.restart()
@@ -305,9 +297,6 @@ transcriptome.var.index.name = "gene"
 scores["label"] = transcriptome.var.loc[scores.index]['symbol']
 
 # %%
-scores.tail(20)
-
-# %%
 pickle.dump(model.to("cpu"), open("./model.pkl", "wb"))
 
 # %%
@@ -315,92 +304,25 @@ model = pickle.load(open("./model.pkl", "rb"))
 
 # %% [markdown]
 # ## Inference single gene
-
-# %%
-# model = pickle.load((chd.get_output() / "prediction_likelihood" / dataset_name / promoter_name / latent_name / "v4_64-32" / "model_2.pkl").open("rb"))
-# model = pickle.load((chd.get_output() / "prediction_likelihood" / dataset_name / promoter_name / latent_name / "v4_128-64-32_30" / "model_0.pkl").open("rb"))
-# model = pickle.load((chd.get_output() / "prediction_likelihood" / dataset_name / promoter_name / latent_name / "v4_128-64-32_30_freescale" / "model_0.pkl").open("rb"))
-# model = pickle.load((chd.get_output() / "prediction_likelihood" / dataset_name / promoter_name / latent_name / "v4_128-64-32_30_freescale_scalelik" / "model_0.pkl").open("rb"))
-# model = pickle.load((chd.get_output() / "prediction_likelihood" / dataset_name / promoter_name / latent_name / "v4_128-64-32_30_freescale_scalelik_laplace" / "model_0.pkl").open("rb"))
-# model = pickle.load((chd.get_output() / "prediction_likelihood" / dataset_name / promoter_name / latent_name / "v4_128-64-32_30_laplace0.05" / "model_0.pkl").open("rb"))
-
-# %%
 sns.histplot(model.decoder.rho_weight.weight.data.numpy().flatten())
 
 # %%
 z = model.decoder.logit_weight.weight.data.numpy().flatten()
-
-# %%
-import scipy.stats
-
-# %%
-sns.histplot(model.decoder.logit_weight.weight.data.numpy().flatten()[:100])
+sns.histplot(z[:100])
 
 # %%
 scipy.stats.laplace.fit(z)
 
 # %%
-# model.mixture_delta_p_scale = torch.tensor(0., device = device)
-# model.rho_delta_p_scale = torch.tensor(0., device = device)
-# model.mixture_delta_p_scale_dist = "normal"
-
-# model.mixture_delta_p_scale
-# model.rho_delta_p_scale
-
-# %%
 device = "cuda"
 model = model.to(device).eval()
 
-# %%
-transcriptome.var.head(10)
-
-# %%
-gene_oi = 0
-gene_id = transcriptome.var.index[gene_oi]
-
-# %% jp-MarkdownHeadingCollapsed=true tags=[]
+#%%
 model = model.to(device)
 
-## Plot prior distribution
-fig, axes = plt.subplots(latent.shape[1], 1, figsize=(20, 1*latent.shape[1]), sharex = True, sharey = True)
-
-probs = []
-
-pseudocoordinates = torch.linspace(0, 1, 1000).to(device)
-
-bins = np.linspace(0, 1, 500)
-binmids = (bins[1:] + bins[:-1])/2
-binsize = binmids[1] - binmids[0]
-
-fragments_oi_all = (fragments.cut_local_gene_ix == gene_oi)
-print(fragments_oi_all.sum())
-for i, ax in zip(range(latent.shape[1]), axes):
-    lib_all = model.libsize.cpu().numpy()
-    
-    cells_oi = torch.where(latent_torch[:, i])[0]
-    lib_oi = model.libsize[cells_oi].cpu().numpy()
-    n_cells = latent_torch[:, i].sum()
-    
-    color = cluster_info.iloc[i]["color"]
-    fragments_oi = (latent_torch[fragments.cut_local_cell_ix, i] != 0) & (fragments.cut_local_gene_ix == gene_oi)
-    
-    bincounts, _ = np.histogram(fragments.cut_coordinates[fragments_oi].cpu().numpy(), bins = bins)
-    ax.bar(binmids, bincounts / n_cells * len(bins), width = binsize, color = "#888888", lw = 0)
-
-    # Plot initial posterior distribution
-    pseudolatent = torch.zeros((len(pseudocoordinates), latent.shape[1])).to(device)
-    pseudolatent[:, i] = 1.
-    
-    prob = model.evaluate_pseudo(pseudocoordinates.to(device), latent = pseudolatent.to(device), gene_oi = gene_oi)
-    ax.plot(pseudocoordinates.cpu().numpy(), np.exp(prob), label = i, color = color, lw = 2, zorder = 20)
-    ax.plot(pseudocoordinates.cpu().numpy(), np.exp(prob), label = i, color = "#FFFFFFFF", lw = 3, zorder = 10)
-    
-    # ax.set_ylabel(f"{cluster_info.iloc[i]['label']}\n# fragments={fragments_oi.sum()}\n {int(latent_torch[:, i].sum())}", rotation = 0, ha = "right", va = "center")
-    ax.set_ylabel(f"{cluster_info.iloc[i]['label']}\n freq={fragments_oi.sum()/n_cells}", rotation = 0, ha = "right", va = "center")
-    ax.set_ylim(0, 40)
-    
-    probs.append(prob)
-probs = np.stack(probs)
+# %%
+for gene_oi in range(100):
+    probs = plot_distribution(latent, latent_torch, cluster_info, fragments, transcriptome, gene_oi, model, device, prior=False)
 
 # %%
 sns.heatmap(probs, cmap = mpl.cm.RdBu_r)
@@ -408,6 +330,5 @@ sns.heatmap(probs, cmap = mpl.cm.RdBu_r)
 # %%
 probs_diff = probs - probs.mean(0, keepdims = True)
 
-sns.heatmap(probs_diff, cmap = mpl.cm.RdBu_r, center = 0.)
-
 #%%
+sns.heatmap(probs_diff, cmap = mpl.cm.RdBu_r, center = 0.)

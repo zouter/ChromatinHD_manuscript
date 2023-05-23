@@ -23,6 +23,7 @@ import matplotlib as mpl
 import seaborn as sns
 sns.set_style('ticks')
 # %config InlineBackend.figure_format='retina'
+
 # import os
 # os.environ["PYTORCH_CUDA_ALLOC_CONF"] = 'max_split_size_mb:128'
 
@@ -32,24 +33,24 @@ folder_data = folder_root / "data"
 dataset_name = "hspc"
 folder_data_preproc = folder_data / dataset_name
 
+#%%
 promoter_name, window = "10k10k", np.array([-10000, 10000])
-window_width = window[1] - window[0]
-
 promoters = pd.read_csv(folder_data_preproc / ("promoters_" + promoter_name + ".csv"), index_col = 0)
 folds = pd.read_pickle(folder_data_preproc / "fragments_myeloid" / promoter_name / "folds.pkl")
 fragments = chd.data.Fragments(folder_data_preproc / "fragments_myeloid" / promoter_name)
 fragments.window = window
+window_width = window[1] - window[0]
 
+#%%
 transcriptome = chd.data.Transcriptome(folder_data_preproc / "transcriptome")
-
 
 # ## Create loaders
 #%%
 fragments.create_cut_data()
 
 #%%
-cells_train = np.arange(0, int(fragments.n_cells * 9 / 10))
-cells_validation = np.arange(int(fragments.n_cells * 9 / 10), fragments.n_cells)
+cells_train = folds[0]['cells_train']
+cells_validation = folds[0]['cells_validation']
 
 n_cells_step = 100
 n_genes_step = 5000
@@ -163,7 +164,8 @@ for i in range(len(nbins)):
     heatmap = axs[i].pcolor(model.decoder.delta_height_slope.data[:, x:y], cmap=plt.cm.RdBu)
 
 fig.colorbar(heatmap, ax=axs)  # add a colorbar for each subplot
-plt.show()  # display the entire figure with all three subplots
+plt.savefig(folder_data_preproc / "plots" / ("test" + ".pdf"))
+
 
 #%%
 cumulative_sum_list = [0] + [sum(nbins[:i+1]) for i in range(len(nbins))]
@@ -174,9 +176,10 @@ for i in range(len(nbins)):
     x = cumulative_sum_list[i]
     y = cumulative_sum_list[i+1]
     print(x, y)
-    heatmap = axs[i].pcolor(torch.abs(model.decoder.delta_height_slope.data[:, x:y]), cmap=plt.cm.RdBu)
+    heatmap = axs[i].pcolor(torch.abs(model.decoder.delta_height_slope.data[:, x:y]), cmap=plt.cm.Blues)
 
 fig.colorbar(heatmap, ax=axs)  # add a colorbar for each subplot
+plt.savefig(folder_data_preproc / "plots" / ("test2" + ".pdf"))
 
 #%%
 cumulative_sum_list = [0] + [sum(nbins[:i+1]) for i in range(len(nbins))]
@@ -186,5 +189,12 @@ for i in range(len(nbins)):
     print(x, y)
     plt.figure()
     plt.plot(torch.abs(model.decoder.delta_height_slope.data[:, x:y]).mean(0))
-    plt.savefig(folder_data_preproc / "plots" / ("delta_height_slope_" + str(nbins[i]) + ".png"))
+    plt.savefig(folder_data_preproc / "plots" / ("delta_height_slope_" + str(nbins[i]) + ".pdf"))
 plt.show() 
+
+#%%
+trainer.trace.plot()
+pd.DataFrame(trainer.trace.train_steps).groupby("epoch").mean()["loss"].plot()
+pd.DataFrame(trainer.trace.validation_steps).groupby("epoch").mean()["loss"].plot()
+
+# %%

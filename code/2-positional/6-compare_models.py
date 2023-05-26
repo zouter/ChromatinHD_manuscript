@@ -144,6 +144,7 @@ symbols_oi = [
     "CD74",
     "LYN",
     "TNFAIP2",
+    "BCL2",
 ]
 genes_oi = transcriptome.gene_id(symbols_oi)
 texts = []

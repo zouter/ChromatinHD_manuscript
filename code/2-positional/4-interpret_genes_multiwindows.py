@@ -60,12 +60,13 @@ splitter = "random_5fold"
 promoter_name, window = "10k10k", np.array([-10000, 10000])
 prediction_name = "v20_initdefault"
 
-# splitter = "permutations_5fold5repeat"
-# promoter_name, window = "100k100k", np.array([-100000, 100000])
-
 splitter = "permutations_5fold5repeat"
-promoter_name, window = "10k10k", np.array([-10000, 10000])
-prediction_name = "v20"
+promoter_name, window = "100k100k", np.array([-100000, 100000])
+prediction_name = "v20_initidefault"
+
+# splitter = "permutations_5fold5repeat"
+# promoter_name, window = "10k10k", np.array([-10000, 10000])
+# prediction_name = "v20"
 
 # fragments
 promoters = pd.read_csv(
@@ -203,6 +204,8 @@ manuscript.save_figure(fig, "3", "examples_predictive_supplementary")
 # %%
 fig = plot_genes(["TBC1D2"])
 
+# %%
+fig = plot_genes(["BCL2"])
 
 # %% [markdown]
 # ## Variants/haplotypes

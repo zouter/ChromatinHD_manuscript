@@ -34,10 +34,7 @@ import pickle
 
 import scanpy as sc
 
-import torch
-
 import tqdm.auto as tqdm
-import xarray as xr
 
 # %%
 import chromatinhd as chd
@@ -109,39 +106,35 @@ transcriptome.var.loc[genes_all_oi].head(30)
 # %%
 folds = pickle.load((fragments.path / "folds" / (splitter + ".pkl")).open("rb"))
 
-# symbol = "SELL"
-# symbol = "BACH2"
-# symbol = "CTLA4"
-# symbol = "SPI1"
-# symbol = "IL1B"
-# symbol = "TCF3"
-# symbol = "PCDH9"
-# symbol = "EBF1"
-# symbol = "QKI"
-# symbol = "NKG7"
-# symbol = "CCL4"
-# symbol = "TCF4"
-# symbol = "TSHZ2"
-# symbol = "IL1B"
-# symbol = "PAX5"
-# symbol = "CUX2"
-# symbol = "CD79A"
-# symbol = "RALGPS2"
-# symbol = "RHEX"
-# symbol = "PTPRS"
-# symbol = "RGS7"
-# symbol = "CD74"
-# symbol = "PLXNA4"
-# symbol = "TNFRSF21"
-# symbol = "MEF2C"
+# symbol = "CCR6"
+symbol = "LYN"
+# symbol = "CCR6"
 # symbol = "BCL2"
-# symbol = "CCL4"
-# symbol = "EBF1"
-# symbol = "LYN"
+# symbol = "SELL"
+# symbol = "IL1B"
+# symbol = "CTLA4"
+# symbol = "TNFRSF13C"
+# symbol = "PTGDS"
+symbol = "CXCL8"
+# symbol = "MS4A1"
+# symbol = "FMNL2"
+# symbol = "TCF7L2"
+# symbol = "NKG7"
+# symbol = "IFNLR1"
+# symbol = "BCL2"
+# symbol = "TNFAIP2"
+# symbol = "IRAK3"
 # symbol = "CD74"
+# symbol = "IL12RB2"
+# symbol = "CD37"
+# symbol = "CHSY1"
+# symbol = "GALNT4"
+# symbol = "CAMK4"
+# symbol = "MS4A6E"
+# symbol = "IPP"
+# symbol = "SPPL2B"
+# symbol = "CCDC62"
 symbol = "TNFRSF13C"
-symbol = "CCR6"
-symbol = "BCL2"
 # symbol = transcriptome.symbol("ENSG00000170345")
 print(symbol)
 genes_oi = transcriptome.var["symbol"] == symbol
@@ -212,6 +205,12 @@ interaction = interaction.rename(columns={0: "cor"})
 assert len(interaction) > 0
 
 # %%
+interaction["effect_prod"] = interaction["effect1"] * interaction["effect2"]
+fig, ax = plt.subplots()
+ax.scatter(interaction["effect_prod"], interaction["cor"])
+
+
+# %%
 promoter = promoters.loc[gene]
 genome_folder = folder_data_preproc / "genome"
 
@@ -228,6 +227,7 @@ plotdata_interaction = plotdata_interaction.loc[
     & (plotdata_interaction["distance"] > 1000)
 ]
 print(len(plotdata_interaction))
+
 
 # %%
 main = chd.grid.Grid(padding_height=0.1)
@@ -262,45 +262,25 @@ cmap = mpl.cm.RdBu_r
 offsets = []
 colors = []
 
-ax.set_ylim((window[1] - window[0]) / 2)
-ax.set_xlim(*window)
-
-data_to_pixels = ax.transData.get_matrix()[0, 0]
-pixels_to_points = 1 / fig.get_dpi() * 72.0
-size = np.pi * (data_to_pixels * pixels_to_points * radius) ** 2
-
-for windowpair, plotdata_row in plotdata_interaction.iterrows():
-    window1 = plotdata_row["window1"]
-    window2 = plotdata_row["window2"]
-
-    center = np.array(
-        [
-            window1 + (window2 - window1) / 2,
-            (window2 - window1) / 2,
-        ]
-    )
-    offsets.append(center)
-    colors.append(cmap(norm(plotdata_row["cor"])))
-
-    # if len(offsets) > 10000:
-    #     break
-
-collection = mpl.collections.RegularPolyCollection(
-    4,
-    sizes=(size,),
-    offsets=offsets,
-    transOffset=ax.transData,
-    ec=None,
-    lw=0,
-    fc=colors,
+plotdata_interaction["dist"] = (
+    plotdata_interaction["window2"] - plotdata_interaction["window1"]
 )
-ax.add_collection(collection)
+chd.plotting.matshow45(
+    ax,
+    plotdata_interaction.query("dist < 0").set_index(["window1", "window2"])["cor"],
+    cmap=cmap,
+    norm=norm,
+    radius=np.diff(plotdata_predictive.index)[0],
+)
+
+ax.set_ylim(-(window[1] - window[0]) / 2, 0)
+ax.set_xlim(*window)
 
 for x in np.linspace(*window, 16):
     x2 = x
     x1 = x2 + (window[0] - x2) / 2
     y2 = 0
-    y1 = x2 - x1
+    y1 = -(x2 - x1)
 
     if np.isclose(x1, window[1]) or (np.isclose(x2, window[1])):
         color = "black"
@@ -326,16 +306,387 @@ for x in np.linspace(*window, 16):
     )
 ax.axis("off")
 
-ax.axvline(66148)
-
 fig.plot()
 
 # %%
 fig.savefig("fig.png", dpi=300)
 
+# %%
+sns.heatmap(
+    plotdata_interaction.set_index(["window1", "window2"])["cor"].unstack(),
+    vmin=-0.1,
+    vmax=0.1,
+    cmap="RdBu_r",
+)
+
+# %% [markdown]
+# ## Focus on specific regions in a broken axis
+
+# ### Get SNPs
+
+# %%
+motifscan_name = "gwas_immune"
+
+motifscan_folder = (
+    chd.get_output() / "motifscans" / dataset_name / promoter_name / motifscan_name
+)
+if "motifscan" not in globals():
+    motifscan = chd.data.Motifscan(motifscan_folder)
+motifs = pickle.load((motifscan_folder / "motifs.pkl").open("rb"))
+motifscan.n_motifs = len(motifs)
+motifs["ix"] = np.arange(motifs.shape[0])
+
+association = pd.read_pickle(motifscan_folder / "association.pkl")
+
+# %%
+gene_oi = transcriptome.gene_ix(symbol)
+
+indptr_start = gene_oi * (window[1] - window[0])
+indptr_end = (gene_oi + 1) * (window[1] - window[0])
+
+indptr = motifscan.indptr[indptr_start:indptr_end]
+motif_indices = motifscan.indices[indptr[0] : indptr[-1]]
+position_indices = chd.utils.indptr_to_indices(indptr - indptr[0]) + window[0]
+
+plotdata_snps = pd.DataFrame(
+    {
+        "position": position_indices,
+        "motif": motifs.iloc[motif_indices].index.values,
+    }
+)
+plotdata_snps = plotdata_snps.groupby("position").agg({"motif": list}).reset_index()
+
+# %%
+promoter = promoters.loc[gene]
+for position in plotdata_snps["position"]:
+    genome_position = (
+        promoter["tss"] + position * promoter["strand"] + 1 * (promoter["strand"] == -1)
+    )
+    assoc = association.loc[
+        (association["chr"] == promoter.chr) & (association["start"] == genome_position)
+    ]
+    if len(assoc) > 0:
+        plotdata_snps.loc[plotdata_snps["position"] == position, "rsid"] = assoc[
+            "snp"
+        ].values[0]
+        plotdata_snps.loc[plotdata_snps["position"] == position, "snp_main"] = assoc[
+            "snp_main"
+        ].values[0]
+    # if True:  # len(assoc) > 0:
+    #     print(
+    #         (assoc["chr"].iloc[0] + ":" + str(int(assoc["start"].iloc[0])))
+    #         + ">".join(assoc["alleles"].iloc[0].decode("utf-8").split(",")[:2][::-1]),
+    #         assoc["snp"].iloc[0],
+    #         assoc["snp_main"].iloc[0],
+    #         assoc["alleles"].iloc[0],
+    #         ", ".join(assoc["disease/trait"]),
+    #     )
+
+plotdata_snps = plotdata_snps.loc[~plotdata_snps["rsid"].isin(["rs142827445"])].copy()
+
+# %%
+fig, ax = plt.subplots()
+position_oi = (
+    plotdata_interaction.groupby(["window1"])["cor"]
+    .mean()
+    .sort_values(ascending=False)
+    .index[0]
+)
+plotdata_interaction.set_index(["window1", "window2"]).loc[position_oi]["cor"].plot(
+    ax=ax
+)
+ax.set_xlim(-1000, 1000)
+
+
+# %% [markdown]
+# ### Plot
+
+# %%
+class TransformBroken:
+    def __init__(self, regions, gap, resolution=None, width=None):
+        """
+        Transforms from data coordinates to (broken) data coordinates
+
+        Parameters
+        ----------
+        regions : pd.DataFrame
+            Regions to break
+        resolution : float
+            Resolution of the data to go from data to points
+        gap : float
+            Gap between the regions in points
+
+        """
+
+        regions["width"] = regions["end"] - regions["start"]
+        regions["ix"] = np.arange(len(regions))
+
+        if width is not None:
+            resolution = (width - (gap * (len(regions) - 1))) / regions["width"].sum()
+        regions["cumstart"] = (
+            np.pad(np.cumsum(regions["width"])[:-1], (1, 0))
+        ) + regions["ix"] * gap / resolution
+        regions["cumend"] = (
+            np.cumsum(regions["width"]) + regions["ix"] * gap / resolution
+        )
+
+        self.regions = regions
+        self.resolution = resolution
+        self.gap = gap
+
+    def __call__(self, x):
+        """
+        Transform from data coordinates to (broken) data coordinates
+
+        Parameters
+        ----------
+        x : float
+            Position in data coordinates
+
+        Returns
+        -------
+        float
+            Position in (broken) data coordinates
+
+        """
+
+        assert isinstance(x, (int, float, np.ndarray, np.float64, np.int64))
+
+        if isinstance(x, (int, float, np.float64, np.int64)):
+            x = np.array([x])
+
+        match = (x[:, None] >= self.regions["start"].values) & (
+            x[:, None] <= self.regions["end"].values
+        )
+
+        argmax = np.argmax(
+            match,
+            axis=1,
+        )
+        allzero = (match == False).all(axis=1)
+
+        # argmax[allzero] = np.nan
+
+        y = self.regions.iloc[argmax]["cumstart"].values + (
+            x - self.regions.iloc[argmax]["start"].values
+        )
+        y[allzero] = np.nan
+
+        return y
+
+
+regions = pd.DataFrame(
+    {"start": [-52000, -10000, 50000], "end": [-40000, 10000, 80000]}
+)
+resolution = 1 / 1000
+transform = TransformBroken(regions, 1, resolution)
+
+y = transform(np.array([1000, 5000]))
+assert np.allclose(y, np.array([24000, 28000]))
+
+y = transform(np.array([-12000, 5000]))
+assert np.isnan(y[0])
+
+# %%
+window_size = 100
+windows = pd.DataFrame(
+    {
+        "window": plotdata_interaction["window1"].unique(),
+        "start": plotdata_interaction["window1"].unique() - window_size / 2,
+        "end": plotdata_interaction["window1"].unique() + window_size / 2,
+    }
+).set_index("window")
+windows["region"] = np.pad(
+    np.cumsum((~np.isclose(windows["end"].values[:-1], windows["start"].values[1:]))),
+    (1, 0),
+)
+
+# select consecutive windows as regions
+regions = windows.groupby("region").agg({"start": min, "end": max})
+
+# combine regions that are close together
+# regions["distance_til_next"] = np.pad(
+#     regions["start"].values[1:] - regions["end"].values[:-1], (0, 1)
+# )
+# regions["joins_with_next"] = regions["distance_til_next"] < 500
+# regions["new_region"] = np.pad(np.cumsum(~regions["joins_with_next"])[:-1], (1, 0))
+# regions = regions.groupby("new_region").agg({"start": min, "end": max})
+
+# remove regions that are too small
+# regions["width"] = regions["end"] - regions["start"]
+# regions = regions.loc[regions["width"] > 200]
+
+# finalize regions
+regions.index = pd.Series(range(len(regions)), name="region")
+regions["width"] = regions["end"] - regions["start"]
+
+# %%
+main = chd.grid.Grid(padding_height=0.1)
+fig = chd.grid.Figure(main)
+
+resolution = 1 / 4000
+gap = 0.025
+panel_width = regions["width"].sum() * resolution + len(regions) * gap
+
+transform = TransformBroken(regions, width=panel_width, gap=gap)
+
+plotdata_predictive = (
+    window_scoring.genescores.sel(gene=gene).sel(phase="test").mean("model").to_pandas()
+)
+if "effect1" not in interaction.columns:
+    interaction["effect1"] = 1.0
+plotdata_predictive = (
+    interaction.groupby("window1")[["deltacor1", "effect1"]]
+    .first()
+    .reset_index()
+    .rename(columns={"deltacor1": "deltacor", "window1": "window", "effect1": "effect"})
+    .set_index("window")
+)
+plotdata_predictive["position"] = plotdata_predictive.index
+
+# labels of broken segments
+panel_label = main.add_under(
+    chd.predictive.plot.LabelBroken(regions, width=panel_width, gap=gap), padding=0
+)
+
+# gwas snps
+if len(plotdata_snps):
+    panel_snps = chdm.plotting.gwas.SNPsBroken(
+        plotdata=plotdata_snps,
+        regions=regions,
+        width=panel_width,
+        transform=transform,
+    )
+    panel_snps = main.add_under(panel_snps)
+
+# genes
+# panel_genes = chdm.plotting.genes.Genes(
+#     promoter, genome_folder, window, width=panel_width
+# )
+# panel_genes = main.add_under(panel_genes)
+
+# predictive (deltacor)
+
+panel_predictive = chd.predictive.plot.PredictiveBroken(
+    plotdata=plotdata_predictive,
+    width=panel_width,
+    regions=regions,
+    gap=gap,
+    break_size=0,
+    height=0.4,
+)
+panel_predictive = main.add_under(panel_predictive, padding=0)
+
+##
+panel_interaction = main.add_under(
+    chd.grid.Panel((panel_width, panel_width / 2)), padding=0.0
+)
+ax = panel_interaction.ax
+
+norm = mpl.colors.CenteredNorm(0, np.abs(plotdata_interaction["cor"]).max())
+cmap = mpl.cm.RdBu_r
+
+plotdata = plotdata_interaction.copy()
+import itertools
+
+# make plotdata, making sure we have all window combinations, otherwise nan
+plotdata = (
+    pd.DataFrame(
+        itertools.combinations(windows.index, 2), columns=["window1", "window2"]
+    )
+    .set_index(["window1", "window2"])
+    .join(plotdata_interaction.set_index(["window1", "window2"]))
+)
+plotdata.loc[np.isnan(plotdata["cor"]), "cor"] = 0.0
+plotdata["dist"] = plotdata.index.get_level_values(
+    "window2"
+) - plotdata.index.get_level_values("window1")
+plotdata["window1_broken"] = transform(
+    plotdata.index.get_level_values("window1").values
+)
+plotdata["window2_broken"] = transform(
+    plotdata.index.get_level_values("window2").values
+)
+
+plotdata = plotdata.loc[
+    ~pd.isnull(plotdata["window1_broken"]) & ~pd.isnull(plotdata["window2_broken"])
+]
+
+chd.plotting.matshow45(
+    ax,
+    plotdata.query("dist > 0").set_index(["window1_broken", "window2_broken"])["cor"],
+    cmap=cmap,
+    norm=norm,
+    radius=50,
+)
+ax.invert_yaxis()
+
+ax.set_xlim([transform(regions["start"].min()), transform(regions["end"].max())])
+fig.plot()
+fig.savefig("fig.png", dpi=300)
+
+
+# %%
+if symbol in ["BCL2", "TNFAIP2"]:
+    manuscript.save_figure(fig, "5", "copredictivity_example_" + symbol)
+
+# %%
+for position in position_indices:
+    if not np.isnan(transform(position)):
+        genome_position = (
+            promoter["tss"]
+            + position * promoter["strand"]
+            + 1 * (promoter["strand"] == -1)
+        )
+        assoc = association.loc[
+            (association["chr"] == promoter.chr)
+            & (association["start"] == genome_position)
+        ]
+        print(
+            (assoc["chr"].iloc[0] + ":" + str(int(assoc["start"].iloc[0])))
+            + ">".join(assoc["alleles"].iloc[0].decode("utf-8").split(",")[:2][::-1]),
+            assoc["snp"].iloc[0],
+            assoc["snp_main"].iloc[0],
+            assoc["alleles"].iloc[0],
+            ", ".join(assoc["disease/trait"]),
+        )
+
+# %%
+# https://adastra.autosome.org/bill-cipher/snps/rs8086404
+# https://adastra.autosome.org/bill-cipher/snps/rs3826622
+# https://adastra.autosome.org/bill-cipher/snps/rs17758695
+
+# %% [markdown]
+# ## Cluster
+
+# %%
+
+import scipy.cluster.hierarchy as sch
+
+x = plotdata_interaction.set_index(["window1", "window2"])["cor"].unstack()
+x.values[np.isnan(x.values)] = 0
+d = 1 - np.corrcoef(x)
+L = sch.linkage(d, method="average")
+ind = sch.fcluster(L, 0.5 * d.max(), "distance")
+columns = [x.columns.tolist()[i] for i in list((np.argsort(ind)))]
+x = x.reindex(columns, axis=1)
+x = x.reindex(columns, axis=0)
+sns.heatmap(x, vmin=-0.1, vmax=0.1, cmap="RdBu_r")
+
+
 # %% [markdown]
 # ## Plot with HiC
-hic, bins_hic = chdm.hic.extract_hic(promoter)
+import cooler
+
+cool_name = "rao_2014_1kb"
+step = 1000
+c = cooler.Cooler(str(chd.get_output() / "4DNFIXP4QG5B.mcool") + "::/resolutions/1000")
+
+promoter = promoters.loc[gene].copy()
+promoter["start"] = promoter["start"]  # - 200000
+promoter["end"] = promoter["end"]  # + 200000
+
+hic, bins_hic = chdm.hic.extract_hic(promoter, c=c)
 import itertools
 
 hic = (
@@ -350,6 +701,33 @@ hic = (
     .join(hic, how="left")
     .fillna({"balanced": 0.0})
 )
+hic["distance"] = np.abs(
+    hic.index.get_level_values("window1") - hic.index.get_level_values("window2")
+)
+
+# %% [markdown]
+# Power law
+
+fig, ax = plt.subplots()
+plotdata = hic.query("distance > 1000")
+ax.scatter(np.log(plotdata["distance"]), np.log(plotdata["balanced"]))
+fig, ax = plt.subplots()
+plotdata = interaction.query("distance > 1000")
+ax.scatter(np.log(plotdata["distance"]), plotdata["cor"].abs())
+
+# %%
+fig, ax = plt.subplots()
+bins_oi = bins_hic.query("start > 0000").query("end < 100000").index
+# ax.matshow(np.log1p(hic.query("distance > 1000")["balanced"]).unstack())
+ax.matshow(
+    np.log1p(hic.query("distance > 1000")["balanced"])
+    .unstack()
+    .reindex(index=bins_oi, columns=bins_oi)
+)
+ax.set_yticks(np.arange(len(bins_oi)))
+ax.set_yticklabels(bins_oi)
+""
+
 
 # %%
 radius_hic = ((bins_hic["start"] - bins_hic["end"])).iloc[0]
@@ -483,8 +861,6 @@ ax.axis("off")
 
 fig.plot()
 
-# %%
-fig.savefig("fig.png", dpi=1000)
 
 # %% [markdown]
 # ## Focus on a single window

@@ -128,14 +128,12 @@ scores = pd.concat(scores).reset_index()
 
 # %%
 plotdata = scores.set_index(["method", "gene"])["cor"].unstack("method")
-
+plotdata["diff"] = plotdata["v21"] - plotdata["v20"]
+plotdata["gene"] = transcriptome.var["symbol"]
 
 # %%
 fig, ax = plt.subplots(figsize=(2.0, 2.0))
 
-plotdata = scores.set_index(["method", "gene"])["cor"].unstack("method")
-plotdata["diff"] = plotdata["v21"] - plotdata["v20"]
-plotdata["gene"] = transcriptome.var["symbol"]
 norm = mpl.colors.CenteredNorm(halfrange=0.1)
 cmap = mpl.cm.get_cmap("RdBu_r")
 ax.scatter(plotdata["v20"], plotdata["v21"], c=cmap(norm(plotdata["diff"])), s=1)
@@ -144,7 +142,6 @@ symbols_oi = [
     "CD74",
     "LYN",
     "TNFAIP2",
-    "BCL2",
 ]
 genes_oi = transcriptome.gene_id(symbols_oi)
 texts = []
@@ -224,4 +221,6 @@ cutoff = 0.05
 (plotdata["diff"] > cutoff).mean(), (plotdata["diff"] < -cutoff).mean(), 1 - (
     np.abs(plotdata["diff"]) > cutoff
 ).mean()
+# %%
+plotdata.to_pickle(chd.get_output() / "additive_vs_nonadditive_gene_scores.pkl")
 # %%

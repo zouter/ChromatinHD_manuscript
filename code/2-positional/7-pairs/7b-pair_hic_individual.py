@@ -99,7 +99,7 @@ prediction = chd.flow.Flow(
 symbol = "BACE2"
 symbol = "CD79A"
 symbol = "MAP4K2"
-symbol = "CD74"
+# symbol = "CD74"
 # symbol = "CXCR5"
 # symbol = "SPIB"
 symbol = "BCL2"
@@ -117,11 +117,21 @@ promoter_str
 # %%
 import cooler
 
-# c = cooler.Cooler("4DNFIXVAKX9Q.mcool::/resolutions/1000")
+cool_name = "rao_2014_1kb"
+step = 1000
 
-# !ln -s ~/NAS2/wsaelens/projects/chromatinhd/chromatinhd_manuscript/output/4DNFIXP4QG5B.mcool ~/projects/chromatinhd/chromatinhd_manuscript/output/4DNFIXP4QG5B.mcool
-# hic, bins_hic = chdm.hic.extract_hic(promoter, balance="KR")
-hic, bins_hic = chdm.hic.extract_hic(promoter, balance="VC_SQRT")
+# cool_name = "gu_2021_500bp"
+# step = 500
+
+# cool_name = "matrix_1kb"
+# step = 1000
+
+if cool_name == "rao_2014_1kb":
+    c = cooler.Cooler(
+        str(chd.get_output() / "4DNFIXP4QG5B.mcool") + "::/resolutions/1000"
+    )
+
+hic, bins_hic = chdm.hic.extract_hic(promoter, c=c)
 import itertools
 
 

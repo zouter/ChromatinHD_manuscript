@@ -179,7 +179,7 @@ genes_all_oi = (
 print(len(genes_all_oi))
 
 design = pd.DataFrame({"gene": genes_all_oi})
-design["force"] = False
+design["force"] = True
 
 for gene, subdesign in design.groupby("gene", sort=False):
     genes_oi = genes_all == gene
@@ -269,7 +269,22 @@ for gene, subdesign in design.groupby("gene", sort=False):
             .to_pandas()[interaction["window2"]]
             .values
         )
+        interaction["effect1"] = (
+            window_scoring.genescores.sel(gene=gene)
+            .mean("model")
+            .sel(phase="test")["effect"]
+            .to_pandas()[interaction["window1"]]
+            .values
+        )
+        interaction["effect2"] = (
+            window_scoring.genescores.sel(gene=gene)
+            .mean("model")
+            .sel(phase="test")["effect"]
+            .to_pandas()[interaction["window2"]]
+            .values
+        )
 
         interaction.to_pickle(scores_folder / "interaction.pkl")
+        window_scoring.save(scores_folder)
     else:
         print(gene, "already done")

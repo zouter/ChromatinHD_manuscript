@@ -5,13 +5,10 @@ import pandas as pd
 import itertools
 
 
-def extract_hic(promoter, c=None, balance="VC_SQRT"):
-    promoter_str = f"{promoter.chr}:{promoter.start}-{promoter.end}"
-    if c is None:
-        c = cooler.Cooler(
-            str(chd.get_output() / "4DNFIXP4QG5B.mcool") + "::/resolutions/1000"
-        )
+def extract_hic(promoter, c, balance="VC_SQRT", step=1000):
+    window = np.array([promoter.start - promoter.tss, promoter.end - promoter.tss])
 
+    promoter_str = f"{promoter.chr}:{promoter.start}-{promoter.end}"
     if balance is not False:
         hic = c.matrix(balance=balance, as_pixels=True, join=True).fetch(promoter_str)
     else:
@@ -58,6 +55,20 @@ def extract_hic(promoter, c=None, balance="VC_SQRT"):
     bins_hic["window"] = bins_hic["start"]
     bins_hic = bins_hic.set_index("window")
 
+    # add missing bins
+    assert step <= min(np.diff(sorted(bins_hic.index))), "You provided a too large step"
+    shift = (step - min(bins_hic.index % step)) % step
+    assert shift <= step, bins_hic
+    assert shift >= 0, bins_hic
+    expected_bins_hic = np.arange(window[0] - shift, window[1], step)
+    bins_hic = bins_hic.reindex(expected_bins_hic)
+    bins_hic["start"] = bins_hic.index
+    bins_hic["end"] = bins_hic.index + step
+
+    if shift > 0:
+        assert len(bins_hic) == int((window[1] - window[0]) / step) + 1
+
+    # add windows to hic
     hic["window1"] = (
         bins_hic.reset_index().set_index("start").loc[hic["start1"]]["window"].values
     )
@@ -75,6 +86,30 @@ def extract_hic(promoter, c=None, balance="VC_SQRT"):
     )
     hic = hic.groupby(["window1", "window2"]).first()
 
+    return hic, bins_hic
+
+
+import itertools
+
+
+def clean_hic(hic, bins_hic):
+    hic = (
+        pd.DataFrame(
+            index=pd.MultiIndex.from_frame(
+                pd.DataFrame(
+                    itertools.product(bins_hic.index, bins_hic.index),
+                    columns=["window1", "window2"],
+                )
+            )
+        )
+        .join(hic, how="left")
+        .fillna({"balanced": 0.0})
+    )
+    hic["distance"] = np.abs(
+        hic.index.get_level_values("window1").astype(float)
+        - hic.index.get_level_values("window2").astype(float)
+    )
+    hic.loc[hic["distance"] <= 1000, "balanced"] = 0.0
     return hic, bins_hic
 
 

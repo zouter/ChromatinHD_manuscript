@@ -92,109 +92,7 @@ prediction = chd.flow.Flow(
     / prediction_name
 )
 
-# %%
-scores_folder = prediction.path / "scoring" / "pairwindow_gene" / gene
-interaction_file = scores_folder / "interaction.pkl"
-
-promoter = promoters.loc[gene]
-
-# remove the MHC region, messing with everything all the time
-if promoter["chr"] == "chr6":
-    continue
-
-if interaction_file.exists():
-    interaction = pd.read_pickle(interaction_file).assign(gene=gene).reset_index()
-    interaction = interaction.rename(columns={0: "cor"})
-
-# %%
-# lowess residuals
-from statsmodels.nonparametric.smoothers_lowess import lowess
-
-b = interaction_windows["cor"]
-c = interaction_windows["deltacor1"]
-
-b2 = lowess(
-    c,
-    b,
-    return_sorted=False,
-)
-
-# %%
-plt.scatter(b, c)
-plt.scatter(b, b2)
-
-# %%
-plt.scatter(c, b2)
-plt.scatter(c, b2 - b)
-
-# %%
-
-
-# %%
-
-# %%
-interaction_oi = interaction.query("distance > 2000").query("cor > 0").copy()
-interaction_oi["deltacor_prod"] = np.abs(interaction_oi["deltacor1"]) * np.abs(
-    interaction_oi["deltacor2"]
-)
-# %%
-plt.scatter(interaction_oi["deltacor_prod"], interaction_oi["cor"])
-# %%
-# lowess residuals
-from statsmodels.nonparametric.smoothers_lowess import lowess
-
-b = interaction_oi["deltacor_prod"]
-c = interaction_oi["cor"]
-
-b2 = lowess(
-    c,
-    b,
-    return_sorted=False,
-)
-
-# %%
-plt.scatter(b, c)
-plt.scatter(b, b2)
-
-# %%
-interaction_oi["cor_resid"] = interaction_oi["cor"] - b2
-
-# %%
-def calculate_cor_resid(interaction_oi):
-    # lowess residuals
-    from statsmodels.nonparametric.smoothers_lowess import lowess
-
-    b = interaction_oi["deltacor_prod"]
-    c = interaction_oi["cor"]
-
-    b2 = lowess(
-        c,
-        b,
-        return_sorted=False,
-    )
-
-    interaction_oi["cor_resid"] = interaction_oi["cor"] - b2
-    return interaction_oi
-
-
-# %%
-sns.heatmap(interaction_oi.set_index(["window1", "window2"])["cor"].unstack())
-# %%
-sns.heatmap(
-    interaction_oi.set_index(["window1", "window2"])["cor_resid"].unstack(),
-    vmin=-0.1,
-    vmax=0.1,
-    cmap="RdBu_r",
-)
-
-# %%
-sns.heatmap(
-    interaction_oi.set_index(["window1", "window2"])["cor"].unstack(),
-    vmin=-0.1,
-    vmax=0.1,
-    cmap="RdBu_r",
-)
-
+# %% [markdown]
 # ### Get SNPs
 
 # %%
@@ -208,24 +106,31 @@ motifs = pickle.load((motifscan_folder / "motifs.pkl").open("rb"))
 motifscan.n_motifs = len(motifs)
 motifs["ix"] = np.arange(motifs.shape[0])
 
-# %%
-scores = []
+association = pd.read_pickle(motifscan_folder / "association.pkl")
 
-genes_oi = transcriptome.var.index[:3000]
-A = []
-B = []
-C = []
-D = []
-G = []
+# %%
+import itertools
+
+window_width = 100
+pd.DataFrame(
+    itertools.combinations(np.arange(window[0], window[1] + 1, window_width), 2),
+    columns=["window1", "window2"],
+)
+
+
+# %%
+# Calculate for each gene and window the amount of overlapping SNPs
+
+genewindowscores = []
+
+genes_oi = transcriptome.var.index[:5000]
 for gene in tqdm.tqdm(genes_oi):
     scores_folder = prediction.path / "scoring" / "pairwindow_gene" / gene
     interaction_file = scores_folder / "interaction.pkl"
 
     promoter = promoters.loc[gene]
-
-    # remove the MHC region, messing with everything all the time
-    if promoter["chr"] == "chr6":
-        continue
+    # if promoter["chr"] == "chr6":
+    #     continue
 
     if interaction_file.exists():
         interaction = pd.read_pickle(interaction_file).assign(gene=gene).reset_index()
@@ -240,16 +145,15 @@ for gene in tqdm.tqdm(genes_oi):
         motif_indices = motifscan.indices[indptr[0] : indptr[-1]]
         position_indices = chd.utils.indptr_to_indices(indptr - indptr[0]) + window[0]
 
-        y = (position_indices[None, :] > interaction["window1"].values[:, None]) & (
-            position_indices[None, :] < interaction["window2"].values[:, None]
-        )
-
+        interaction["abscor"] = np.abs(interaction["cor"])
         windowscores = (
             interaction.query("distance > 1000")
             .sort_values("cor", ascending=False)
             .groupby("window1")
             .mean(numeric_only=True)
         )
+        windowscores.index.name = "window"
+        window_width = 100
         windowscores["start"] = windowscores.index - window_width / 2
         windowscores["end"] = windowscores.index + window_width / 2
 
@@ -258,127 +162,198 @@ for gene in tqdm.tqdm(genes_oi):
         )
         windowscores["n_snps"] = y.sum(1)
 
-        width = 100
-        b = np.zeros(window[1] - window[0])
-        c = np.zeros(window[1] - window[0])
+        genewindowscores.append(windowscores.assign(gene=gene))
 
-        if (len(interaction) > 0) and (len(position_indices) > 0):
-            interaction_windows = (
-                interaction.query("distance > 1000")
-                .groupby("window1")
-                .mean(numeric_only=True)
-            )
-            interaction_windows["cor_abs"] = np.abs(interaction_windows["cor"])
-            for window1, windowscores in interaction_windows.iterrows():
-                b[
-                    int(window1 - width / 2 + window[0]) : int(
-                        window1 + width / 2 + window[0]
-                    )
-                    # ] = windowscores["cor"]
-                ] = windowscores["cor_abs"]
-                c[
-                    int(window1 - width / 2 + window[0]) : int(
-                        window1 + width / 2 + window[0]
-                    )
-                ] = windowscores["deltacor1"]
-
-            a = np.zeros(window[1] - window[0], dtype=bool)
-            a[position_indices + window[0]] = True
-
-            A.append(a)
-            B.append(b)
-            C.append(c)
-            G.append(gene)
-
-            # contingency = [
-            #     [np.sum(~a & ~b), np.sum(~a & b)],
-            #     [np.sum(a & ~b), np.sum(a & b)],
-            # ]
-
-            # scores.append(
-            #     {
-            #         "gene": gene,
-            #         "n": len(position_indices),
-            #         "n_interact": len(interaction),
-            #         "contingency": contingency,
-            #     }
-            # )
-
-# %%
-A = np.stack(A)
-B = np.stack(B)
-C = np.stack(C)
-
-# %%
-plt.scatter(np.log1p(A.sum(1)), np.log1p((C != 0).sum(1)))
+genewindowscores = pd.concat(genewindowscores)
 
 # %%
 scores = []
-for q in tqdm.tqdm(np.linspace(0.95, 1, 20)[:-1]):
-    score = {"q": q}
+for q in [0.925, 0.95, 0.975, 0.99, 0.999]:
+    for gene, genewindowscores_oi in genewindowscores.groupby("gene"):
+        a1 = genewindowscores_oi["deltacor1"].values <= np.quantile(
+            genewindowscores_oi["deltacor1"].values, 1 - q
+        )
+        a2 = genewindowscores_oi["cor"].values >= np.quantile(
+            genewindowscores_oi["cor"].values, q
+        )
 
-    B_ = B >= np.quantile(B, q)
-    contingency = [
-        [np.sum(~A & ~B_), np.sum(~A & B_)],
-        [np.sum(A & ~B_), np.sum(A & B_)],
-    ]
-    odds = contingency[0][0] * contingency[1][1] / contingency[0][1] / contingency[1][0]
+        b = genewindowscores_oi["n_snps"].values > 0
+        contingency_prediction = [
+            [np.sum(a1 & b), np.sum(a1 & ~b)],
+            [np.sum(~a1 & b), np.sum(~a1 & ~b)],
+        ]
+        odds_prediction = (
+            contingency_prediction[0][0]
+            * contingency_prediction[1][1]
+            / contingency_prediction[0][1]
+            / contingency_prediction[1][0]
+        )
+        captured_prediction = np.sum(a1 & b) / np.sum(b)
 
-    score.update({"odds_interaction": odds})
+        contingency_interaction = [
+            [np.sum(a2 & b), np.sum(a2 & ~b)],
+            [np.sum(~a2 & b), np.sum(~a2 & ~b)],
+        ]
+        odds_interaction = (
+            contingency_interaction[0][0]
+            * contingency_interaction[1][1]
+            / contingency_interaction[0][1]
+            / contingency_interaction[1][0]
+        )
+        captured_interaction = np.sum(a2 & b) / np.sum(b)
 
-    B_ = -C >= np.quantile(-C, q)
-    contingency = [
-        [np.sum(~A & ~B_), np.sum(~A & B_)],
-        [np.sum(A & ~B_), np.sum(A & B_)],
-    ]
-    odds = contingency[0][0] * contingency[1][1] / contingency[0][1] / contingency[1][0]
+        x3 = genewindowscores_oi["cor"].values / (
+            -genewindowscores_oi["deltacor1"].values
+        )
+        a3 = x3 >= np.quantile(x3, q)
+        contingency_both = [
+            [np.sum(a3 & b), np.sum(a3 & ~b)],
+            [np.sum(~a3 & b), np.sum(~a3 & ~b)],
+        ]
+        odds_both = (
+            contingency_both[0][0]
+            * contingency_both[1][1]
+            / contingency_both[0][1]
+            / contingency_both[1][0]
+        )
+        captured_both = np.sum(a3 & b) / np.sum(b)
 
-    score.update({"odds_predictivity": odds})
+        captured_random = []
+        for i in range(100):
+            captured_random.append(np.sum(np.random.permutation(a3) & b) / np.sum(b))
+        captured_random = np.mean(captured_random)
 
-    scores.append(score)
-
-# %%
+        scores.append(
+            {
+                "gene": gene,
+                "odds_prediction": odds_prediction,
+                "odds_interaction": odds_interaction,
+                "captured_interaction": captured_interaction,
+                "captured_prediction": captured_prediction,
+                "captured_both": captured_both,
+                "captured_random": captured_random,
+                "n_snps": b.sum(),
+                "contingency_prediction": contingency_prediction,
+                "contingency_interaction": contingency_interaction,
+                "contingency_both": contingency_both,
+                "q": q,
+            }
+        )
 scores = pd.DataFrame(scores)
-fig, ax = plt.subplots()
-ax.plot(scores["q"], scores["odds_interaction"], label="interaction")
-ax.plot(scores["q"], scores["odds_predictivity"], label="predictivity")
-ax.set_yscale("log")
-plt.legend()
 
 # %%
-import scipy
+(
+    scores.query("q == 0.9").query("n_snps > 0")["captured_interaction"].mean(),
+    scores.query("q == 0.9").query("n_snps > 0")["captured_prediction"].mean(),
+    scores.query("q == 0.9").query("n_snps > 0")["captured_both"].mean(),
+    scores.query("q == 0.9").query("n_snps > 0")["captured_random"].mean(),
+)
 
-scores = []
-for gene_ix, gene in tqdm.tqdm(enumerate(G)):
-    a = A[gene_ix]
-    score = {
-        "gene": gene,
-        "rank_interaction": scipy.stats.rankdata(
-            B[gene_ix] / (-C[gene_ix] + 0.0001), method="min"
-        )[a].max(),
-        "rank_prediction": scipy.stats.rankdata(-C[gene_ix], method="min")[a].max(),
+# %%
+qscores = scores.groupby("q").agg(
+    {
+        "contingency_prediction": lambda x: np.stack(x).sum(0),
+        "contingency_interaction": lambda x: np.stack(x).sum(0),
+        "contingency_both": lambda x: np.stack(x).sum(0),
     }
+)
+qscores = qscores.join(
+    scores.groupby("q")[
+        [
+            "captured_interaction",
+            "captured_prediction",
+            "captured_both",
+            "captured_random",
+        ]
+    ].mean()
+)
 
-    scores.append(score)
 
-scores = pd.DataFrame(scores)
-
+qscores["odds_prediction"] = qscores["contingency_prediction"].apply(
+    lambda x: x[0][0] * x[1][1] / x[0][1] / x[1][0]
+)
+qscores["odds_interaction"] = qscores["contingency_interaction"].apply(
+    lambda x: x[0][0] * x[1][1] / x[0][1] / x[1][0]
+)
+qscores["odds_both"] = qscores["contingency_both"].apply(
+    lambda x: x[0][0] * x[1][1] / x[0][1] / x[1][0]
+)
 # %%
 fig, ax = plt.subplots()
-ax.violinplot(scores["rank_interaction"], positions=[1])
-ax.violinplot(scores["rank_prediction"], positions=[2])
+ax.plot(qscores.index, qscores["odds_prediction"])
+ax.plot(qscores.index, qscores["odds_interaction"])
+ax.plot(qscores.index, qscores["odds_both"])
 
 # %%
-(scores["rank_interaction"] > scores["rank_prediction"]).mean()
+qscores["ratio_interaction"] = (
+    qscores["captured_interaction"] / qscores["captured_random"]
+)
+qscores["ratio_prediction"] = (
+    qscores["captured_prediction"] / qscores["captured_random"]
+)
 
 # %%
-(scores["rank_interaction"] < scores["rank_prediction"]).mean()
+fig, ax = plt.subplots(figsize=(2, 2))
+ax.plot(
+    qscores.index.astype(str),
+    qscores["ratio_interaction"],
+    label="average co-predictivity",
+)
+ax.plot(
+    qscores.index.astype(str),
+    qscores["ratio_prediction"],
+    label="predictivity",
+)
+ax.set_xlabel("q")
+ax.set_ylabel("Odds-ratio SNP \nand high score\n(score $\geq$ q(score))")
+ax.annotate(
+    "average\nco-predictivity\n(cor $\\Delta$cor)",
+    (2, qscores.iloc[-3]["ratio_interaction"]),
+    xytext=(10, 10),
+    ha="right",
+    # xycoords="axes fraction",
+    textcoords="offset points",
+    color=sns.color_palette()[0],
+    # arrowprops=dict(arrowstyle="-", color=sns.color_palette()[0]),
+)
+ax.annotate(
+    "predictivity\n($\\Delta$cor)",
+    (2, qscores.iloc[-3]["ratio_prediction"]),
+    xytext=(5, -20),
+    ha="left",
+    # xycoords="axes fraction",
+    textcoords="offset points",
+    color=sns.color_palette()[1],
+    # arrowprops=dict(arrowstyle="-", color=sns.color_palette()[1]),
+)
+ax.set_yscale("log")
+ax.yaxis.set_minor_formatter(mpl.ticker.ScalarFormatter())
+# ax.legend()
+
+manuscript.save_figure(fig, "5", "copredictivity_gwas_overlap")
+
 
 # %%
-scores["rank_interaction"].median()
+genescores = pd.DataFrame(
+    {
+        "cor_cor_snps": genewindowscores.groupby("gene")
+        .apply(lambda x: np.corrcoef(x["cor"], x["n_snps"] > 1)[0, 1])
+        .dropna()
+        .sort_values(),
+        "cor": genewindowscores.groupby("gene")["cor"].max(),
+        "n_snps": genewindowscores.groupby("gene")["n_snps"].sum(),
+        "n_positions": genewindowscores.groupby("gene").size(),
+    }
+)
+genescores["symbol"] = transcriptome.var["symbol"]
 # %%
-scores["rank_prediction"].median()
+genescores.dropna().sort_values("cor", ascending=False).head(30)
 # %%
-
-
+fig, ax = plt.subplots()
+ax.scatter(genescores["n_positions"], genescores["cor"])
+# np.corrcoef(genewindowscores.groupby("gene").size(), genewindowscores.groupby("gene")["cor"].mean())
 # %%
+np.corrcoef(
+    genewindowscores.groupby("gene").size(),
+    genewindowscores.groupby("gene")["cor"].mean(),
+)

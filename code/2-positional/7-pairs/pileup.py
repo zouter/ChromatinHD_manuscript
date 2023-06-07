@@ -102,242 +102,10 @@ hic["distance"] = np.abs(
 sns.heatmap(np.log1p(hic.query("distance > 500")["balanced"].unstack()))
 
 # %% [markdown]
-
-# ## HiC distance correspondence
-
-# %%
-def compare_contingency(a, b):
-    contingency = pd.crosstab(
-        pd.Categorical(a > np.median(a), [False, True]),
-        pd.Categorical(b > np.median(b), [False, True]),
-        dropna=False,
-    )
-    result = {}
-    result["contingency"] = contingency.values
-    return result
-
-
-# %%
-distwindows = pd.DataFrame(
-    {
-        "distance": [
-            1000,
-            *np.arange(10000, 150000, 10000),
-            np.inf,
-        ],
-    }
-)
-distslices = pd.DataFrame(
-    {
-        "distance1": distwindows["distance"][:-1].values,
-        "distance2": distwindows["distance"][1:].values,
-    }
-)
-
-# %%
-outputs_dir = chd.get_git_root() / "tmp" / "pooling"
-outputs_dir.mkdir(exist_ok=True)
-
-
-# %%
-genes_oi = transcriptome.gene_id(
-    ["BCL2", "CD74", "CD79A", "CD19", "LYN", "TNFRSF13C", "PAX5", "IRF8", "IRF4"]
-)
-genes_oi = transcriptome.gene_id(
-    ["TNFRSF13C"]
-)
-# genes_oi = list(set([*genes_oi, *transcriptome.var.index[:100]]))
-# genes_oi = list(set([*genes_oi, *transcriptome.var.index]))
-
-# %%
-for gene in tqdm.tqdm(genes_oi):
-    pooling_file = outputs_dir / (gene + "_" + cool_name + ".pkl")
-    if (pooling_file).exists():
-        pooling_scores = pd.read_pickle(pooling_file)
-    else:
-        # load scores
-        scores_folder = prediction.path / "scoring" / "pairwindow_gene" / gene
-        interaction_file = scores_folder / "interaction.pkl"
-
-        if interaction_file.exists():
-            scores_oi = pd.read_pickle(interaction_file).assign(gene=gene).reset_index()
-        else:
-            # print("No scores found")
-            continue
-
-        if len(scores_oi) == 0:
-            # print("No significant windows")
-            continue
-
-        # load hic
-        promoter = promoters.loc[gene]
-        hic, bins_hic = gene_hics[gene]
-        # hic, bins_hic = chdm.hic.extract_hic(promoter)
-        hic, bins_hic = chdm.hic.clean_hic(hic, bins_hic)
-
-        # match
-        scores_oi["hicwindow1"] = chdm.hic.match_windows(
-            scores_oi["window1"].values, bins_hic
-        )
-        scores_oi["hicwindow2"] = chdm.hic.match_windows(
-            scores_oi["window2"].values, bins_hic
-        )
-
-        scores_oi["cor"] = np.clip(scores_oi["cor"], 0, np.inf)
-
-        import scipy.stats
-
-        pooling_scores = []
-        for k in range(0, 40, 1):
-            if k == 0:
-                hic_oi = hic
-            else:
-                hic_oi = chdm.hic.maxipool_hic(hic, bins_hic, k=k)
-                # hic_oi = chdm.hic.meanpool_hic(hic, bins_hic, k=k)
-
-            matching = chdm.hic.create_matching(bins_hic, scores_oi, hic_oi)
-
-            distance_scores = []
-            ranks = []
-            for distance1, distance2 in distslices[["distance1", "distance2"]].values:
-                matching_oi = matching.query("distance > @distance1").query(
-                    "distance <= @distance2"
-                )
-                distance_scores.append(
-                    {
-                        **compare_contingency(
-                            *(matching_oi[["cor", "balanced"]].values.T)
-                        ),
-                        "distance1": distance1,
-                        "distance2": distance2,
-                    }
-                )
-
-                ranks.append(
-                    scipy.stats.rankdata(
-                        matching_oi[["cor", "balanced"]].values, axis=0, method="min"
-                    )
-                    / matching_oi.shape[0]
-                )
-            score = {}
-
-            # odds
-            distance_scores = pd.DataFrame(distance_scores)
-
-            contingency = np.stack(distance_scores["contingency"].values).sum(0)
-            odds = (contingency[0, 0] * contingency[1, 1]) / (
-                contingency[0, 1] * contingency[1, 0]
-            )
-
-            score.update({"k": k, "odds": odds})
-
-            # slice rank correlation
-            cor = np.corrcoef(np.concatenate(ranks, 0).T)[0, 1]
-            score.update({"cor": cor})
-
-            pooling_scores.append(score)
-        pooling_scores = pd.DataFrame(pooling_scores)
-        pooling_scores.to_pickle(pooling_file)
-
-# %%
-gene_scores = []
-for gene in tqdm.tqdm(genes_oi):
-    pooling_file = outputs_dir / (gene + "_" + cool_name + ".pkl")
-    if (pooling_file).exists():
-        pooling_scores = pd.read_pickle(pooling_file)
-        gene_scores.append(pooling_scores.assign(gene=gene))
-gene_scores = pd.concat(gene_scores)
-
-# %%
-x = gene_scores.set_index(["gene", "k"])["cor"].unstack()
-x = x / x.max(1).values[:, None]
-x = x.iloc[np.argsort(np.argmax(x.values, 1))]
-fig, ax = plt.subplots()
-
-ax.matshow(x, aspect="auto", cmap="magma", norm=mpl.colors.Normalize(0, 1))
-
-# %%
-gene_scores["logodds"] = np.log(gene_scores["odds"])
-
-# %%
-gene_scores.dropna().groupby("k")["cor"].mean().plot()
-gene_scores.loc[np.isinf(gene_scores["logodds"]), "logodds"] = 2.0
-# %%
-np.exp(gene_scores.groupby("k")["logodds"].mean()).plot()
-
-# %%
-gene_scores.query("k == 0")["logodds"].hist()
-
-# %%
-(
-    np.exp(gene_scores.query("k == 0")["logodds"].quantile(0.1)),
-    np.exp(gene_scores.query("k == 0")["logodds"].quantile(0.5)),
-    np.exp(gene_scores.query("k == 0")["logodds"].quantile(0.9)),
-)
-# %%
-(
-    gene_scores.query("k == 5")["cor"].quantile(0.1),
-    gene_scores.query("k == 5")["cor"].quantile(0.5),
-    gene_scores.query("k == 5")["cor"].quantile(0.9),
-)
-
-# %%
-import scanpy as sc
-
-sc.tl.rank_genes_groups(transcriptome.adata, groupby="celltype")
-diffexp = (
-    sc.get.rank_genes_groups_df(transcriptome.adata, group="naive B")
-    .rename(columns={"names": "gene"})
-    .assign(symbol=lambda x: transcriptome.var.loc[x["gene"], "symbol"].values)
-    .set_index("gene")
-)
-
-# %%
-genes_diffexp = diffexp.query("pvals_adj < 0.05").query("logfoldchanges > 0.1").index
-# %%
-gene_scores_diffexp = gene_scores.query("gene in @genes_diffexp")
-# %%
-# %%
-gene_scores.query("k == 0")["logodds"].hist()
-gene_scores_diffexp.query("k == 0")["logodds"].hist()
-# %%
-np.exp(gene_scores.groupby("k")["logodds"].mean()).plot(label="All differential genes")
-np.exp(gene_scores_diffexp.groupby("k")["logodds"].mean()).plot(label="B-cell genes")
-plt.legend()
-
-# %%
-(gene_scores.groupby("k")["cor"].mean()).plot(label="All differential genes")
-(gene_scores_diffexp.groupby("k")["cor"].mean()).plot(label="B-cell genes")
-plt.legend()
-
-# %%
-gene_scores
-
-# %%
-
-print(
-    f"odds = {np.exp(gene_scores.query('k == 0')['logodds'].mean()):.2f}, q90 = {np.exp(gene_scores.query('k == 0')['logodds'].quantile(0.9)):.2f}, q10 = {np.exp(gene_scores.query('k == 0')['logodds'].quantile(0.1)):.2f}"
-)
-# %%
-print(
-    f"odds = {np.exp(gene_scores_diffexp.query('k == 0')['logodds'].mean()):.2f}, q90 = {np.exp(gene_scores_diffexp.query('k == 0')['logodds'].quantile(0.9)):.2f}, q10 = {np.exp(gene_scores_diffexp.query('k == 0')['logodds'].quantile(0.1)):.2f}"
-)
-
-# %%
-print(
-    f"odds = {np.exp(gene_scores.query('k == 1')['logodds'].mean()):.2f}, q90 = {np.exp(gene_scores.query('k == 1')['logodds'].quantile(0.9)):.2f}, q10 = {np.exp(gene_scores.query('k == 1')['logodds'].quantile(0.1)):.2f}"
-)
-
-# %%
-print(
-    f"odds = {np.exp(gene_scores.query('k == 5')['logodds'].mean()):.2f}, q90 = {np.exp(gene_scores.query('k == 5')['logodds'].quantile(0.9)):.2f}, q10 = {np.exp(gene_scores.query('k == 5')['logodds'].quantile(0.1)):.2f}"
-)
-
-# %% [markdown]
 # # Check spot
 
 # %%
-genes_oi = list(
+genes_oi = sorted(list(
     set(
         [
             *transcriptome.gene_id(
@@ -357,7 +125,7 @@ genes_oi = list(
             # *transcriptome.var.index[:500],
         ]
     )
-)
+))
 # %%
 sns.heatmap(np.log1p(gene_hics[genes_oi[0]][0]["balanced"].unstack()))
 
@@ -458,7 +226,7 @@ genes_oi = list(
     transcriptome.gene_id(["CD74"])
 )
 genes_oi = transcriptome.var.index
-genes_oi = diffexp.index[:100]
+# genes_oi = diffexp.index[:100]
 
 # %%
 def create_matcher(left, right, cor = "positive", ee = True):
@@ -473,9 +241,9 @@ def create_matcher(left, right, cor = "positive", ee = True):
         if ee:
             matching_oi = matching_oi.query("((window1 > 1000) | (window1 < -1000)) & ((window2 > 1000) | (window2 < -1000))")
         if cor == "positive":
-            matching_oi = matching_oi.query("cor > 0")
+            matching_oi = matching_oi.query("cor > 0.")
         elif cor == "negative":
-            matching_oi = matching_oi.query("cor < 0")
+            matching_oi = matching_oi.query("cor < 0.")
         elif cor == "zero":
             matching_oi = matching_oi.query("cor == 0")
 
@@ -494,8 +262,8 @@ def create_matcher(left, right, cor = "positive", ee = True):
 # matcher_name = "EE10kb-15kb"
 # matcher = create_matcher(15000, 20000, cor = "positive", ee = True)
 
-# matcher_name = "EE20kb-25kb"
-# matcher = create_matcher(20000, 25000, cor = "positive", ee = True)
+matcher_name = "EE20kb-25kb"
+matcher = create_matcher(20000, 25000, cor = "positive", ee = True)
 
 # matcher_name = "EE45kb-50kb"
 # matcher = create_matcher(45000, 50000, cor = "positive", ee = True)
@@ -503,8 +271,8 @@ def create_matcher(left, right, cor = "positive", ee = True):
 # matcher_name = "EE50kb-55kb"
 # matcher = create_matcher(50000, 55000, cor = "positive", ee = True)
 
-matcher_name = "EEdiffexp"
-matcher = create_matcher(10000, 100000, cor = "positive", ee = True)
+# matcher_name = "EEdiffexp"
+# matcher = create_matcher(10000, 100000, cor = "positive", ee = True)
 
 # %%
 pad = 50
@@ -616,6 +384,9 @@ randomspots_mean = np.nanmean(randomspots, 0)
 # %%
 spots_lr = np.log(spots_mean / randomspots_mean)
 spots_lr[np.isinf(spots_lr)] = 0
+
+# %%
+sns.heatmap(spots_lr)
 
 # %%
 fig = chd.grid.Figure(chd.grid.Grid())
@@ -742,6 +513,40 @@ else:
 fig.plot()
 
 manuscript.save_figure(fig, "6", "hic_ee_pileup_difference_" + matcher_name, dpi=300)
+
+# %% [markdown]
+# ### Predictivity magnitude
+
+# Look at the difference in contact frequency between high and lowly predictive pairs
+
+# %%
+cutoff = 0.1
+
+# %%
+spots_ix_up = spot_scores.loc[spot_scores["cor"] >= cutoff]["spot_ix"].values
+spots_lr_up = np.log(np.nanmean(spots[spots_ix_up], 0) / np.nanmean(randomspots[spots_ix_up], 0))
+
+spots_ix_down = spot_scores.loc[spot_scores["cor"] < cutoff]["spot_ix"].values
+spots_lr_down = np.log(np.nanmean(spots[spots_ix_down], 0) / np.nanmean(randomspots[spots_ix_down], 0))
+
+# %%
+fig = chd.grid.Figure(chd.grid.Grid())
+
+panel, ax = fig.main.add_right(chd.grid.Panel((1.4, 1.4)))
+mappable = ax.matshow(spots_lr_up - spots_lr_down, vmin = -0.05, vmax = 0.05, cmap = "PiYG")
+center_bullseye(ax, pad = pad, focus=20)
+
+if matcher_name == "EE20kb-25kb":
+    panel, ax = fig.main.add_right(chd.grid.Panel((0.1, 1.4)), padding = 0.1)
+    cax = plt.colorbar(mappable, cax = ax, format = "%.2f")
+    cax.minorformatter = mpl.ticker.FormatStrFormatter('%.2f')
+    cax.set_label("$\Delta$ log contact frequency\n(up vs down genes in B-cells)", rotation = 90, ha = "center", va = "top")
+else:
+    pass
+
+fig.plot()
+
+manuscript.save_figure(fig, "6", "hic_ee_pileup_magnitude_" + matcher_name, dpi=300)
 
   # %% [markdown]
 # -----------------------------------------------

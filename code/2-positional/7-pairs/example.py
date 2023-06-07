@@ -106,35 +106,10 @@ transcriptome.var.loc[genes_all_oi].head(30)
 # %%
 folds = pickle.load((fragments.path / "folds" / (splitter + ".pkl")).open("rb"))
 
-# symbol = "CCR6"
-symbol = "LYN"
-# symbol = "CCR6"
 # symbol = "BCL2"
-# symbol = "SELL"
-# symbol = "IL1B"
-# symbol = "CTLA4"
-# symbol = "TNFRSF13C"
-# symbol = "PTGDS"
-symbol = "CXCL8"
-# symbol = "MS4A1"
-# symbol = "FMNL2"
-# symbol = "TCF7L2"
-# symbol = "NKG7"
-# symbol = "IFNLR1"
-# symbol = "BCL2"
-# symbol = "TNFAIP2"
-# symbol = "IRAK3"
-# symbol = "CD74"
-# symbol = "IL12RB2"
-# symbol = "CD37"
-# symbol = "CHSY1"
-# symbol = "GALNT4"
-# symbol = "CAMK4"
-# symbol = "MS4A6E"
-# symbol = "IPP"
-# symbol = "SPPL2B"
-# symbol = "CCDC62"
-symbol = "TNFRSF13C"
+symbol = "TNFAIP2"
+symbol = "KLF12"
+symbol = "CD14"
 # symbol = transcriptome.symbol("ENSG00000170345")
 print(symbol)
 genes_oi = transcriptome.var["symbol"] == symbol
@@ -207,7 +182,10 @@ assert len(interaction) > 0
 # %%
 interaction["effect_prod"] = interaction["effect1"] * interaction["effect2"]
 fig, ax = plt.subplots()
-ax.scatter(interaction["effect_prod"], interaction["cor"])
+ax.scatter(
+    interaction.query("distance > 1000")["effect_prod"],
+    interaction.query("distance > 1000")["cor"],
+)
 
 
 # %%
@@ -249,6 +227,17 @@ panel_predictive = chd.predictive.plot.Predictive(
     plotdata_predictive, window, panel_width
 )
 panel_predictive = main.add_under(panel_predictive, padding=0)
+
+peaks_folder = chd.get_output() / "peaks" / dataset_name
+peaks_panel = main.add_under(
+    chdm.plotting.Peaks(
+        promoter,
+        peaks_folder,
+        window=window,
+        width=panel_width,
+        row_height=0.8,
+    )
+)
 
 panel_interaction = main.add_under(chd.grid.Panel((panel_width, panel_width / 2)))
 ax = panel_interaction.ax
@@ -382,7 +371,10 @@ for position in plotdata_snps["position"]:
     #         ", ".join(assoc["disease/trait"]),
     #     )
 
-plotdata_snps = plotdata_snps.loc[~plotdata_snps["rsid"].isin(["rs142827445"])].copy()
+if len(plotdata_snps):
+    plotdata_snps = plotdata_snps.loc[
+        ~plotdata_snps["rsid"].isin(["rs142827445"])
+    ].copy()
 
 # %%
 fig, ax = plt.subplots()
@@ -524,7 +516,7 @@ regions["width"] = regions["end"] - regions["start"]
 main = chd.grid.Grid(padding_height=0.1)
 fig = chd.grid.Figure(main)
 
-resolution = 1 / 4000
+resolution = 1 / 4500
 gap = 0.025
 panel_width = regions["width"].sum() * resolution + len(regions) * gap
 
@@ -560,10 +552,10 @@ if len(plotdata_snps):
     panel_snps = main.add_under(panel_snps)
 
 # genes
-# panel_genes = chdm.plotting.genes.Genes(
-#     promoter, genome_folder, window, width=panel_width
-# )
-# panel_genes = main.add_under(panel_genes)
+panel_genes = chdm.plotting.genes.GenesBroken(
+    promoter, genome_folder, window, width=panel_width, gap=gap, regions=regions
+)
+panel_genes = main.add_under(panel_genes)
 
 # predictive (deltacor)
 
@@ -621,13 +613,27 @@ chd.plotting.matshow45(
 )
 ax.invert_yaxis()
 
+if symbol in ["BCL2"]:
+    panel_interaction_legend = panel_interaction.add_inset(chd.grid.Panel((0.05, 0.8)))
+    plt.colorbar(
+        mpl.cm.ScalarMappable(norm=norm, cmap=cmap),
+        cax=panel_interaction_legend.ax,
+        orientation="vertical",
+    )
+    panel_interaction_legend.ax.set_ylabel(
+        "Co-predictive\n(cor $\\Delta$cor)",
+        rotation=0,
+        ha="left",
+        va="center",
+    )
+
 ax.set_xlim([transform(regions["start"].min()), transform(regions["end"].max())])
 fig.plot()
 fig.savefig("fig.png", dpi=300)
 
 
 # %%
-if symbol in ["BCL2", "TNFAIP2"]:
+if symbol in ["BCL2", "TNFAIP2", "KLF12"]:
     manuscript.save_figure(fig, "5", "copredictivity_example_" + symbol)
 
 # %%

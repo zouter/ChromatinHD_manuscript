@@ -208,6 +208,7 @@ ax.set_ylim(0)
 ax.set_xticks([1000, 100000, 200000])
 ax.xaxis.set_major_formatter(chd.plotting.distance_ticker)
 ax.set_ylabel("Average co-predictivity\n(cor between $\\Delta$ cor)")
+ax.set_xlabel("Distance")
 manuscript.save_figure(fig, "5", "synergism_distance")
 
 # %% [markdown]
@@ -312,9 +313,17 @@ scores_significant["effect_prod"] = (
     scores_significant["effect1"] * scores_significant["effect2"]
 )
 
-fig = chd.grid.Figure(chd.grid.Grid(padding_height=0.0))
-panel, ax = fig.main.add_under(chd.grid.Panel((0.8, 0.8)))
-sns.ecdfplot(scores_significant["cor"].values[:1000], label="All pairs", ax=ax)
+scores_significant["corabs"] = np.abs(scores_significant["cor"])
+
+# %%
+fig, ax = plt.subplots(figsize=(1.5, 1.5))
+sns.ecdfplot(
+    scores_significant["cor"].values[
+        np.random.choice(len(scores_significant), 1000, replace=False)
+    ],
+    label="All pairs",
+    ax=ax,
+)
 sns.ecdfplot(
     scores_significant.query("effect_prod < 0")["cor"].values[:1000],
     label="Different effect",
@@ -326,19 +335,35 @@ sns.ecdfplot(
     ax=ax,
 )
 ax.axvline(0.0, color="black", linestyle="--")
-ax.legend(loc="center left", bbox_to_anchor=(1, 0.5), frameon=False)
+ax.legend(loc="center left", bbox_to_anchor=(1.05, 0.5), frameon=False, fontsize=8)
 ax.set_xlim(-0.05, 0.1)
-panel, ax = fig.main.add_under(chd.grid.Panel((0.8, 0.8)))
-sns.ecdfplot(genescores["cor_tss"].values[:1000], label="TSS", ax=ax)
-sns.ecdfplot(
-    genescores.query("diff > 0.05")["cor_tss"].values[:1000],
-    label="TSS with perforamce",
-    ax=ax,
-)
-ax.legend(loc="center left", bbox_to_anchor=(1, 0.5), frameon=False)
-ax.axvline(0.0, color="black", linestyle="--")
-ax.set_xlim(-0.05, 0.1)
-fig.plot()
+ax.set_xlabel("Co-predictivity (cor $\Delta$ cor)")
+ax.yaxis.set_major_formatter(mpl.ticker.PercentFormatter(1.0))
+ax.set_ylabel("Pairs")
+
+manuscript.save_figure(fig, "5", "copredictivity_direction")
 
 
 # %%
+fig, ax = plt.subplots(figsize=(1.5, 1.5))
+sns.ecdfplot(genescores["cor_tss"].values[:1000], label="All genes", ax=ax)
+sns.ecdfplot(
+    genescores.query("diff > 0.05")["cor_tss"].values[:1000],
+    label="$\Delta\Delta$cor > 0.05",
+    ax=ax,
+)
+ax.legend(loc="center left", bbox_to_anchor=(1.05, 0.5), frameon=False, fontsize=8)
+ax.axvline(0.0, color="black", linestyle="--")
+ax.set_xlim(-0.05, 0.1)
+ax.set_xlabel("Co-predictivity (cor $\Delta$ cor)")
+ax.yaxis.set_major_formatter(mpl.ticker.PercentFormatter(1.0))
+ax.set_ylabel("Pairs with TSS")
+
+manuscript.save_figure(fig, "5", "copredictivity_different")
+
+
+# %%
+x = scores_significant["cor"]
+
+# %%
+sns.ecdfplot(x.values[np.random.choice(len(x), 1000, replace=False)])

@@ -86,11 +86,6 @@ fragments.obs.index.name = "cell"
 # create design to run
 from design import get_design, get_folds_inference
 
-
-class Prediction(chd.flow.Flow):
-    pass
-
-
 # folds & minibatching
 folds = pickle.load((fragments.path / "folds" / (splitter + ".pkl")).open("rb"))
 folds, cellxgene_batch_size = get_folds_inference(fragments, folds, n_cells_step=2000)
@@ -275,6 +270,40 @@ size_scoring = size_scorer.score(
 
 # %%
 scorer_folder = prediction.path / "scoring" / "size"
+scorer_folder.mkdir(exist_ok=True, parents=True)
+size_scoring.save(scorer_folder)
+
+# %% [markdown]
+# ## Size at TSS
+
+# %%
+# load nothing scoring
+scorer_folder = prediction.path / "scoring" / "nothing"
+nothing_scoring = chd.scoring.prediction.Scoring.load(scorer_folder)
+
+# %%
+size_filterer = chd.scoring.prediction.filterers.SizeIntervalFilterer(-500, 500, 20)
+Scorer2 = chd.scoring.prediction.Scorer2
+size_scorer = Scorer2(
+    models,
+    folds[: len(models)],
+    loaders,
+    outcome,
+    fragments.var.index,
+    fragments.obs.index,
+    device=device,
+)
+
+# %%
+models = [model.to("cpu") for model in models]
+size_scoring = size_scorer.score(
+    filterer=size_filterer,
+    extract_per_cellxgene=False,
+    nothing_scoring=nothing_scoring,
+)
+
+# %%
+scorer_folder = prediction.path / "scoring" / "size_tss"
 scorer_folder.mkdir(exist_ok=True, parents=True)
 size_scoring.save(scorer_folder)
 

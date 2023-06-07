@@ -27,8 +27,8 @@ folder_data = folder_root / "data"
 
 # transcriptome
 # dataset_name = "lymphoma"
-# dataset_name = "pbmc10k"
-dataset_name = "pbmc10k_gran"
+dataset_name = "pbmc10k"
+# dataset_name = "pbmc10k_gran"
 # dataset_name = "pbmc3k"
 # dataset_name = "e18brain"
 folder_data_preproc = folder_data / dataset_name
@@ -40,15 +40,15 @@ promoter_name, window = "10k10k", np.array([-10000, 10000])
 outcome_source = "counts"
 prediction_name = "v20_initdefault"
 
-# splitter = "permutations_5fold5repeat"
-# promoter_name, window = "100k100k", np.array([-100000, 100000])
-# outcome_source = "magic"
-# prediction_name = "v20_initdefault"
-
 splitter = "permutations_5fold5repeat"
-promoter_name, window = "10k10k", np.array([-10000, 10000])
+promoter_name, window = "100k100k", np.array([-100000, 100000])
 outcome_source = "magic"
-prediction_name = "v20"
+prediction_name = "v20_initdefault"
+
+# splitter = "permutations_5fold5repeat"
+# promoter_name, window = "10k10k", np.array([-10000, 10000])
+# outcome_source = "magic"
+# prediction_name = "v20"
 # prediction_name = "v21"
 
 # fragments
@@ -141,7 +141,7 @@ scores_dir_window = prediction.path / "scoring" / "window"
 
 genes_all = fragments.var.index
 genes_all_oi = fragments.var.index
-genes_all_oi = transcriptome.var.query("symbol == 'TNFAIP2'").index
+# genes_all_oi = transcriptome.var.query("symbol == 'TCF3'").index
 
 design = pd.DataFrame({"gene": genes_all_oi})
 design["force"] = True
@@ -176,5 +176,6 @@ for gene, subdesign in design.groupby("gene", sort=False):
         )
 
         print(window_scoring.scores)
+        print(window_scoring.design)
 
         window_scoring.save(scores_folder)

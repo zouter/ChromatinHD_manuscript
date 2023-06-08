@@ -33,48 +33,44 @@ info_genes_cells = pd.read_csv(folder_data_preproc / "info_genes_cells.csv")
 s_genes = info_genes_cells['s_genes'].dropna().tolist()
 g2m_genes = info_genes_cells['g2m_genes'].dropna().tolist()
 hspc_marker_genes = info_genes_cells['hspc_marker_genes'].dropna().tolist()
+
 # %%
 # fragments.mapping object specifies from cell and gene for each fragment
 mapping = fragments.mapping
 
 # fragments.coordinates object specifies cutsites for each fragment
 coordinates = fragments.coordinates
-
-#%%
 # normalize coordinates between 0 and 1
 coordinates = coordinates + 10000
 coordinates = coordinates / 20000
 
 cutsite_gene = torch.bincount(mapping[:, 1]) * 2
-
-#%%
 # calculate the range that contains 90% of the data
 sorted_tensor, _ = torch.sort(cutsite_gene)
 ten_percent = cutsite_gene.numel() // 10
 min_val, max_val = sorted_tensor[ten_percent], sorted_tensor[-ten_percent]
 
-# set the style to match the standards of top-tier publications like Nature
+#%%
 sns.set_style("white")
 sns.set_context("paper", font_scale=1.4)
 
-# create a histogram using Matplotlib and Seaborn
-fig, ax = plt.subplots()
-sns.histplot(cutsite_gene.numpy(), bins=50, kde=False, stat="density", color="black", ax=ax)
-ax.set_title("Number of cut sites per gene")
-ax.set_xlabel("Value")
-ax.set_ylabel("Density")
+# Calculate histogram values
+values, bins, _ = plt.hist(cutsite_gene.numpy(), bins=50, color="blue", alpha=0.75)
+# Calculate percentage values
+percentages = values / np.sum(values) * 100
+
+fig, ax = plt.subplots(dpi=300)
+ax.bar(bins[:-1], percentages, width=np.diff(bins), color="blue", alpha=0.75)
+ax.set_title("Percentage of values per bin")
+ax.set_xlabel("Number of cut sites")
+ax.set_ylabel("%")
 ax.axvline(min_val, color='r', linestyle='--')
 ax.axvline(max_val, color='r', linestyle='--')
-
-# set the y-axis limits to be between 0 and 1
-ax.set_ylim([0, 0.0001])
 
 # remove the top and right spines of the plot
 sns.despine()
 
-# someting is wrong with the plot yaxis, the values are too small
 fig.savefig(folder_data_preproc / f'plots/n_cutsites.png')
-
 
 #%%
 for x in range(promoters.shape[0]):
@@ -109,21 +105,13 @@ for x in range(promoters.shape[0]):
     df_long = pd.melt(df, id_vars=['cell_ix', 'gene_ix', 'cell', 'latent_time', 'rank', 'height'], value_vars=['cut_start', 'cut_end'], var_name='cut_type', value_name='position')
     df = df_long.rename(columns={'position': 'x', 'rank': 'y'})
 
-    # Set figure size
     fig, ax = plt.subplots(figsize=(15, 15))
-
-    # Create scatter plot with rectangular markers
     ax.scatter(df['x'], df['y'], s=1, marker='s', color='black')
-
-    # Set plot title and axis labels
     ax.set_title(f"{gene} (cut sites = {2 * n_cutsites})", fontsize=14)
     ax.set_xlabel('Position', fontsize=12)
     ax.set_ylabel('Latent Time', fontsize=12)
-
     ax.set_xlim([0, 1])
     ax.set_ylim([0, 1])
-
-    # Set plot background color to white
     ax.set_facecolor('white')
 
     plt.savefig(folder_data_preproc / f'plots/cutsites/{gene}.png')
@@ -247,12 +235,16 @@ plt.savefig(folder_data_preproc / f'plots/cutsites_subplot.png')
 
 
 #%%
-image_dir = folder_data_preproc / 'plots/cutsites_histo'
-output_gif = folder_data_preproc / 'plots/cutsites_histo.gif'
+# arguments for creating the GIF
+directory = 'cutsites_histo'
+n_plots = 75
+
+image_dir = folder_data_preproc / f'plots/{directory}'
+output_gif = folder_data_preproc / f'plots/{directory}.gif'
 
 # Create a list of all the PNG images in the directory
 images = []
-for filename in os.listdir(image_dir)[:100]:
+for filename in os.listdir(image_dir)[:n_plots]:
     if filename.endswith('.png'):
         image_path = os.path.join(image_dir, filename)
         images.append(imageio.imread(image_path))
@@ -261,5 +253,5 @@ for filename in os.listdir(image_dir)[:100]:
 imageio.mimsave(output_gif, images, fps=5)
 
 # %%
-tens = torch.tensor(df_long[['rank', 'latent_time', 'position']].values)
-torch.save(tens, folder_data_preproc / 'tens_lt.pt')
+# tens = torch.tensor(df_long[['rank', 'latent_time', 'position']].values)
+# torch.save(tens, folder_data_preproc / 'tens_lt.pt')

@@ -8,57 +8,47 @@ import chromatinhd as chd
 
 import seaborn as sns
 import plotly.express as px
+import plotly.graph_objects as go
 import matplotlib.pyplot as plt
 
 # %%
+# set folder paths
 folder_root = chd.get_output()
 folder_data = folder_root / "data"
 dataset_name = "hspc"
 folder_data_preproc = folder_data / dataset_name
 promoter_name, window = "10k10k", np.array([-10000, 10000])
 
+# load data
 promoters = pd.read_csv(folder_data_preproc / ("promoters_" + promoter_name + ".csv"), index_col = 0)
 fragments = chd.data.Fragments(folder_data_preproc / "fragments_myeloid" / promoter_name)
-
-# get latent time
-latent_time = pd.read_csv(folder_data_preproc / 'MV2_latent_time_myeloid.csv')
-# create ranking column
-latent_time['rank_raw'] = latent_time['latent_time'].rank()
-latent_time['rank'] = latent_time['rank_raw'] / latent_time.shape[0]
-
-# get gene info
 genes = pd.read_csv(folder_data_preproc / "genes.csv", index_col = 0)
-
 info_genes_cells = pd.read_csv(folder_data_preproc / "info_genes_cells.csv")
 s_genes = info_genes_cells['s_genes'].dropna().tolist()
 g2m_genes = info_genes_cells['g2m_genes'].dropna().tolist()
 hspc_marker_genes = info_genes_cells['hspc_marker_genes'].dropna().tolist()
+latent_time = pd.read_csv(folder_data_preproc / 'MV2_latent_time_myeloid.csv')
+latent_time['rank_raw'] = latent_time['latent_time'].rank()
+latent_time['rank'] = latent_time['rank_raw'] / latent_time.shape[0]
 
 # %%
-# fragments.mapping object specifies from cell and gene for each fragment
-mapping = fragments.mapping
-
-# fragments.coordinates object specifies cutsites for each fragment
 coordinates = fragments.coordinates
-# normalize coordinates between 0 and 1
 coordinates = coordinates + 10000
 coordinates = coordinates / 20000
 
-cutsite_gene = torch.bincount(mapping[:, 1]) * 2
+mapping = fragments.mapping
+mapping_cutsites = torch.bincount(mapping[:, 1]) * 2
 # calculate the range that contains 90% of the data
-sorted_tensor, _ = torch.sort(cutsite_gene)
-ten_percent = cutsite_gene.numel() // 10
+sorted_tensor, _ = torch.sort(mapping_cutsites)
+ten_percent = mapping_cutsites.numel() // 10
 min_val, max_val = sorted_tensor[ten_percent], sorted_tensor[-ten_percent]
 
 #%%
-sns.set_style("white")
-sns.set_context("paper", font_scale=1.4)
-
-# Calculate histogram values
-values, bins, _ = plt.hist(cutsite_gene.numpy(), bins=50, color="blue", alpha=0.75)
-# Calculate percentage values
+values, bins, _ = plt.hist(mapping_cutsites.numpy(), bins=50, color="blue", alpha=0.75)
 percentages = values / np.sum(values) * 100
 
+sns.set_style("white")
+sns.set_context("paper", font_scale=1.4)
 fig, ax = plt.subplots(dpi=300)
 ax.bar(bins[:-1], percentages, width=np.diff(bins), color="blue", alpha=0.75)
 ax.set_title("Percentage of values per bin")
@@ -67,47 +57,23 @@ ax.set_ylabel("%")
 ax.axvline(min_val, color='r', linestyle='--')
 ax.axvline(max_val, color='r', linestyle='--')
 
-# remove the top and right spines of the plot
 sns.despine()
 
 fig.savefig(folder_data_preproc / f'plots/n_cutsites.png')
 
 #%%
-for x in range(promoters.shape[0]):
-    # pick a gene
-    gene = promoters.index[x]
+csv_dir = folder_data_preproc / "evaluate_pseudo_continuous_tensors"
+plot_dir = folder_data_preproc / "plots/evaluate_pseudo_continuous"
+plot_combined_dir = folder_data_preproc / "plots/cut_sites_evaluate_pseudo_continuous"
 
-    # find out the gene_ix for chosen gene
-    gene_ix = fragments.var.loc[gene]['ix']
+os.makedirs(plot_dir, exist_ok=True)
+os.makedirs(plot_combined_dir, exist_ok=True)
 
-    # use gene_ix to filter mapping and coordinates
-    mask = mapping[:,1] == gene_ix
-    mapping_sub = mapping[mask]
-    coordinates_sub = coordinates[mask]
-    n_cutsites = coordinates_sub.shape[0]
-
-    # create df
-    tens = torch.cat((mapping_sub, coordinates_sub), dim=1)
-    df = pd.DataFrame(tens.numpy())
-    df.columns = ['cell_ix', 'gene_ix', 'cut_start', 'cut_end']
-    df['height'] = 1
-
-    # join latent time
-    df = pd.merge(df, latent_time, left_on='cell_ix', right_index=True)
-
-    # check latent time differences
-    # df_lt = df.drop_duplicates(subset=['latent_time'])
-    # df_lt.sort_values(by='latent_time', ascending=True, inplace=True)
-    # df_lt['diff'] = df_lt['latent_time'] - df_lt['latent_time'].shift(1)
-    # df_lt['diff'].hist(bins=200)
-
-    # reshape
-    df_long = pd.melt(df, id_vars=['cell_ix', 'gene_ix', 'cell', 'latent_time', 'rank', 'height'], value_vars=['cut_start', 'cut_end'], var_name='cut_type', value_name='position')
-    df = df_long.rename(columns={'position': 'x', 'rank': 'y'})
-
+def plot_cut_sites(df, gene, n_fragments):
     fig, ax = plt.subplots(figsize=(15, 15))
+
     ax.scatter(df['x'], df['y'], s=1, marker='s', color='black')
-    ax.set_title(f"{gene} (cut sites = {2 * n_cutsites})", fontsize=14)
+    ax.set_title(f"{gene} (cut sites = {2 * n_fragments})", fontsize=14)
     ax.set_xlabel('Position', fontsize=12)
     ax.set_ylabel('Latent Time', fontsize=12)
     ax.set_xlim([0, 1])
@@ -116,39 +82,9 @@ for x in range(promoters.shape[0]):
 
     plt.savefig(folder_data_preproc / f'plots/cutsites/{gene}.png')
 
-print(f"Done! Plots saved to {folder_data_preproc / 'plots/cutsites'}")
-
-#%%
-for x in range(promoters.shape[0]):
-    # pick a gene
-    gene = promoters.index[x]
-
-    # find out the gene_ix for chosen gene
-    gene_ix = fragments.var.loc[gene]['ix']
-
-    # Use gene_ix to filter mapping and coordinates
-    mask = mapping[:,1] == gene_ix
-    mapping_sub = mapping[mask]
-    coordinates_sub = coordinates[mask]
-    n_cutsites = coordinates_sub.shape[0]
-
-    # Create df
-    tens = torch.cat((mapping_sub, coordinates_sub), dim=1)
-    df = pd.DataFrame(tens.numpy())
-    df.columns = ['cell_ix', 'gene_ix', 'cut_start', 'cut_end']
-    df['height'] = 1
-
-    # Join latent time
-    df = pd.merge(df, latent_time, left_on='cell_ix', right_index=True)
-
-    # Reshape
-    df_long = pd.melt(df, id_vars=['cell_ix', 'gene_ix', 'cell', 'latent_time', 'rank', 'height'], value_vars=['cut_start', 'cut_end'], var_name='cut_type', value_name='position')
-    df_long = df_long.rename(columns={'position': 'x', 'rank': 'y'})
-
-    # Set figure size and create subplot grid
+def plot_cut_sites_histo(df, df_long, gene, n_fragments):
     fig, axs = plt.subplots(figsize=(15, 10), ncols=2, gridspec_kw={'width_ratios': [1, 3]})
 
-    # Create histogram subplot
     ax_hist = axs[0]
     ax_hist.hist(df['rank'], bins=100, orientation='horizontal')
     ax_hist.set_xlabel('n cells')
@@ -156,7 +92,6 @@ for x in range(promoters.shape[0]):
     ax_hist.set_ylim([0, 1])
     ax_hist.invert_xaxis()
 
-    # Create scatter plot subplot
     ax_scatter = axs[1]
     ax_scatter.scatter(df_long['x'], df_long['y'], s=1, marker='s', color='black')
     ax_scatter.set_xlabel('Position')
@@ -165,93 +100,164 @@ for x in range(promoters.shape[0]):
     ax_scatter.set_ylim([0, 1])
     ax_scatter.set_facecolor('white')
 
-    # Set plot title
-    fig.suptitle(f"{gene} (cut sites = {2 * n_cutsites})", fontsize=14)
+    fig.suptitle(f"{gene} (cut sites = {2 * n_fragments})", fontsize=14)
 
     plt.savefig(folder_data_preproc / f'plots/cutsites_histo/{gene}.png')
 
-print(f"Done! Plots saved to {folder_data_preproc / 'plots/cutsites_histo'}")
+def plot_evaluate_pseudo(gene):
+    file_name = csv_dir / f"{gene}.csv"
+    probsx = np.loadtxt(file_name, delimiter=',')
 
+    fig, ax = plt.subplots(figsize=(10, 10))
+    heatmap = ax.imshow(probsx, cmap='RdBu_r', aspect='auto')
+    cbar = plt.colorbar(heatmap)
 
-# TODO
-# select hspc marker genes
-# decrease margins
-# increase font size
+    ax.set_title(f'Probs for gene_oi = {gene}')
+    ax.set_xlabel('Position')
+    ax.set_ylabel('Latent Time')
 
-#%%
-# create a figure with 4 rows and 4 columns
-fig, axes = plt.subplots(nrows=4, ncols=4, figsize=(60, 60))
+    file_name = plot_dir / f"{gene}.png"
+    plt.savefig(file_name, dpi=300)
 
-# iterate over the axes and plot each gene's cut site data
-for i, ax in enumerate(axes.flat):
-    if i >= promoters.shape[0]: # if there are fewer genes than axes, hide the extra axes
-        ax.axis('off')
-        continue
-    
-    # pick a gene
-    gene = promoters.index[i]
+def plot_cut_sites_evaluate_pseudo(df, gene, n_fragments):
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(15, 20))
 
-    # find out the gene_ix for chosen gene
+    # Plot cut sites
+    ax1.scatter(df['x'], df['y'], s=1, marker='s', color='black')
+    ax1.set_title(f"{gene} (cut sites = {2 * n_fragments})", fontsize=14)
+    ax1.set_xlabel('Position', fontsize=12)
+    ax1.set_ylabel('Latent Time', fontsize=12)
+    ax1.set_xlim([0, 1])
+    ax1.set_ylim([0, 1])
+    ax1.set_facecolor('white')
+
+    # Plot evaluated probabilities
+    file_name = csv_dir / f"{gene}.csv"
+    probsx = np.loadtxt(file_name, delimiter=',')
+    heatmap = ax2.imshow(probsx, cmap='RdBu_r', aspect='auto')
+    cbar = plt.colorbar(heatmap)
+
+    ax2.set_title(f'Probs for gene_oi = {gene}')
+    ax2.set_xlabel('Position')
+    ax2.set_ylabel('Latent Time')
+
+    file_name = plot_combined_dir / f"{gene}.png"
+    plt.savefig(file_name, dpi=300)
+
+import matplotlib.pyplot as plt
+import numpy as np
+
+def plot_cut_sites_evaluate_pseudo(df, gene, n_fragments):
+    fig = plt.figure(figsize=(15, 20))
+    gs = fig.add_gridspec(2, 1, height_ratios=[1, 1])
+
+    ax1 = fig.add_subplot(gs[0])
+    ax2 = fig.add_subplot(gs[1])
+
+    # Plot cut sites
+    ax1.scatter(df['x'], df['y'], s=1, marker='s', color='black')
+    ax1.set_title(f"{gene} (cut sites = {2 * n_fragments})", fontsize=14)
+    ax1.set_xlabel('Position', fontsize=12)
+    ax1.set_ylabel('Latent Time', fontsize=12)
+    ax1.set_xlim([0, 1])
+    ax1.set_ylim([0, 1])
+    ax1.set_facecolor('white')
+
+    # Plot evaluated probabilities
+    file_name = csv_dir / f"{gene}.csv"
+    probsx = np.loadtxt(file_name, delimiter=',')
+    heatmap = ax2.imshow(probsx, cmap='RdBu_r', aspect='auto')
+
+    ax2.set_title(f'Probs for gene_oi = {gene}')
+    ax2.set_xlabel('Position')
+    ax2.set_ylabel('Latent Time')
+
+    # Create divider for colorbar
+    divider = fig.add_axes([0.1, 0.08, 0.8, 0.02])  # [left, bottom, width, height]
+    cbar = plt.colorbar(heatmap, cax=divider, orientation='horizontal')
+
+    plt.tight_layout()  # Adjust spacing between subplots
+
+    # Save the combined figure
+    file_name = plot_combined_dir / f"{gene}.png"
+    plt.savefig(file_name, dpi=300)
+
+plt.ioff()
+for x in range(promoters.shape[0]):
+
+    gene = promoters.index[x]
     gene_ix = fragments.var.loc[gene]['ix']
-
-    # use gene_ix to filter mapping and coordinates
     mask = mapping[:,1] == gene_ix
     mapping_sub = mapping[mask]
     coordinates_sub = coordinates[mask]
-    n_cutsites = coordinates_sub.shape[0]
+    n_fragments = coordinates_sub.shape[0]
 
-    # create df
     tens = torch.cat((mapping_sub, coordinates_sub), dim=1)
     df = pd.DataFrame(tens.numpy())
     df.columns = ['cell_ix', 'gene_ix', 'cut_start', 'cut_end']
     df['height'] = 1
 
-    # join latent time
     df = pd.merge(df, latent_time, left_on='cell_ix', right_index=True)
-
-    # reshape
     df_long = pd.melt(df, id_vars=['cell_ix', 'gene_ix', 'cell', 'latent_time', 'rank', 'height'], value_vars=['cut_start', 'cut_end'], var_name='cut_type', value_name='position')
-    df = df_long.rename(columns={'position': 'x', 'rank': 'y'})
+    df_long = df_long.rename(columns={'position': 'x', 'rank': 'y'})
+    
+    # plot_cut_sites(df_long, gene, n_fragments)
+    # plot_cut_sites_histo(df, df_long, gene, n_fragments)
+    # plot_evaluate_pseudo(gene)
+    plot_cut_sites_evaluate_pseudo(df_long, gene, n_fragments)
 
-    # Create scatter plot with rectangular markers
-    ax.scatter(df['x'], df['y'], s=1, marker='s', color='black')
 
-    # Set plot title and axis labels
-    ax.set_title(f"{gene} (cut sites = {2 * n_cutsites})", fontsize=12)
+print(f"Done! Plots saved to {folder_data_preproc}")
+
+# TODO
+# select hspc marker genes
+
+#%%
+fig, axes = plt.subplots(nrows=4, ncols=4, figsize=(60, 60))
+
+for i, ax in enumerate(axes.flat):
+    if i >= promoters.shape[0]:
+        # if there are fewer genes than axes, hide the extra axes
+        ax.axis('off')
+        continue
+    
+    gene = promoters.index[i]
+    gene_ix = fragments.var.loc[gene]['ix']
+    mask = mapping[:,1] == gene_ix
+    mapping_sub = mapping[mask]
+    coordinates_sub = coordinates[mask]
+    n_fragments = coordinates_sub.shape[0]
+
+    tens = torch.cat((mapping_sub, coordinates_sub), dim=1)
+    df = pd.DataFrame(tens.numpy())
+    df.columns = ['cell_ix', 'gene_ix', 'cut_start', 'cut_end']
+    df['height'] = 1
+
+    df = pd.merge(df, latent_time, left_on='cell_ix', right_index=True)
+    df_long = pd.melt(df, id_vars=['cell_ix', 'gene_ix', 'cell', 'latent_time', 'rank', 'height'], value_vars=['cut_start', 'cut_end'], var_name='cut_type', value_name='position')
+    df_long = df_long.rename(columns={'position': 'x', 'rank': 'y'})
+
+    ax.scatter(df_long['x'], df_long['y'], s=1, marker='s', color='black')
+    ax.set_title(f"{gene} (cut sites = {2 * n_fragments})", fontsize=12)
     ax.set_xlabel('Position', fontsize=10)
     ax.set_ylabel('Latent Time', fontsize=10)
-
     ax.set_xlim([0, 1])
     ax.set_ylim([0, 1])
-
-    # Set plot background color to white
     ax.set_facecolor('white')
 
 # adjust spacing between subplots
 plt.subplots_adjust(hspace=0.5, wspace=0.5)
-
-# save the figure
 plt.savefig(folder_data_preproc / f'plots/cutsites_subplot.png')
-
-
+ 
 #%%
-# arguments for creating the GIF
-directory = 'cutsites_histo'
-n_plots = 75
+plot_dir = folder_data_preproc / "plots/evaluate_pseudo_continuous_3D"
 
-image_dir = folder_data_preproc / f'plots/{directory}'
-output_gif = folder_data_preproc / f'plots/{directory}.gif'
+for gene_oi in range(promoters.shape[0]):
+    file_name = csv_dir / f"tensor_gene_oi_{gene_oi}.csv"
+    probsx = np.loadtxt(file_name, delimiter=',')
 
-# Create a list of all the PNG images in the directory
-images = []
-for filename in os.listdir(image_dir)[:n_plots]:
-    if filename.endswith('.png'):
-        image_path = os.path.join(image_dir, filename)
-        images.append(imageio.imread(image_path))
-
-# Create the GIF from the list of images
-imageio.mimsave(output_gif, images, fps=5)
-
-# %%
-# tens = torch.tensor(df_long[['rank', 'latent_time', 'position']].values)
-# torch.save(tens, folder_data_preproc / 'tens_lt.pt')
+    fig = go.Figure(data=[go.Surface(z=probsx)])
+    fig.update_layout(title=f'Probs for gene_oi = {gene_oi}', template='plotly_white')
+    fig.show()
+    if gene_oi == 3:
+        break

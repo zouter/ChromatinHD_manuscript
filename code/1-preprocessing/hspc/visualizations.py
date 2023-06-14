@@ -120,7 +120,10 @@ def plot_evaluate_pseudo(gene):
     plt.savefig(file_name, dpi=300)
 
 def plot_cut_sites_evaluate_pseudo(df, gene, n_fragments):
-    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(15, 20))
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(15, 20), gridspec_kw={'height_ratios': [1, 1]})
+
+    # Modify subplot configuration
+    plt.subplots_adjust(hspace=0.1, bottom=0.12)
 
     # Plot cut sites
     ax1.scatter(df['x'], df['y'], s=1, marker='s', color='black')
@@ -134,55 +137,30 @@ def plot_cut_sites_evaluate_pseudo(df, gene, n_fragments):
     # Plot evaluated probabilities
     file_name = csv_dir / f"{gene}.csv"
     probsx = np.loadtxt(file_name, delimiter=',')
-    heatmap = ax2.imshow(probsx, cmap='RdBu_r', aspect='auto')
-    cbar = plt.colorbar(heatmap)
 
-    ax2.set_title(f'Probs for gene_oi = {gene}')
+    heatmap = ax2.imshow(probsx, cmap='RdBu_r', aspect='auto')
+
+    x_ticks1 = np.linspace(0, 1, num=6)
+    x_tick_labels1 = ['0', '0.2', '0.4', '0.6', '0.8', '1.0']
+    y_ticks1 = np.linspace(0, 1, num=6)
+    y_tick_labels1 = ['0', '0.2', '0.4', '0.6', '0.8', '1.0'][::-1]
+
+    ax2.set_xticks(x_ticks1 * (probsx.shape[1] - 1))
+    ax2.set_xticklabels(x_tick_labels1)
+    ax2.set_yticks(y_ticks1 * (probsx.shape[0] - 1))
+    ax2.set_yticklabels(y_tick_labels1)
+
     ax2.set_xlabel('Position')
     ax2.set_ylabel('Latent Time')
+
+    # Add colorbar
+    cbar_ax = fig.add_axes([0.15, 0.07, 0.7, 0.02])  # [left, bottom, width, height]
+    cbar = plt.colorbar(heatmap, cax=cbar_ax, orientation='horizontal')
+    cbar.set_label('Probability of finding a cut site at given position and latent time')
 
     file_name = plot_combined_dir / f"{gene}.png"
     plt.savefig(file_name, dpi=300)
 
-import matplotlib.pyplot as plt
-import numpy as np
-
-def plot_cut_sites_evaluate_pseudo(df, gene, n_fragments):
-    fig = plt.figure(figsize=(15, 20))
-    gs = fig.add_gridspec(2, 1, height_ratios=[1, 1])
-
-    ax1 = fig.add_subplot(gs[0])
-    ax2 = fig.add_subplot(gs[1])
-
-    # Plot cut sites
-    ax1.scatter(df['x'], df['y'], s=1, marker='s', color='black')
-    ax1.set_title(f"{gene} (cut sites = {2 * n_fragments})", fontsize=14)
-    ax1.set_xlabel('Position', fontsize=12)
-    ax1.set_ylabel('Latent Time', fontsize=12)
-    ax1.set_xlim([0, 1])
-    ax1.set_ylim([0, 1])
-    ax1.set_facecolor('white')
-
-    # Plot evaluated probabilities
-    file_name = csv_dir / f"{gene}.csv"
-    probsx = np.loadtxt(file_name, delimiter=',')
-    heatmap = ax2.imshow(probsx, cmap='RdBu_r', aspect='auto')
-
-    ax2.set_title(f'Probs for gene_oi = {gene}')
-    ax2.set_xlabel('Position')
-    ax2.set_ylabel('Latent Time')
-
-    # Create divider for colorbar
-    divider = fig.add_axes([0.1, 0.08, 0.8, 0.02])  # [left, bottom, width, height]
-    cbar = plt.colorbar(heatmap, cax=divider, orientation='horizontal')
-
-    plt.tight_layout()  # Adjust spacing between subplots
-
-    # Save the combined figure
-    file_name = plot_combined_dir / f"{gene}.png"
-    plt.savefig(file_name, dpi=300)
-
-plt.ioff()
 for x in range(promoters.shape[0]):
 
     gene = promoters.index[x]
@@ -205,7 +183,6 @@ for x in range(promoters.shape[0]):
     # plot_cut_sites_histo(df, df_long, gene, n_fragments)
     # plot_evaluate_pseudo(gene)
     plot_cut_sites_evaluate_pseudo(df_long, gene, n_fragments)
-
 
 print(f"Done! Plots saved to {folder_data_preproc}")
 
@@ -232,6 +209,7 @@ for i, ax in enumerate(axes.flat):
     df = pd.DataFrame(tens.numpy())
     df.columns = ['cell_ix', 'gene_ix', 'cut_start', 'cut_end']
     df['height'] = 1
+
 
     df = pd.merge(df, latent_time, left_on='cell_ix', right_index=True)
     df_long = pd.melt(df, id_vars=['cell_ix', 'gene_ix', 'cell', 'latent_time', 'rank', 'height'], value_vars=['cut_start', 'cut_end'], var_name='cut_type', value_name='position')

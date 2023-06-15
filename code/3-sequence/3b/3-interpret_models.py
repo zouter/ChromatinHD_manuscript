@@ -101,7 +101,7 @@ loss = lambda x, y: -paircor(x, y).mean() * 100
 
 for prediction_name, design_row in design.items():
     print(prediction_name)
-    prediction = Prediction(
+    prediction = chd.flow.Flow(
         chd.get_output()
         / "prediction_sequence_v5"
         / dataset_name

@@ -28,9 +28,10 @@ from chromatinhd_manuscript.designs import (
 )
 
 
-design = design.query("method == 'v20_initdefault'")
-design = design.query("dataset == 'pbmc10k'")
-design = design.query("splitter == 'random_5fold'")
+design = design.query("method == 'v20'")
+# design = design.query("method == 'counter'")
+design = design.query("dataset == 'pbmc3k'")
+design = design.query("splitter == 'permutations_5fold5repeat'")
 design = design.query("promoter == '10k10k'")
 # design = design.query("promoter == '100k100k'")
 
@@ -65,17 +66,15 @@ for (dataset_name, promoter_name), subdesign in design.groupby(["dataset", "prom
 
         methods_info = get_design(transcriptome, fragments)
 
-        # fold_slice = slice(0, 1)
-        # fold_slice = slice(0, 5)
         fold_slice = slice(None, None)
 
         # folds & minibatching
         folds = pickle.load((fragments.path / "folds" / (splitter + ".pkl")).open("rb"))
-        folds = get_folds_inference(fragments, folds)
+        folds, cellxgene_batch_size = get_folds_inference(fragments, folds)
 
         for method_name, subdesign in subdesign.groupby("method"):
             method_info = methods_info[method_name]
-            prediction = Prediction(
+            prediction = chd.flow.Flow(
                 chd.get_output()
                 / "prediction_positional"
                 / dataset_name
@@ -106,7 +105,10 @@ for (dataset_name, promoter_name), subdesign in design.groupby(["dataset", "prom
 
                 loaders = chd.loaders.LoaderPool(
                     method_info["loader_cls"],
-                    method_info["loader_parameters"],
+                    {
+                        **method_info["loader_parameters"],
+                        "cellxgene_batch_size": cellxgene_batch_size,
+                    },
                     n_workers=20,
                     shuffle_on_iter=False,
                 )
@@ -122,6 +124,7 @@ for (dataset_name, promoter_name), subdesign in design.groupby(["dataset", "prom
                 # outcome = transcriptome.X.dense()
                 outcome = torch.from_numpy(transcriptome.adata.layers["magic"])
 
+                ####
                 scorer = chd.scoring.prediction.Scorer(
                     models,
                     folds[: len(models)],
@@ -143,3 +146,42 @@ for (dataset_name, promoter_name), subdesign in design.groupby(["dataset", "prom
                     transcriptome_predicted_full,
                     (scores_dir / "transcriptome_predicted_full.pkl").open("wb"),
                 )
+
+                ####
+
+                scores_dir_overall = prediction.path / "scoring" / "overall"
+                transcriptome_predicted_full = pickle.load(
+                    (scores_dir_overall / "transcriptome_predicted_full.pkl").open("rb")
+                )
+
+                # %%
+                scorer_folder = prediction.path / "scoring" / "nothing"
+                scorer_folder.mkdir(exist_ok=True, parents=True)
+
+                # %%
+                nothing_filterer = chd.scoring.prediction.filterers.NothingFilterer()
+                Scorer2 = chd.scoring.prediction.Scorer2
+                nothing_scorer = Scorer2(
+                    models,
+                    folds[: len(models)],
+                    loaders,
+                    outcome,
+                    fragments.var.index,
+                    fragments.obs.index,
+                    device=device,
+                )
+
+                # %%
+                models = [model.to("cpu") for model in models]
+
+                # %%
+                nothing_scoring = nothing_scorer.score(
+                    transcriptome_predicted_full=transcriptome_predicted_full,
+                    filterer=nothing_filterer,
+                    extract_total=True,
+                )
+
+                # %%
+                scorer_folder = prediction.path / "scoring" / "nothing"
+                scorer_folder.mkdir(exist_ok=True, parents=True)
+                nothing_scoring.save(scorer_folder)

@@ -105,7 +105,7 @@ class Prediction(chd.flow.Flow):
 
 for prediction_name, design_row in design.items():
     print(prediction_name)
-    prediction = Prediction(
+    prediction = chd.flow.Flow(
         chd.get_output()
         / "prediction_sequence"
         / dataset_name

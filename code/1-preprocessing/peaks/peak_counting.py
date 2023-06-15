@@ -14,8 +14,11 @@
 # ---
 
 # %%
-# %load_ext autoreload
-# %autoreload 2
+from IPython import get_ipython
+
+if get_ipython():
+    get_ipython().run_line_magic("load_ext", "autoreload")
+    get_ipython().run_line_magic("autoreload", "2")
 
 import numpy as np
 import pandas as pd
@@ -64,7 +67,8 @@ dataset_name = "pbmc10k"
 # peaks_name = "macs2_improved"
 # peaks_name = "stack"
 # peaks_name = "rolling_500"; window_size = 500
-peaks_name = "rolling_50"; window_size = 50
+peaks_name = "rolling_50"
+window_size = 50
 
 # %%
 folder_data_preproc = chd.get_output() / "data" / dataset_name

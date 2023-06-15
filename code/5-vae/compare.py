@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.14.1
+#       jupytext_version: 1.14.5
 #   kernelspec:
 #     display_name: Python 3 (ipykernel)
 #     language: python
@@ -14,8 +14,11 @@
 # ---
 
 # %%
-# %load_ext autoreload
-# %autoreload 2
+from IPython import get_ipython
+
+if get_ipython():
+    get_ipython().run_line_magic("load_ext", "autoreload")
+    get_ipython().run_line_magic("autoreload", "2")
 
 import numpy as np
 import pandas as pd
@@ -59,7 +62,7 @@ transcriptome = chd.data.Transcriptome(folder_data_preproc / "transcriptome")
 promoter_name, (padding_negative, padding_positive) = "10k10k", (-10000, 10000)
 # promoter_name, (padding_negative, padding_positive) = "20kpromoter", (-10000, 0)
 
-# %% tags=[]
+# %%
 method_names = [
     # "v4",
     # "v4_baseline",
@@ -104,7 +107,7 @@ class Prediction(chd.flow.Flow):
 scores = {}
 for dataset_name in dataset_names:
     for method_name in method_names:
-        prediction = Prediction(
+        prediction = chd.flow.Flow(
             chd.get_output()
             / "prediction_vae"
             / dataset_name
@@ -184,7 +187,7 @@ metric3 = {"name": "ari_diff", "limits": (-0.1, 0.1), "label": "woverlap_diff"}
 metric4 = {"name": "ami_diff", "limits": (-0.1, 0.1), "label": "ami_diff"}
 metrics = [metric, metric2, metric3, metric4]
 
-# %% tags=[]
+# %%
 scores_all = scores.groupby(["dataset", "method", "phase"])[
     ["overlap", "woverlap", "ari", "ami"]
 ].mean()
@@ -234,7 +237,7 @@ phase_info = pd.DataFrame(
     {"phase": ["train", "validation", "all"], "marker": [".", ".", "o"]}
 ).set_index("phase")
 
-# %% tags=[]
+# %%
 fig, axes = plt.subplots(
     len(metrics),
     len(dataset_names),

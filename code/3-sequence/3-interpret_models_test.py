@@ -106,7 +106,7 @@ for prediction_name, design_row in design.items():
         / promoter_name
         / prediction_name
     )
-    prediction = Prediction(
+    prediction = chd.flow.Flow(
         chd.get_output()
         / "prediction_sequence"
         / dataset_name

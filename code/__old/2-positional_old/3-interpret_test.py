@@ -80,7 +80,7 @@ for dataset_name_train, dataset_name in [
             / promoter_name
             / prediction_name
         )
-        prediction = Prediction(
+        prediction = chd.flow.Flow(
             chd.get_output()
             / "prediction_positional"
             / dataset_name

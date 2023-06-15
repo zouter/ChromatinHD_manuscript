@@ -6,16 +6,19 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.14.1
+#       jupytext_version: 1.14.5
 #   kernelspec:
 #     display_name: Python 3 (ipykernel)
 #     language: python
 #     name: python3
 # ---
 
-# %% tags=[]
-# %load_ext autoreload
-# %autoreload 2
+# %%
+from IPython import get_ipython
+
+if get_ipython():
+    get_ipython().run_line_magic("load_ext", "autoreload")
+    get_ipython().run_line_magic("autoreload", "2")
 
 import numpy as np
 import pandas as pd
@@ -53,10 +56,10 @@ dataset_folder.mkdir(exist_ok=True, parents=True)
 # %% [markdown]
 # ## Load data
 
-# %% tags=[]
+# %%
 transcriptome = chd.data.transcriptome.transcriptome.ClusterTranscriptome(genotype_data_folder / "transcriptome")
 
-# %% tags=[]
+# %%
 adata2 = transcriptome.adata
 
 # %%
@@ -67,7 +70,7 @@ adata2.var["mean"] = adata2.X.mean(0)
 clusters_info = pd.read_pickle(chd.get_output() / "data" / fragment_dataset_name / "clusters_info.pkl") 
 clusters_info["ix"] = np.arange(len(clusters_info))
 
-# %% tags=[]
+# %%
 vcf_file = genotype_data_folder /"final.bcf.gz"
 
 # %%
@@ -99,12 +102,15 @@ folder_qtl = chd.get_output() / "data" / "qtl" / "hs" / "gwas"
 folder_qtl.mkdir(exist_ok = True, parents=True)
 qtl_mapped = pd.read_pickle(folder_qtl / ("qtl_mapped_" + qtl_name + ".pkl"))
 
-# %% tags=[]
+# %%
 window_size = 10**6
 
 # %%
 variants_info["gwas"] = variants_info["rsid"].isin(qtl_mapped["rsid"])
 variants_info = variants_info.loc[variants_info["rsid"].isin(qtl_mapped["rsid"])].copy()
+
+# %%
+variants_info["gwas"].mean()
 
 # %%
 # # filter on variants not in LD
@@ -118,6 +124,9 @@ variants_info["ix"] = np.arange(len(variants_info))
 
 # %%
 variants_info["position"] = variants_info["pos"] + fragments.chromosomes["position_start"].loc[variants_info["chr"]].values
+
+# %%
+len(variants_info)
 
 # %% [markdown]
 # ## Genotype
@@ -164,7 +173,7 @@ genotype.variants_info = variants_info
 # %% [markdown]
 # ## Select genes
 
-# %% tags=[]
+# %%
 genes = pd.read_csv(genotype_data_folder / "genes.csv", index_col = 0)
 
 # %%
@@ -226,7 +235,7 @@ donors_info["ix"] = np.arange(len(donors_info))
 adata2.obs["cluster_ix"] = clusters_info["ix"][adata2.obs["cluster"]].values
 adata2.obs["donor_ix"] = donors_info["ix"][adata2.obs["donor"]].values
 
-# %% tags=[]
+# %%
 import xarray as xr
 
 # expression = pd.DataFrame(adata2.X, columns = adata2.var.index)
@@ -265,9 +274,6 @@ if (dataset_folder/"fragments").exists():
 
 # %%
 fragments = chd.data.fragments.ChunkedFragments(dataset_folder / "fragments")
-
-# %% [markdown]
-# -----------------
 
 # %% [markdown]
 # ## Check loader
@@ -439,363 +445,8 @@ data = chd.loaders.chunkfragments.Data(
     clusters_oi
 ).to(device)
 
-
 # %% [markdown]
-# ## Model
-
-# %%
-class PositionalEncoding(torch.nn.Module):
-    """Positional encoding."""
-    def __init__(self, n_encoding_dimensions, max_len=1000):
-        super().__init__()
-        assert (n_encoding_dimensions % 2) == 0
-        self.n_encoding_dimensions = n_encoding_dimensions
-        self.max_len = max_len
-        self.freq = torch.pow(self.max_len, torch.arange(0, self.n_encoding_dimensions, 2, dtype=torch.float32) / self.n_encoding_dimensions)
-        self.register_buffer(
-            "shifts",
-            torch.tensor(
-                [[0, torch.pi / 2] for _ in range(1, n_encoding_dimensions//2 + 1)]
-            ).flatten(-2),
-        )
-        self.register_buffer(
-            "freqs",
-            torch.repeat_interleave(self.freq, 2)
-        )
-
-    def forward(self, X):        
-        P = torch.sin(X / self.freqs + self.shifts)
-        return P
-
-
-# %%
-positional_encoder = PositionalEncoding(10, window_size*4).to(device)
-
-# %%
-positional_encoding = positional_encoder(data.relative_coordinates.unsqueeze(-1)).squeeze(0)
-
-# %%
-dummy_relative_coordinates = torch.linspace(-window_size, window_size, 10000).to(device)
-positional_encoding = positional_encoder(dummy_relative_coordinates.unsqueeze(-1)).squeeze(0)
-
-# %%
-sns.heatmap(positional_encoding.cpu().numpy())
-
-
-# %%
-class CutEmbedder(torch.nn.Module):
-    def __init__(self, positional_encoder):
-        super().__init__()
-        self.positional_encoder = positional_encoder
-        self.n_embedding_dimensions = positional_encoder.n_encoding_dimensions
-        
-    def forward(self, x):
-        return self.positional_encoder(x)
-    
-class CutEmbedderDummy(torch.nn.Module):
-    n_embedding_dimensions = 1
-    def __init__(self):
-        super().__init__()
-        
-    def forward(self, x):
-        return torch.ones_like(x, dtype = torch.float).unsqueeze(-1)
-    
-class CutEmbedderBins(torch.nn.Module):
-    def __init__(self):
-        super().__init__()
-        self.register_buffer(
-            "bins",
-            torch.tensor([-1, 100, 500, 1000])
-        )
-        self.n_embedding_dimensions = len(self.bins)
-        
-    def forward(self, x):
-        return torch.nn.functional.one_hot(torch.searchsorted(self.bins, torch.abs(x))-1, len(self.bins))
-        # return torch.stack([(torch.abs(x) <= 5000).to(torch.float), (torch.abs(x) <= 1000).to(torch.float), (torch.abs(x) <= 500).to(torch.float)], -1)
-
-
-# %%
-cut_embedder = CutEmbedder(positional_encoder).to(device)
-cut_embedder = CutEmbedderDummy().to(device)
-cut_embedder = CutEmbedderBins().to(device)
-
-# %%
-cut_embedding = cut_embedder(data.relative_coordinates)
-cut_embedding.shape
-
-# %%
-import torch_scatter
-
-# %%
-len(data.local_clusterxvariant_indptr)
-
-# %%
-variant_embedding = torch_scatter.segment_sum_csr(
-    cut_embedding,
-    data.local_clusterxvariant_indptr
-).reshape(
-    (data.n_clusters, data.n_variants, cut_embedding.shape[-1])
-)
-variant_embedding = variant_embedding / cluster_cut_lib.to(device).unsqueeze(-1).unsqueeze(-1)
-variant_embedding = torch.log1p(variant_embedding) - 2 # only for dummy
-
-# %%
-sns.heatmap(variant_embedding[:, :, 0].T.cpu().numpy())
-
-# %%
-relative_variant_embedding = (variant_embedding - (variant_embedding.mean(0, keepdim = True))) / (variant_embedding.std(0, keepdim = True) + 1e-5)
-
-# %%
-sns.heatmap(relative_variant_embedding[:, :, 0].T.cpu().numpy())
-
-# %%
-variant_full_embedding = torch.concat([variant_embedding, relative_variant_embedding], -1)
-
-# %%
-variantxgene_embedding = torch.index_select(variant_full_embedding, 1, data.local_variant_to_local_variantxgene_selector)
-
-
-# %%
-class LogfoldPredictor(torch.nn.Module):
-    def __init__(
-        self,
-        n_embedding_dimensions,
-        n_variantxgenes: int
-    ):
-        super().__init__()
-        self.n_embedding_dimensions = n_embedding_dimensions
-        self.nn = torch.nn.Sequential(
-            torch.nn.Linear(n_embedding_dimensions, 1)
-        )
-        self.nn[0].weight.data.zero_()
-        
-        self.variantxgene_effect = torch.nn.Parameter(torch.zeros(n_variantxgenes))
-        
-    def forward(self, variantxgene_embedding, variantxgene_ixs):
-        prioritization = torch.exp(
-            self.nn(
-                variantxgene_embedding
-            ).squeeze(-1)
-        )
-        effect = self.variantxgene_effect[variantxgene_ixs] * prioritization
-        
-        return effect
-    
-class LogfoldPredictor(torch.nn.Module):
-    def __init__(
-        self,
-        n_embedding_dimensions,
-        n_variantxgenes: int
-    ):
-        super().__init__()
-        self.n_embedding_dimensions = n_embedding_dimensions
-        self.nn = torch.nn.Sequential(
-            torch.nn.Linear(n_embedding_dimensions, 10),
-            # torch.nn.BatchNorm1d(10),
-            torch.nn.ReLU(),
-            torch.nn.Linear(10, 10),
-            torch.nn.ReLU(),
-            torch.nn.Linear(10, 1)
-        )
-        
-        self.variantxgene_effect = torch.nn.Parameter(torch.zeros(n_variantxgenes))
-        
-    def forward(self, variantxgene_embedding, variantxgene_ixs):
-        prioritization = torch.exp(
-            self.nn(
-                variantxgene_embedding
-            ).squeeze(-1)
-        )
-        effect = self.variantxgene_effect[variantxgene_ixs] * prioritization
-        
-        return effect
-
-
-# %%
-fc_log_predictor = LogfoldPredictor(cut_embedder.n_embedding_dimensions * 2, n_variantxgenes=n_variantxgenes).to(device)
-
-# %%
-fc_log = fc_log_predictor(variantxgene_embedding, data.variantxgene_ixs)
-
-
-# %%
-class NegativeBinomial2(torch.distributions.NegativeBinomial):
-    def __init__(self, mu, dispersion, eps=1e-8):
-        # avoids NaNs induced in gradients when mu is very low
-        dispersion = torch.clamp_max(dispersion, 20.0)
-        logits = (mu + eps).log() - (1 / dispersion + eps).log()
-
-        total_count = 1 / dispersion
-
-        super().__init__(total_count=total_count, logits=logits)
-
-class ExpressionPredictor(torch.nn.Module):
-    def __init__(
-        self,
-        n_genes:int,
-        n_clusters: int,
-        n_donors: int,
-        n_variants: int,
-        lib: torch.Tensor,
-        baseline: torch.Tensor
-    ):
-        super().__init__()
-
-        self.dispersion_log = torch.nn.Parameter(torch.zeros(n_clusters, n_genes))
-
-        assert lib.shape == (n_donors, n_clusters)
-        self.register_buffer("lib", lib)
-
-        assert baseline.shape == (n_clusters, n_genes)
-        baseline_log = torch.log(baseline.clone())
-        baseline_log.requires_grad = True
-        self.baseline_log = torch.nn.Parameter(baseline_log)
-
-    def forward(self, fc_log, variantxgene_to_gene, genotypes, expression_obs):
-        self.track = {}
-        
-        # genotype [donor, variantxgene] -> [donor, (cluster), variantxgene]
-        # fc_log [cluster, variantxgene] -> [(donor), cluster, variantxgene]
-        expression_delta = genotypes.unsqueeze(1) * fc_log.unsqueeze(0)
-        
-        # expression_delta[:] = 0.
-
-        # baseline [cluster, gene] -> [(donor), cluster, variantxgene]
-        # expression = [donor, cluster, variantxgene]
-        expression_log = self.baseline_log[:, variantxgene_to_gene] + expression_delta
-        expression = torch.exp(expression_log)
-
-        # lib [donor, cluster] -> [donor, cluster, (variantxgene)]
-        expressed = expression * self.lib.unsqueeze(-1)
-        
-        if expressed.isnan().any():
-            print("Help!")
-
-        # dispersion [cluster, gene] -> [cluster, variantxgene]
-        dispersion = torch.exp(self.dispersion_log)[:, variantxgene_to_gene]
-
-        expression_dist = NegativeBinomial2(expressed, dispersion)
-
-        # expression_obs [donor, cluster, variantxgene]
-        expression_likelihood = expression_dist.log_prob(expression_obs)
-
-        elbo = -expression_likelihood.sum()
-        
-        self.track.update(locals())
-
-        return elbo
-
-
-# %% tags=[]
-lib = transcriptome.X.sum(-1).astype(np.float32)
-lib_torch = torch.from_numpy(lib)
-
-# %% tags=[]
-n_clusters = len(transcriptome.clusters_info)
-n_donors = len(transcriptome.donors_info)
-n_variants = len(genotype.variants_info)
-
-# %%
-baseline = (transcriptome.X / np.expand_dims(lib + 1e-8, -1)).mean(0)
-baseline_torch = torch.from_numpy(baseline)
-
-# %%
-expression_predictor = ExpressionPredictor(
-    len(transcriptome.var),
-    n_clusters,
-    n_donors,
-    n_variants,
-    lib_torch, 
-    baseline_torch
-).to(device)
-
-# %%
-elbo = expression_predictor.forward(
-    fc_log,
-    data.variantxgene_to_gene,
-    data.genotypes[:, data.local_variant_to_local_variantxgene_selector],
-    data.expression[:, :, data.variantxgene_to_local_gene]
-)
-
-
-# %% [markdown]
-# ## Infer
-
-# %%
-def go(data):
-    cut_embedding = cut_embedder(data.relative_coordinates)
-
-    variant_embedding = torch_scatter.segment_sum_csr(
-        cut_embedding,
-        data.local_clusterxvariant_indptr
-    ).reshape(
-        (data.n_clusters, data.n_variants, cut_embedding.shape[-1])
-    )
-    variant_embedding = variant_embedding / cluster_cut_lib.to(device).unsqueeze(-1).unsqueeze(-1)
-    variant_embedding = torch.log1p(variant_embedding) - 2 # only for dummy
-
-    relative_variant_embedding = (variant_embedding - (variant_embedding.mean(0, keepdim = True))) / (variant_embedding.std(0, keepdim = True) + 1e-5)
-
-    variant_full_embedding = torch.concat([variant_embedding, relative_variant_embedding], -1)
-
-    variantxgene_embedding = torch.index_select(variant_full_embedding, 1, data.local_variant_to_local_variantxgene_selector)
-
-    fc_log = fc_log_predictor(variantxgene_embedding, data.variantxgene_ixs)
-
-    elbo = expression_predictor.forward(
-        fc_log,
-        data.variantxgene_to_gene,
-        data.genotypes[:, data.local_variant_to_local_variantxgene_selector],
-        data.expression[:, :, data.variantxgene_to_local_gene]
-    )
-    return elbo
-
-
-# %%
-import itertools
-
-# %%
-optim = torch.optim.Adam(itertools.chain(cut_embedder.parameters(), fc_log_predictor.parameters(), expression_predictor.parameters()), lr = 1e-2)
-optim = torch.optim.Adam(itertools.chain(cut_embedder.parameters(), fc_log_predictor.parameters()), lr = 1e-2)
-
-# %%
-losses = []
-
-# %%
-import torch_scatter
-
-# %%
-n_epochs = 100
-checkpoint_every_epoch = 10
-for epoch in range(n_epochs):
-    elbo = go(data)
-    elbo.backward()
-    optim.step()
-    optim.zero_grad()
-    losses.append(elbo.item())
-    # if (epoch % checkpoint_every_epoch) == 0:
-    #     print(fc_log_predictor.nn[0].weight)
-
-# %%
-print(fc_log_predictor.nn[0].weight)
-
-# %%
-fc_log_predictor.variantxgene_effect[data.variantxgene_ixs].min().item(), fc_log_predictor.variantxgene_effect[data.variantxgene_ixs].max().item()
-
-# %%
-(data.expression.std(0) == 0.).sum()
-
-# %%
-fig, ax = plt.subplots()
-ax.plot(losses)
-
-# %%
-fig, ax = plt.subplots()
-ax.plot(losses)
-
-# %%
-fig, ax = plt.subplots()
-ax.plot(losses)
+# ## Train
 
 # %%
 transcriptome = chd.data.transcriptome.transcriptome.ClusteredTranscriptome(dataset_folder / "transcriptome")
@@ -809,8 +460,9 @@ import chromatinhd.models.eqtl.mapping.v2 as eqtl_model
 loader = eqtl_model.Loader(transcriptome, genotype, gene_variants_mapping)
 
 # %%
-genes_oi = np.array(np.arange(1000).tolist() + transcriptome.var.loc[transcriptome.gene_id(["CTLA4", "BACH2", "BLK"]), "ix"].tolist())
+# genes_oi = np.array(np.arange(1000).tolist() + transcriptome.var.loc[transcriptome.gene_id(["CTLA4", "BACH2", "BLK"]), "ix"].tolist())
 # genes_oi = np.array([transcriptome.var.loc[transcriptome.gene_id("CTLA4"), "ix"]])
+genes_oi = transcriptome.var["ix"].values
 
 # %%
 minibatch = eqtl_model.Minibatch(genes_oi)
@@ -850,7 +502,7 @@ trainer = eqtl_model.Trainer(model_dummy, loaders, optim, checkpoint_every_epoch
 trainer.train()
 
 # %% [markdown]
-# ### Inference & interpretion
+# ## Inference & interpretion
 
 # %%
 loaders_inference = chd.loaders.LoaderPool(
@@ -906,13 +558,16 @@ scores["bf"] = bf.to_pandas().T.stack()
 scores.sort_values("bf")
 
 # %%
-scores.query("cluster == 'B'").sort_values("bf").join(transcriptome.var[["symbol"]])
+scores.query("cluster == 'CD4 T'").sort_values("bf").join(transcriptome.var[["symbol"]])
 
 # %%
 scores.groupby("cluster")["bf"].sum().to_frame("bf").style.bar()
 
 # %%
-variant_id = genotype.variants_info.query("rsid == 'rs3087243'").index[0]
+"rs4987360" in genotype.variants_info["rsid"]
+
+# %%
+variant_id = genotype.variants_info.query("rsid == 'rs4987360'").index[0]
 
 # %%
 scores.join(genotype.variants_info[["rsid"]]).xs(variant_id, level = "variant").sort_values("fc_log")

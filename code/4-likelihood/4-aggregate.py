@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.14.1
+#       jupytext_version: 1.14.5
 #   kernelspec:
 #     display_name: Python 3 (ipykernel)
 #     language: python
@@ -14,8 +14,11 @@
 # ---
 
 # %%
-# %load_ext autoreload
-# %autoreload 2
+from IPython import get_ipython
+
+if get_ipython():
+    get_ipython().run_line_magic("load_ext", "autoreload")
+    get_ipython().run_line_magic("autoreload", "2")
 
 import numpy as np
 import pandas as pd
@@ -72,13 +75,9 @@ design = pd.DataFrame.from_records(
             ],
         ),
         itertools.product(
-            [
-                "lymphoma"
-            ],
+            ["lymphoma"],
             ["celltype"],
-            [
-                "baseline"
-            ],
+            ["baseline"],
             [""],
         ),
         itertools.product(
@@ -114,9 +113,7 @@ design = pd.DataFrame.from_records(
                 "brain",
             ],
             ["leiden_0.1"],
-            [
-                "baseline"
-            ],
+            ["baseline"],
             [""],
         ),
     ),
@@ -139,7 +136,9 @@ method_info = pd.DataFrame(
     ],
     columns=["method", "label", "type"],
 ).set_index("method")
-missing_methods = pd.Index(design["method"].unique()).difference(method_info.index).tolist()
+missing_methods = (
+    pd.Index(design["method"].unique()).difference(method_info.index).tolist()
+)
 missing_method_info = pd.DataFrame(
     {"method": missing_methods, "label": missing_methods}
 ).set_index("method")
@@ -183,32 +182,34 @@ for _, (dataset_name, latent_name, method_name, predictor) in design.iterrows():
         / predictor
     )
     if (scores_dir / "scores.pkl").exists():
-        scores_ = pd.read_pickle(
-            scores_dir / "scores.pkl"
-        )
+        scores_ = pd.read_pickle(scores_dir / "scores.pkl")
 
         scores[(dataset_name, latent_name, method_name, predictor)] = scores_
     else:
         print(scores_dir)
-scores = pd.concat(scores, names=["dataset", "latent", "method", "predictor", *scores_.index.names])
+scores = pd.concat(
+    scores, names=["dataset", "latent", "method", "predictor", *scores_.index.names]
+)
 
 # %% [markdown]
 # ### Process scores
 
 # %%
-scores["mse"] = scores["rmse"]**2
+scores["mse"] = scores["rmse"] ** 2
 
 # %%
-baseline_scores = scores.xs("baseline", level = "method").xs("", level = "predictor")
+baseline_scores = scores.xs("baseline", level="method").xs("", level="predictor")
 
 # %%
 # fill all missing values, typically because some genes were not predicted because they had no peaks
 fill_values = baseline_scores
 desired_index = baseline_scores.index
-scores = (
-    scores
-    .groupby(["method", "predictor"])
-    .apply(lambda x:x.reset_index().set_index(desired_index.names).reindex(desired_index).fillna(fill_values).drop(columns = ["method", "predictor"]))
+scores = scores.groupby(["method", "predictor"]).apply(
+    lambda x: x.reset_index()
+    .set_index(desired_index.names)
+    .reindex(desired_index)
+    .fillna(fill_values)
+    .drop(columns=["method", "predictor"])
 )
 
 # %%
@@ -217,9 +218,19 @@ scores = (
 
 # %%
 meanscores = scores.groupby(["dataset", "latent", "method", "predictor"]).mean()
-baseline_meanscores = meanscores.xs("baseline", level = "method").xs("", level = "predictor")
-meanscores["rmse_diff"] = (meanscores["rmse"] + -baseline_meanscores["rmse"]).reorder_levels(meanscores.index.names).loc[meanscores.index]
-meanscores["mse_diff"] = (meanscores["mse"] + -baseline_meanscores["mse"]).reorder_levels(meanscores.index.names).loc[meanscores.index]
+baseline_meanscores = meanscores.xs("baseline", level="method").xs(
+    "", level="predictor"
+)
+meanscores["rmse_diff"] = (
+    (meanscores["rmse"] + -baseline_meanscores["rmse"])
+    .reorder_levels(meanscores.index.names)
+    .loc[meanscores.index]
+)
+meanscores["mse_diff"] = (
+    (meanscores["mse"] + -baseline_meanscores["mse"])
+    .reorder_levels(meanscores.index.names)
+    .loc[meanscores.index]
+)
 
 # %%
 # scores["mse_baseline"] = baseline_scores["mse"].loc[scores.index.droplevel(["method", "predictor"])].values
@@ -229,26 +240,36 @@ meanscores["mse_diff"] = (meanscores["mse"] + -baseline_meanscores["mse"]).reord
 meanscores.sort_values(["dataset", "predictor"]).style.bar()
 
 # %%
-plotdata = scores.query("gene_ix < 500").groupby(["dataset", "latent", "method", "predictor"]).mean()
+plotdata = (
+    scores.query("gene_ix < 500")
+    .groupby(["dataset", "latent", "method", "predictor"])
+    .mean()
+)
 
 # %%
-dataset_latent_info = plotdata.index.to_frame(index = False).groupby(["dataset", "latent"]).first().index.to_frame(index = False)
+dataset_latent_info = (
+    plotdata.index.to_frame(index=False)
+    .groupby(["dataset", "latent"])
+    .first()
+    .index.to_frame(index=False)
+)
 dataset_latent_info["label"] = dataset_latent_info["dataset"]
 dataset_latent_info = dataset_latent_info.set_index(["dataset", "latent"])
 
 # %%
-predictor_metric_info = pd.DataFrame([
-    ["xgboost_100", "rmse_diff"],
-    ["svr", "rmse_diff"]
-], columns = ["predictor", "metric"]
+predictor_metric_info = pd.DataFrame(
+    [["xgboost_100", "rmse_diff"], ["svr", "rmse_diff"]],
+    columns=["predictor", "metric"],
 ).set_index(["predictor", "metric"])
-predictor_metric_info["label"] = predictor_metric_info.index.get_level_values("predictor")
+predictor_metric_info["label"] = predictor_metric_info.index.get_level_values(
+    "predictor"
+)
 
 # %% [markdown]
 # ### Plot
 
 # %%
-panel_width = 6/6
+panel_width = 6 / 6
 fig, axes = plt.subplots(
     2,
     len(dataset_latent_info),
@@ -260,21 +281,25 @@ fig, axes = plt.subplots(
 
 for axes_dataset, dataset_latent_name in zip(axes.T, dataset_latent_info.index):
     axes_dataset = axes_dataset.tolist()
-    
+
     for ax, (predictor, metric) in zip(axes_dataset, predictor_metric_info.index):
-        plotdata = meanscores.loc[dataset_latent_name].xs(predictor, level = "predictor").reset_index()
+        plotdata = (
+            meanscores.loc[dataset_latent_name]
+            .xs(predictor, level="predictor")
+            .reset_index()
+        )
         ax.barh(
             method_info.loc[plotdata["method"], "ix"],
             plotdata[metric],
-            color = method_info.loc[plotdata["method"]]["color"]
+            color=method_info.loc[plotdata["method"]]["color"],
         )
         ax.set_xlim(ax.get_xlim()[::-1])
         ax.set_yticks(method_info["ix"])
         ax.set_yticklabels(method_info["label"])
         ax.xaxis.tick_top()
-        
+
         ax.set_xlim(plotdata[metric].min() * (-0.1), plotdata[metric].min() * 1.05)
-    
+
 for ax, dataset_name in zip(axes[0], dataset_latent_info.label):
     ax.set_title("-\n".join(dataset_name.split("-")))
 
@@ -291,13 +316,14 @@ for ax in axes[1]:
     ax.set_xticks([])
     ax.xaxis.set_label_position("bottom")
     ax.xaxis.tick_bottom()
-    
-for ax, ((predictor, metric), predictor_metric) in zip(axes[:, 0], predictor_metric_info.iterrows()):
+
+for ax, ((predictor, metric), predictor_metric) in zip(
+    axes[:, 0], predictor_metric_info.iterrows()
+):
     ax.set_xlabel(predictor_metric["label"], fontsize=8)
     ax.xaxis.set_major_locator(plt.MaxNLocator(3))
-    
-    
-    
+
+
 #     plotdata["ratio"] = plotdata["better"] / (plotdata["worse"] + plotdata["better"])
 #     plotdata.loc[pd.isnull(plotdata["ratio"]), "ratio"] = 0.5
 
@@ -354,8 +380,12 @@ for ax, ((predictor, metric), predictor_metric) in zip(axes[:, 0], predictor_met
 
 # %%
 sns.ecdfplot(np.log(scores.loc["baseline", "", "pbmc10k", "leiden_0.1"]["mse"]))
-sns.ecdfplot(np.log(scores.loc["v9_128-64-32", "xgboost_100", "pbmc10k", "leiden_0.1"]["mse"]))
-sns.ecdfplot(np.log(scores.loc["cellranger", "xgboost_100", "pbmc10k", "leiden_0.1"]["mse"]))
+sns.ecdfplot(
+    np.log(scores.loc["v9_128-64-32", "xgboost_100", "pbmc10k", "leiden_0.1"]["mse"])
+)
+sns.ecdfplot(
+    np.log(scores.loc["cellranger", "xgboost_100", "pbmc10k", "leiden_0.1"]["mse"])
+)
 
 # %%
 from scipy.stats.mstats import hmean
@@ -364,15 +394,24 @@ from scipy.stats.mstats import hmean
 scores.groupby(["dataset", "latent", "method", "predictor"]).mean().style.bar()
 
 # %%
-scores["rmse_diff_oi"] = (scores["rmse"].xs("v9_128-64-32", level = "method") - scores["rmse"]).reorder_levels(scores.index.names).loc[scores.index]
-scores["improved"] = (scores["rmse_diff_oi"] < 0)
+scores["rmse_diff_oi"] = (
+    (scores["rmse"].xs("v9_128-64-32", level="method") - scores["rmse"])
+    .reorder_levels(scores.index.names)
+    .loc[scores.index]
+)
+scores["improved"] = scores["rmse_diff_oi"] < 0
 
 # %%
 scores.query("gene_ix < 500").groupby("method")["improved"].mean()
 
 # %%
-top_counts = scores["rmse"].unstack(level = ["dataset", "latent", "gene_ix", "validation_cluster"]).idxmin().value_counts()
-top_counts/top_counts.sum()
+top_counts = (
+    scores["rmse"]
+    .unstack(level=["dataset", "latent", "gene_ix", "validation_cluster"])
+    .idxmin()
+    .value_counts()
+)
+top_counts / top_counts.sum()
 
 # %%
 baselines = pd.MultiIndex.from_frame(

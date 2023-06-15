@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.14.4
+#       jupytext_version: 1.14.5
 #   kernelspec:
 #     display_name: Python 3 (ipykernel)
 #     language: python
@@ -14,8 +14,11 @@
 # ---
 
 # %%
-# %load_ext autoreload
-# %autoreload 2
+from IPython import get_ipython
+
+if get_ipython():
+    get_ipython().run_line_magic("load_ext", "autoreload")
+    get_ipython().run_line_magic("autoreload", "2")
 
 import numpy as np
 import pandas as pd
@@ -24,7 +27,8 @@ import matplotlib.pyplot as plt
 import matplotlib as mpl
 
 import seaborn as sns
-sns.set_style('ticks')
+
+sns.set_style("ticks")
 
 import torch
 
@@ -41,15 +45,16 @@ import gzip
 # %%
 def digitize_genome(folder_genome, chromosomes):
     import gzip
+
     genome = {}
     chromosome = None
-    translate_table = {"A":0, "C":1, "G":2, "T":3, "N":4} # alphabetic order
+    translate_table = {"A": 0, "C": 1, "G": 2, "T": 3, "N": 4}  # alphabetic order
     for i, line in enumerate(gzip.GzipFile(folder_genome / "dna.fa.gz")):
-        line = str(line,'utf-8')
+        line = str(line, "utf-8")
         if line.startswith(">"):
             if chromosome is not None:
-                genome[chromosome] = np.array(genome_chromosome, dtype = np.int8)
-            chromosome = "chr" + line[1:line.find(" ")]
+                genome[chromosome] = np.array(genome_chromosome, dtype=np.int8)
+            chromosome = "chr" + line[1 : line.find(" ")]
             genome_chromosome = []
 
             print(chromosome)
@@ -67,7 +72,7 @@ def digitize_genome(folder_genome, chromosomes):
 # %%
 genome = "GRCh38.107"
 folder_genome = chd.get_output() / "data" / "genomes" / genome
-folder_genome.mkdir(exist_ok = True, parents=True)
+folder_genome.mkdir(exist_ok=True, parents=True)
 
 chromosomes = ["chr" + str(i) for i in range(24)] + ["chrX", "chrY"]
 
@@ -82,7 +87,9 @@ chromosomes = ["chr" + str(i) for i in range(24)] + ["chrX", "chrY"]
 
 # %%
 genome = digitize_genome(folder_genome, chromosomes)
-pickle.dump(genome, gzip.GzipFile((folder_genome / "genome.pkl.gz"), "wb", compresslevel = 3))
+pickle.dump(
+    genome, gzip.GzipFile((folder_genome / "genome.pkl.gz"), "wb", compresslevel=3)
+)
 
 # %% [markdown]
 # ### Genes
@@ -111,27 +118,34 @@ query = f"""<?xml version="1.0" encoding="UTF-8"?>
         <Attribute name = "external_gene_name" />
     </Dataset>
 </Query>"""
-url = "http://www.ensembl.org/biomart/martservice?query=" + query.replace("\t", "").replace("\n", "")
+url = "http://www.ensembl.org/biomart/martservice?query=" + query.replace(
+    "\t", ""
+).replace("\n", "")
 from io import StringIO
 import requests
+
 session = requests.Session()
-session.headers.update({'User-Agent': 'Custom user agent'})
+session.headers.update({"User-Agent": "Custom user agent"})
 r = session.get(url)
 result = pd.read_table(StringIO(r.content.decode("utf-8")))
 
 # %%
-genes = result.rename(columns = {
-    "Gene stable ID":"gene",
-    "Transcript start (bp)":"start",
-    "Transcript end (bp)":"end",
-    "Chromosome/scaffold name":"chr",
-    "Gene name":"symbol",
-    "Strand":"strand"
-})
+genes = result.rename(
+    columns={
+        "Gene stable ID": "gene",
+        "Transcript start (bp)": "start",
+        "Transcript end (bp)": "end",
+        "Chromosome/scaffold name": "chr",
+        "Gene name": "symbol",
+        "Strand": "strand",
+    }
+)
 genes["chr"] = "chr" + genes["chr"].astype(str)
 genes = genes.groupby("gene").first()
 genes = genes.loc[genes["chr"].isin(chromosomes)]
-assert genes.groupby(level = 0).size().mean() == 1, "For each gene, there should only be one transcript"
+assert (
+    genes.groupby(level=0).size().mean() == 1
+), "For each gene, there should only be one transcript"
 
 genes.to_csv(folder_genome / "genes.csv")
 
@@ -143,7 +157,7 @@ genome = "mm10"
 chromosomes = ["chr" + str(i) for i in range(20)] + ["chrX", "chrY"]
 
 folder_genome = chd.get_output() / "data" / "genomes" / genome
-folder_genome.mkdir(exist_ok = True, parents=True)
+folder_genome.mkdir(exist_ok=True, parents=True)
 
 # %%
 # !wget http://hgdownload.soe.ucsc.edu/goldenPath/mm10/bigZips/mm10.chrom.sizes -O  {folder_genome}/chromosome.sizes
@@ -153,7 +167,9 @@ folder_genome.mkdir(exist_ok = True, parents=True)
 
 # %%
 genome = digitize_genome(folder_genome, chromosomes)
-pickle.dump(genome, gzip.GzipFile((folder_genome / "genome.pkl.gz"), "wb", compresslevel = 3))
+pickle.dump(
+    genome, gzip.GzipFile((folder_genome / "genome.pkl.gz"), "wb", compresslevel=3)
+)
 
 # %%
 (folder_genome / "dna.fa.gz").unlink()
@@ -180,27 +196,35 @@ query = f"""<?xml version="1.0" encoding="UTF-8"?>
         <Attribute name = "external_gene_name" />
     </Dataset>
 </Query>"""
-url = "https://nov2020.archive.ensembl.org:443/biomart/martservice?query=" + query.replace("\t", "").replace("\n", "")
+url = (
+    "https://nov2020.archive.ensembl.org:443/biomart/martservice?query="
+    + query.replace("\t", "").replace("\n", "")
+)
 from io import StringIO
 import requests
+
 session = requests.Session()
-session.headers.update({'User-Agent': 'Custom user agent'})
+session.headers.update({"User-Agent": "Custom user agent"})
 r = session.get(url)
 result = pd.read_table(StringIO(r.content.decode("utf-8")))
 
 # %%
-genes = result.rename(columns = {
-    "Gene stable ID":"gene",
-    "Transcript start (bp)":"start",
-    "Transcript end (bp)":"end",
-    "Chromosome/scaffold name":"chr",
-    "Gene name":"symbol",
-    "Strand":"strand"
-})
+genes = result.rename(
+    columns={
+        "Gene stable ID": "gene",
+        "Transcript start (bp)": "start",
+        "Transcript end (bp)": "end",
+        "Chromosome/scaffold name": "chr",
+        "Gene name": "symbol",
+        "Strand": "strand",
+    }
+)
 genes["chr"] = "chr" + genes["chr"].astype(str)
 genes = genes.groupby("gene").first()
 genes = genes.loc[genes["chr"].isin(chromosomes)]
-assert genes.groupby(level = 0).size().mean() == 1, "For each gene, there should only be one transcript"
+assert (
+    genes.groupby(level=0).size().mean() == 1
+), "For each gene, there should only be one transcript"
 
 # %%
 genes.to_csv(folder_genome / "genes.csv")

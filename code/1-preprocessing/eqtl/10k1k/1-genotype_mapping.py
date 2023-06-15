@@ -14,8 +14,11 @@
 # ---
 
 # %% tags=[]
-# %load_ext autoreload
-# %autoreload 2
+from IPython import get_ipython
+
+if get_ipython():
+    get_ipython().run_line_magic("load_ext", "autoreload")
+    get_ipython().run_line_magic("autoreload", "2")
 
 import numpy as np
 import pandas as pd

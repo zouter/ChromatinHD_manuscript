@@ -6,6 +6,7 @@ import chromatinhd.models.positional.v1
 import chromatinhd.models.positional.v14
 import chromatinhd.models.positional.v15
 import chromatinhd.models.positional.v20
+import chromatinhd.models.positional.v21
 
 import pickle
 import numpy as np
@@ -33,6 +34,15 @@ def get_design(transcriptome, fragments):
         "loader_cls": chromatinhd.loaders.fragments.Fragments,
         "loader_parameters": general_loader_parameters,
     }
+    design["counter_10k"] = {
+        "model_cls": chromatinhd.models.positional.counter.Model,
+        "model_parameters": {
+            **general_model_parameters,
+            "window": np.array([0, 10000]),
+        },
+        "loader_cls": chromatinhd.loaders.fragments.Fragments,
+        "loader_parameters": general_loader_parameters,
+    }
     design["counter_binary"] = {
         "model_cls": chromatinhd.models.positional.counter.Model,
         "model_parameters": {**general_model_parameters, "reduce": "mean"},
@@ -52,6 +62,14 @@ def get_design(transcriptome, fragments):
         "model_parameters": {
             **general_model_parameters,
             "embedding_to_expression_initialization": "default",
+        },
+        "loader_cls": chromatinhd.loaders.fragments.Fragments,
+        "loader_parameters": general_loader_parameters,
+    }
+    design["v21"] = {
+        "model_cls": chromatinhd.models.positional.v21.Model,
+        "model_parameters": {
+            **general_model_parameters,
         },
         "loader_cls": chromatinhd.loaders.fragments.Fragments,
         "loader_parameters": general_loader_parameters,
@@ -100,7 +118,7 @@ def get_folds_inference(
     fragments,
     folds,
     n_cells_step=5000,
-    n_genes_step=200,
+    n_genes_step=100,
     genes_oi=None,
 ):
     for fold in folds:
@@ -116,7 +134,7 @@ def get_folds_inference(
         fold["gene_ix_mapper"][genes_all] = np.arange(len(genes_all))
 
         if "cells_train" in fold:
-            cells_train = list(fold["cells_train"])[:200]
+            cells_train = list(fold["cells_train"])[:500]
             fold["phases"]["train"] = [cells_train, genes_all]
             cells.extend(cells_train)
 

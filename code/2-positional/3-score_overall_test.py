@@ -74,7 +74,7 @@ for testdataset, subdesign in design.groupby("testdataset"):
         method_info = methods_info[method_name]
 
         print(f"{traindataset=} {promoter_name=} {method_name=}")
-        trainprediction = Prediction(
+        trainprediction = chd.flow.Flow(
             chd.get_output()
             / "prediction_positional"
             / traindataset
@@ -83,7 +83,7 @@ for testdataset, subdesign in design.groupby("testdataset"):
             / method_name
         )
 
-        testprediction = Prediction(
+        testprediction = chd.flow.Flow(
             chd.get_output()
             / "prediction_positional"
             / testdataset

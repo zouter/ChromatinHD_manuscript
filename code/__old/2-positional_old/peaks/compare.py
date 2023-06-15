@@ -14,8 +14,11 @@
 # ---
 
 # %%
-# %load_ext autoreload
-# %autoreload 2
+from IPython import get_ipython
+
+if get_ipython():
+    get_ipython().run_line_magic("load_ext", "autoreload")
+    get_ipython().run_line_magic("autoreload", "2")
 
 import numpy as np
 import pandas as pd
@@ -85,7 +88,7 @@ class Prediction(chd.flow.Flow):
 scores = {}
 for dataset_name in dataset_names:
     for method_name in method_names:
-        prediction = Prediction(
+        prediction = chd.flow.Flow(
             chd.get_output()
             / "prediction_positional"
             / dataset_name

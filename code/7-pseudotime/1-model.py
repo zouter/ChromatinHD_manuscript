@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.14.1
+#       jupytext_version: 1.14.5
 #   kernelspec:
 #     display_name: Python 3 (ipykernel)
 #     language: python
@@ -14,8 +14,11 @@
 # ---
 
 # %%
-# %load_ext autoreload
-# %autoreload 2
+from IPython import get_ipython
+
+if get_ipython():
+    get_ipython().run_line_magic("load_ext", "autoreload")
+    get_ipython().run_line_magic("autoreload", "2")
 
 import numpy as np
 import pandas as pd
@@ -24,7 +27,8 @@ import matplotlib.pyplot as plt
 import matplotlib as mpl
 
 import seaborn as sns
-sns.set_style('ticks')
+
+sns.set_style("ticks")
 # %config InlineBackend.figure_format='retina'
 
 import pickle
@@ -61,7 +65,9 @@ folder_data_preproc = folder_data / dataset_name
 # %%
 # promoter_name, window = "4k2k", (2000, 4000)
 promoter_name, window = "10k10k", np.array([-10000, 10000])
-promoters = pd.read_csv(folder_data_preproc / ("promoters_" + promoter_name + ".csv"), index_col = 0)
+promoters = pd.read_csv(
+    folder_data_preproc / ("promoters_" + promoter_name + ".csv"), index_col=0
+)
 window_width = window[1] - window[0]
 
 # %%
@@ -82,6 +88,7 @@ cells_validation = np.arange(int(fragments.n_cells * 9 / 10), fragments.n_cells)
 
 # %%
 import chromatinhd.loaders.fragments
+
 # n_cells_step = 1000
 # n_genes_step = 1000
 
@@ -93,34 +100,34 @@ n_genes_step = 5000
 
 loaders_train = chromatinhd.loaders.pool.LoaderPool(
     chromatinhd.loaders.fragments.Fragments,
-    {"fragments":fragments, "cellxgene_batch_size":n_cells_step * n_genes_step},
-    n_workers = 20,
-    shuffle_on_iter = True
+    {"fragments": fragments, "cellxgene_batch_size": n_cells_step * n_genes_step},
+    n_workers=20,
+    shuffle_on_iter=True,
 )
 minibatches_train = chd.loaders.minibatching.create_bins_random(
     cells_train,
     np.arange(fragments.n_genes),
     fragments.n_genes,
-    n_genes_step = n_genes_step,
+    n_genes_step=n_genes_step,
     n_cells_step=n_cells_step,
-    use_all = True,
-    permute_genes = False
+    use_all=True,
+    permute_genes=False,
 )
 loaders_train.initialize(minibatches_train)
 
 loaders_validation = chromatinhd.loaders.pool.LoaderPool(
     chromatinhd.loaders.fragments.Fragments,
-    {"fragments":fragments, "cellxgene_batch_size":n_cells_step * n_genes_step},
-    n_workers = 5
+    {"fragments": fragments, "cellxgene_batch_size": n_cells_step * n_genes_step},
+    n_workers=5,
 )
 minibatches_validation = chd.loaders.minibatching.create_bins_random(
     cells_validation,
     np.arange(fragments.n_genes),
     fragments.n_genes,
-    n_genes_step = n_genes_step,
+    n_genes_step=n_genes_step,
     n_cells_step=n_cells_step,
-    use_all = True,
-    permute_genes = False
+    use_all=True,
+    permute_genes=False,
 )
 loaders_validation.initialize(minibatches_validation)
 
@@ -154,7 +161,8 @@ latent = np.random.rand(fragments.n_cells).astype(np.float32)
 
 # %%
 import chromatinhd.models.likelihood_pseudotime.v1 as likelihood_model
-model = likelihood_model.Decoding(fragments, torch.from_numpy(latent), nbins = (32, ))
+
+model = likelihood_model.Decoding(fragments, torch.from_numpy(latent), nbins=(32,))
 
 # %%
 model.latent

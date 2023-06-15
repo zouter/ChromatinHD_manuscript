@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.14.1
+#       jupytext_version: 1.14.5
 #   kernelspec:
 #     display_name: Python 3 (ipykernel)
 #     language: python
@@ -17,8 +17,11 @@
 # # Model promoters positionally
 
 # %%
-# %load_ext autoreload
-# %autoreload 2
+from IPython import get_ipython
+
+if get_ipython():
+    get_ipython().run_line_magic("load_ext", "autoreload")
+    get_ipython().run_line_magic("autoreload", "2")
 
 import numpy as np
 import pandas as pd
@@ -118,7 +121,9 @@ genes_oi = np.arange(0, n_genes)
 
 cellxgene_oi = (cells_oi[:, None] * fragments.n_genes + genes_oi).flatten()
 
-minibatch = chromatinhd.loaders.minibatching.Minibatch(cells_oi=cells_oi, genes_oi=genes_oi)
+minibatch = chromatinhd.loaders.minibatching.Minibatch(
+    cells_oi=cells_oi, genes_oi=genes_oi
+)
 data = loader.load(minibatch)
 
 # %%
@@ -138,9 +143,7 @@ fragments_oi = fragments.coordinates[:, 0] > 0
 n_cells = 1000
 n_genes = 100
 cutwindow = np.array([-150, 150])
-loader = chromatinhd.loaders.fragments.FragmentsCounting(
-    fragments, n_cells * n_genes
-)
+loader = chromatinhd.loaders.fragments.FragmentsCounting(fragments, n_cells * n_genes)
 
 # %%
 cells_oi = np.arange(0, n_cells)
@@ -148,7 +151,9 @@ genes_oi = np.arange(0, n_genes)
 
 cellxgene_oi = (cells_oi[:, None] * fragments.n_genes + genes_oi).flatten()
 
-minibatch = chromatinhd.loaders.minibatching.Minibatch(cells_oi=cells_oi, genes_oi=genes_oi)
+minibatch = chromatinhd.loaders.minibatching.Minibatch(
+    cells_oi=cells_oi, genes_oi=genes_oi
+)
 data = loader.load(minibatch)
 
 # %%
@@ -190,10 +195,7 @@ import chromatinhd.loaders.fragments
 # %%
 loaders = chromatinhd.loaders.pool.LoaderPool(
     chromatinhd.loaders.fragments.Fragments,
-    {
-        "fragments": fragments,
-        "cellxgene_batch_size": n_cells * n_genes
-    },
+    {"fragments": fragments, "cellxgene_batch_size": n_cells * n_genes},
     n_workers=2,
 )
 
@@ -211,9 +213,7 @@ for i in range(2):
     cellxgene_oi = (cells_oi[:, None] * fragments.n_genes + genes_oi).flatten()
 
     data.append(
-        chd.loaders.minibatching.Minibatch(
-            cells_oi=cells_oi, genes_oi=genes_oi
-        )
+        chd.loaders.minibatching.Minibatch(cells_oi=cells_oi, genes_oi=genes_oi)
     )
 loaders.initialize(data)
 
@@ -415,6 +415,7 @@ def paircor(x, y, dim=0, eps=0.1):
     ) / divisor
     return cor
 
+
 loss = lambda x, y: -paircor(x, y).mean() * 100
 
 
@@ -422,8 +423,9 @@ loss = lambda x, y: -paircor(x, y).mean() * 100
 class Prediction(chd.flow.Flow):
     pass
 
+
 print(prediction_name)
-prediction = Prediction(
+prediction = chd.flow.Flow(
     chd.get_output()
     / "prediction_positional"
     / dataset_name
@@ -452,11 +454,16 @@ model = design_row["model_cls"](**design_row["model_parameters"])
 # %%
 from chromatinhd.models.positional.trainer import Trainer
 
-# %% tags=[]
+# %%
 # optimization
 optimize_every_step = 1
 lr = 1e-3  # / optimize_every_step
-optim = chd.optim.SparseDenseAdam(model.parameters_sparse(), model.parameters_dense(autoextend = False), lr = lr, weight_decay = lr / 2)
+optim = chd.optim.SparseDenseAdam(
+    model.parameters_sparse(),
+    model.parameters_dense(autoextend=False),
+    lr=lr,
+    weight_decay=lr / 2,
+)
 
 # train
 import chromatinhd.train

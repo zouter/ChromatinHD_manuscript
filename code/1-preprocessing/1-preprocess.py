@@ -80,7 +80,7 @@ if not (folder_data_preproc / "genome").exists():
 # # ! wget {main_url}_atac_possorted_bam.bam.bai -O {folder_data_preproc}/bam/atac_possorted_bam.bam.bai
 # ! echo wget {main_url}_atac_possorted_bam.bam -O {folder_data_preproc}/bam/atac_possorted_bam.bam
 # ! echo wget {main_url}_atac_possorted_bam.bam.bai -O {folder_data_preproc}/bam/atac_possorted_bam.bam.bai
-# ! echo wget {main_url}_atac_fragments.tsv.gz -O {folder_data_preproc}/bam/atac_fragments.tsv.gz
+! echo wget {main_url}_atac_fragments.tsv.gz -O {folder_data_preproc}/bam/atac_fragments.tsv.gz
 
 # %%
 genome_folder = "/data/genome/GATK/hg38"

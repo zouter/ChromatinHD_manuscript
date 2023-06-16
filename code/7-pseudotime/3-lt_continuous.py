@@ -4,6 +4,7 @@ if IPython.get_ipython() is not None:
     IPython.get_ipython().magic('load_ext autoreload')
     IPython.get_ipython().magic('autoreload 2')
 
+import os
 import torch
 import pickle
 import pathlib
@@ -17,15 +18,12 @@ import chromatinhd as chd
 import chromatinhd.loaders.fragments
 import chromatinhd.models.likelihood_pseudotime.v1 as likelihood_model
 
-import plotly.express as px
-import matplotlib.pyplot as plt
 import matplotlib as mpl
+import matplotlib.pyplot as plt
+import matplotlib.colors as colors
 import seaborn as sns
 sns.set_style('ticks')
 # %config InlineBackend.figure_format='retina'
-
-# import os
-# os.environ["PYTORCH_CUDA_ALLOC_CONF"] = 'max_split_size_mb:128'
 
 #%%
 folder_root = chd.get_output()
@@ -45,9 +43,12 @@ cells_validation = folds[0]['cells_validation']
 
 fragments.create_cut_data()
 
+# torch works by default in float32
+df_latent = pd.read_csv(folder_data_preproc / "MV2_latent_time_myeloid.csv", index_col = 0)
+latent = torch.tensor(df_latent['latent_time'].values.astype(np.float32))
+
 #%%
 # ## Create loaders
-
 n_cells_step = 100
 n_genes_step = 5000
 
@@ -86,53 +87,40 @@ loaders_validation.initialize(minibatches_validation)
 
 #%%
 data = loaders_train.pull()
+print(data.cut_coordinates)
+# print(data.cut_coordinates.shape)
+# print(data.cut_local_cell_ix)
+# print(data.cut_local_cell_ix.shape)
+# print(data.cut_local_gene_ix)
+# print(data.cut_local_gene_ix.shape)
+# print(data.cut_local_cellxgene_ix)
+# print(data.cut_local_cellxgene_ix.shape)
+# print(data.cut_local_cellxgene_ix.unique())
+# print(data.cut_local_cellxgene_ix.unique().shape)
+# print(torch.bincount(data.cut_local_cell_ix))
+# print(torch.bincount(data.cut_local_gene_ix))
+# print(torch.bincount(data.cut_local_cellxgene_ix))
+# print(data.cut_local_cell_ix.unique().shape)
 
 #%%
-data.cut_coordinates
-
-#%%
-data.cut_coordinates.shape
-
-#%%
-data.cut_local_cell_ix
-
-#%%
-data.cut_local_cell_ix.shape
-
-#%%
-data.cut_local_gene_ix
-
-#%%
-data.cut_local_gene_ix.shape
-
-#%%
-data.cut_local_cellxgene_ix
-
-#%%
-data.cut_local_cellxgene_ix.shape
-
-#%%
-data.cut_local_cellxgene_ix.unique()
-
-#%%
-data.cut_local_cellxgene_ix.unique().shape
-
-#%%
-# torch works by default in float32
-df_latent = pd.read_csv(folder_data_preproc / "MV2_latent_time_myeloid.csv", index_col = 0)
-latent = torch.tensor(df_latent['latent_time'].values.astype(np.float32))
+gene_oi = 1
+# get index
+data.cut_local_gene_ix == gene_oi
 
 #%%
 # ### Create model
 nbins = (128, 64, 32, )
 model = likelihood_model.Model(fragments, latent, nbins = nbins)
 
+# %%
+model.forward(data)
+
 #%%
 optimizer = chd.optim.SparseDenseAdam(model.parameters_sparse(), model.parameters_dense(autoextend=True), lr = 1e-2)
 
 #%%
 # with torch.autograd.detect_anomaly():
-device = "cpu"
+device = "cuda:0"
 model = model.to(device).train()
 loaders_train.restart()
 loaders_validation.restart()
@@ -140,10 +128,38 @@ trainer = chd.train.Trainer(model, loaders_train, loaders_validation, optimizer,
 trainer.train()
 
 #%%
-coordinate_oi = torch.tensor([0.0])
-latent_oi = torch.tensor([0.0])
-gene_oi = 0
-model.evaluate_pseudo(coordinate_oi, latent_oi, gene_oi)
+pseudocoordinates = torch.linspace(0, 1, 1000)
+latent_times = torch.linspace(0, 1, 101)
+latent_times = torch.flip(latent_times, [0])
+
+#%%
+csv_dir = folder_data_preproc / "evaluate_pseudo_continuous_tensors"
+os.makedirs(csv_dir, exist_ok=True)
+
+for gene_oi in range(promoters.shape[0]):
+    gene_name = promoters.index[gene_oi]
+    probs = model.evaluate_pseudo(pseudocoordinates, latent_times, gene_oi)
+    probsx = torch.exp(probs)
+    probsx = torch.reshape(probsx, (101, 1000))
+    np.savetxt(f"{csv_dir}/{gene_name}.csv", probsx, delimiter=',')
+
+# potentially change this to a 3D tensor (cut_site x latent_time x gene) and save the tensor directly
+
+#%%
+# latent_oi = torch.tensor([0.0])
+# probs0 = model.evaluate_pseudo(pseudocoordinates, latent_oi, gene_oi)
+
+# latent_oi = torch.tensor([0.1])
+# probs1 = model.evaluate_pseudo(pseudocoordinates, latent_oi, gene_oi)
+
+# latent_oi = torch.tensor([0.2])
+# probs2 = model.evaluate_pseudo(pseudocoordinates, latent_oi, gene_oi)
+
+# latent_oi = torch.tensor([0.0, 0.1, 0.2])
+# probs3 = model.evaluate_pseudo(pseudocoordinates, latent_oi, gene_oi)
+
+# probs_all = torch.cat((probs0, probs1, probs2), dim=0)
+# sum(probs_all != probs3) # should sum to 0
 
 #%%
 transcriptome = chd.data.Transcriptome(folder_data_preproc / "transcriptome")

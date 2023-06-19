@@ -4,6 +4,7 @@ if IPython.get_ipython() is not None:
     IPython.get_ipython().magic('load_ext autoreload')
     IPython.get_ipython().magic('autoreload 2')
 
+import os
 import gc
 import torch
 import torch_scatter
@@ -182,12 +183,9 @@ def plot_distribution(latent, latent_torch, cluster_info, fragments, transcripto
     return probs
 
 #%%
-probs = plot_distribution(latent, latent_torch, cluster_info, fragments, transcriptome, gene_oi, model, device, prior=True)
+# probs = plot_distribution(latent, latent_torch, cluster_info, fragments, transcriptome, gene_oi, model, device, prior=True)
 
 # %%
-def plot_delta_heights(latent, latent_torch, cluster_info, fragments, gene_oi, model, device):
-    pass
-
 main = chd.grid.Grid(padding_height=0.1)
 fig = chd.grid.Figure(main)
 
@@ -231,7 +229,6 @@ fig.plot()
 # ### Train
 device = "cuda"
 
-# %%
 optimizer = chd.optim.SparseDenseAdam(model.parameters_sparse(), model.parameters_dense(autoextend=True), lr = 1e-2)
 
 # %%
@@ -303,11 +300,16 @@ model = model.to(device).eval()
 model = model.to(device)
 
 # %%
-for gene_oi in range(10):
+dir_csv = folder_data_preproc / 'quantile_time_evaluate_pseudo'
+dir_plots = folder_data_preproc / 'evaluate_pseudo'
+os.makedirs(dir_csv, exist_ok=True)
+os.makedirs(dir_plots, exist_ok=True)
+
+for gene_oi in range(len(promoters)):
+    gene_id = transcriptome.var.index[gene_oi]
     probs = plot_distribution(latent, latent_torch, cluster_info, fragments, transcriptome, gene_oi, model, device, prior=False)
-    # save probs to file
     probs_df = pd.DataFrame(np.exp(probs), columns = pseudocoordinates.tolist(), index = cluster_info.index)
-    probs_df.to_csv(folder_data_preproc / 'quantile_time_evaluate_pseudo' / f"probs_{gene_oi}.csv")
+    probs_df.to_csv(folder_data_preproc / 'quantile_time_evaluate_pseudo' / f"{gene_id}.csv")
 
 # %%
 sns.heatmap(probs, cmap = mpl.cm.RdBu_r)

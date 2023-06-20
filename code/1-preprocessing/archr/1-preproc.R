@@ -102,12 +102,15 @@ plots <- plotFootprints(seFoot, ArchRProj = proj)
 seFoot@assays@data$SPI1_322
 
 #
-positions_oi = list(a = motifPositions[markerMotifs]$SPI1_322[1], b = motifPositions[markerMotifs]$SPI1_322[1])
+positions_oi = list(a = motifPositions[markerMotifs]$SPI1_322[1], b = motifPositions[markerMotifs]$SPI1_322[2])
 
 #
 seFoot <- getFootprints(
   ArchRProj = proj, 
-  positions = motifPositions[markerMotifs], 
+  positions = positions_oi,
+  # positions = motifPositions[markerMotifs], 
   groupBy = "cluster",
   nTop = 2000,
 )
+
+plotFootprints(seFoot, ArchRProj = proj)

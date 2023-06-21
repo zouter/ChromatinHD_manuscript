@@ -113,70 +113,7 @@ model = vae_model.Decoding(fragments, torch.from_numpy(latent.values), nbins = (
 model = model.to(device)
 model.n_genes = fragments.n_genes
 
-#%%
-# TODO separate function for inference and plotting
-# reverse y axis order, but double check
-
-def evaluate_pseudo_quantile(latent, gene_oi, model, device):
-    pseudocoordinates = torch.linspace(0, 1, 1000).to(device)
-    probs = []
-    for i in range(latent.shape[1]):
-        pseudolatent = torch.zeros((len(pseudocoordinates), latent.shape[1])).to(device)
-        pseudolatent[:, i] = 1.
-        prob = model.evaluate_pseudo(pseudocoordinates.to(device), latent = pseudolatent.to(device), gene_oi = gene_oi)
-        probs.append(prob)
-    probs = np.stack(probs)
-    return probs
-    
-def plot_distribution(latent, latent_torch, cluster_info, fragments, gene_oi, model, device, prior = True):
-    fig, axes = plt.subplots(latent.shape[1], 1, figsize=(20, 1*latent.shape[1]), sharex = True, sharey = True)
-
-    probs = []
-    pseudocoordinates = torch.linspace(0, 1, 1000).to(device)
-    bins = np.linspace(0, 1, 500)
-    binmids = (bins[1:] + bins[:-1])/2
-    binsize = binmids[1] - binmids[0]
-    fragments_oi_all = (fragments.cut_local_gene_ix == gene_oi)
-
-    gene_id = fragments.var.index[gene_oi]
-
-    for i, ax in zip(range(latent.shape[1]), axes):
-        lib_all = model.libsize.cpu().numpy()
-        
-        cells_oi = torch.where(latent_torch[:, i])[0]
-        lib_oi = model.libsize[cells_oi].cpu().numpy()
-        n_cells = latent_torch[:, i].sum()
-        
-        color = cluster_info.iloc[i]["color"]
-        fragments_oi = (latent_torch[fragments.cut_local_cell_ix, i] != 0) & (fragments.cut_local_gene_ix == gene_oi)
-        
-        bincounts, _ = np.histogram(fragments.cut_coordinates[fragments_oi].cpu().numpy(), bins = bins)
-        ax.bar(binmids, bincounts / n_cells * len(bins), width = binsize, color = "#888888", lw = 0)
-
-        pseudolatent = torch.zeros((len(pseudocoordinates), latent.shape[1])).to(device)
-        pseudolatent[:, i] = 1.
-        prob = model.evaluate_pseudo(pseudocoordinates.to(device), latent = pseudolatent.to(device), gene_oi = gene_oi)
-        
-        ax.plot(pseudocoordinates.cpu().numpy(), np.exp(prob), label = i, color = color, lw = 2, zorder = 20)
-        ax.plot(pseudocoordinates.cpu().numpy(), np.exp(prob), label = i, color = "#FFFFFFFF", lw = 3, zorder = 10)
-        
-        ax.set_ylabel(f"{cluster_info.iloc[i]['label']}\n freq={fragments_oi.sum()/n_cells}", rotation = 0, ha = "right", va = "center")
-        # ax.set_ylim(0, 40)
-        
-        probs.append(prob)
-
-    suffix = "_prior" if prior else ""
-    plt.savefig(folder_data_preproc / ("plots/evaluate_pseudo" + suffix) / (gene_id + ".png"))
-
-    probs = np.stack(probs)
-    return probs
-
-#%%
-# probs = plot_distribution(latent, latent_torch, cluster_info, fragments, gene_oi, model, device, prior=True)
-
 # %%
-gene_oi = 0
-
 main = chd.grid.Grid(padding_height=0.1)
 fig = chd.grid.Figure(main)
 
@@ -184,6 +121,7 @@ nbins = np.array(model.mixture.transform.nbins)
 bincuts = np.concatenate([[0], np.cumsum(nbins)])
 binmids = bincuts[:-1] + nbins/2
 
+gene_oi = 0
 ax = main[0, 0] = chd.grid.Ax((10, 0.25))
 ax = ax.ax
 plotdata = (model.mixture.transform.unnormalized_heights.data.cpu().numpy())[[gene_oi]]
@@ -204,25 +142,19 @@ ax.set_yticklabels(cluster_info.index, rotation = 0, ha = "right")
 for b in bincuts:
     ax.axvline(b-0.5, color = "black", lw = 0.5)
 ax.set_xlim(-0.5, plotdata.shape[1]-0.5)
-
 ax.set_xticks(bincuts-0.5, minor = True)
 ax.set_xticks(binmids-0.5)
 ax.set_xticklabels(nbins)
 ax.xaxis.set_tick_params(length = 0)
 ax.xaxis.set_tick_params(length = 5, which = "minor")
 ax.set_ylabel("$\Delta h$", rotation = 0, ha = "right", va = "center")
-
 ax.set_xlabel("Resolution")
-
 fig.plot()
 
 # %%
 # ### Train
-device = "cuda"
-
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 optimizer = chd.optim.SparseDenseAdam(model.parameters_sparse(), model.parameters_dense(autoextend=True), lr = 1e-2)
-
-# %%
 loaders_train.restart()
 loaders_validation.restart()
 
@@ -259,18 +191,87 @@ trainer.train()
 
 # %%
 likelihood_mixture = pd.DataFrame(np.vstack(hook_genelikelihood.likelihood_mixture), columns = fragments.var.index).T
-
-# %%
 scores = (likelihood_mixture.iloc[:, -1] - likelihood_mixture[0]).sort_values().to_frame("lr")
-
-#%%
 scores["label"] = transcriptome.var.loc[scores.index]['symbol']
 
 # %%
-pickle.dump(model.to("cpu"), open("./model.pkl", "wb"))
+pickle.dump(model.to("cpu"), open("./2-lt_discrete.pkl", "wb"))
+
+#%%
+# TODO separate function for inference and plotting
+# reverse y axis order
+
+def evaluate_pseudo_quantile(latent, gene_oi, model, device):
+    pseudocoordinates = torch.linspace(0, 1, 1000).to(device)
+    probs = []
+    for i in range(latent.shape[1]):
+        pseudolatent = torch.zeros((len(pseudocoordinates), latent.shape[1])).to(device)
+        pseudolatent[:, i] = 1.
+        prob = model.evaluate_pseudo(pseudocoordinates.to(device), latent = pseudolatent.to(device), gene_oi = gene_oi)
+        probs.append(prob)
+    probs = np.stack(probs)
+    return probs
+
+def plot_pseudo_quantile(probs, latent_torch, cluster_info, gene_oi, fragments, dir_plots):
+    gene_id = fragments.var.index[gene_oi]
+    fragments_oi_all = (fragments.cut_local_gene_ix == gene_oi)
+
+    bins = np.linspace(0, 1, 500)
+    binmids = (bins[1:] + bins[:-1])/2
+    binsize = binmids[1] - binmids[0]
+    pseudocoordinates = torch.linspace(0, 1, 1000)
+
+    fig, axes = plt.subplots(probs.shape[0], 1, figsize=(20, 1*probs.shape[0]), sharex = True, sharey = True)
+    for i, ax in zip(range(probs.shape[0]), axes):
+        n_cells = latent_torch[:, i].sum()
+        fragments_oi = (latent_torch[fragments.cut_local_cell_ix, i] != 0) & (fragments.cut_local_gene_ix == gene_oi)
+        bincounts, _ = np.histogram(fragments.cut_coordinates[fragments_oi].cpu().numpy(), bins = bins)
+
+        ax.bar(binmids, bincounts / n_cells * len(bins), width = binsize, color = "#888888", lw = 0)
+        ax.plot(pseudocoordinates.numpy(), probs.iloc[i, 1:], label = i, color = "#0000FF", lw = 2, zorder = 20)
+        ax.plot(pseudocoordinates.numpy(), probs.iloc[i, 1:], label = i, color = "#FFFFFF", lw = 3, zorder = 10)
+        ax.set_ylabel(f"{cluster_info.iloc[i]['label']}\n freq={fragments_oi.sum()/n_cells}", rotation = 0, ha = "right", va = "center")
+
+    plt.savefig(dir_plots / (gene_id + ".png"))
+
+def plot_distribution(latent, latent_torch, cluster_info, fragments, gene_oi, model, device, dir_plots):
+    fig, axes = plt.subplots(latent.shape[1], 1, figsize=(20, 1*latent.shape[1]), sharex = True, sharey = True) #
+
+    probs = [] #
+    pseudocoordinates = torch.linspace(0, 1, 1000).to(device) #
+    bins = np.linspace(0, 1, 500) #
+    binmids = (bins[1:] + bins[:-1])/2 #
+    binsize = binmids[1] - binmids[0] #
+    fragments_oi_all = (fragments.cut_local_gene_ix == gene_oi) #
+
+    gene_id = fragments.var.index[gene_oi] #
+
+    for i, ax in zip(range(latent.shape[1]), axes): #
+        
+        n_cells = latent_torch[:, i].sum() #
+        fragments_oi = (latent_torch[fragments.cut_local_cell_ix, i] != 0) & (fragments.cut_local_gene_ix == gene_oi) #
+        
+        bincounts, _ = np.histogram(fragments.cut_coordinates[fragments_oi].cpu().numpy(), bins = bins) #
+        ax.bar(binmids, bincounts / n_cells * len(bins), width = binsize, color = "#888888", lw = 0) #
+
+        pseudolatent = torch.zeros((len(pseudocoordinates), latent.shape[1])).to(device) #
+        pseudolatent[:, i] = 1. #
+        prob = model.evaluate_pseudo(pseudocoordinates.to(device), latent = pseudolatent.to(device), gene_oi = gene_oi) #
+    
+        ax.plot(pseudocoordinates.cpu().numpy(), np.exp(prob), label = i, color = "#0000FF", lw = 2, zorder = 20) #
+        ax.plot(pseudocoordinates.cpu().numpy(), np.exp(prob), label = i, color = "#FFFFFF", lw = 3, zorder = 10) #
+        
+        ax.set_ylabel(f"{cluster_info.iloc[i]['label']}\n freq={fragments_oi.sum()/n_cells}", rotation = 0, ha = "right", va = "center") #
+        
+        probs.append(prob) #
+
+    plt.savefig(dir_plots / (gene_id + ".png")) #
+
+    probs = np.stack(probs) #
+    return probs #
 
 # %%
-model = pickle.load(open("./model.pkl", "rb"))
+model = pickle.load(open("./2-lt_discrete.pkl", "rb"))
 
 # %%
 # ## Inference single gene
@@ -280,26 +281,31 @@ sns.histplot(z[:100])
 scipy.stats.laplace.fit(z)
 
 # %%
-device = "cuda"
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 model = model.to(device).eval()
 
 #%%
 model = model.to(device)
 
 # %%
-dir_csv = folder_data_preproc / 'quantile_time_evaluate_pseudo'
-dir_plots = folder_data_preproc / 'plots/evaluate_pseudo'
+dir_csv = folder_data_preproc / 'likelihood_quantile_data'
+dir_plots = folder_data_preproc / 'plots/likelihood_quantile'
 os.makedirs(dir_csv, exist_ok=True)
 os.makedirs(dir_plots, exist_ok=True)
 
 pseudocoordinates = torch.linspace(0, 1, 1000).to(device)
 
 for gene_oi in range(len(promoters)):
+    print(gene_oi)
     gene_id = fragments.var.index[gene_oi]
-    probs = plot_distribution(latent, latent_torch, cluster_info, fragments, gene_oi, model, device, prior=False)
-    probs = evaluate_pseudo_quantile(latent, gene_oi, model, device)
+    probs = plot_distribution(latent, latent_torch, cluster_info, fragments, gene_oi, model, device, dir_plots) # delete this line
+    # probs = evaluate_pseudo_quantile(latent, gene_oi, model, device)
+    # plot_pseudo_quantile(probs, latent_torch, cluster_info, gene_oi, fragments, dir_plots)
+
+    # integrate lines below into evaluate_pseudo_quantile()
+    # then move plot_pseudo_quantile() to visualisation script
     probs_df = pd.DataFrame(np.exp(probs), columns = pseudocoordinates.tolist(), index = cluster_info.index)
-    probs_df.to_csv(folder_data_preproc / 'quantile_time_evaluate_pseudo' / f"{gene_id}.csv")
+    probs_df.to_csv(dir_csv / f"{gene_id}.csv")
 
 print("Done \n")
 # %%

@@ -43,7 +43,6 @@ sorted_tensor, _ = torch.sort(mapping_cutsites)
 ten_percent = mapping_cutsites.numel() // 10
 min_val, max_val = sorted_tensor[ten_percent], sorted_tensor[-ten_percent]
 
-#%%
 values, bins, _ = plt.hist(mapping_cutsites.numpy(), bins=50, color="blue", alpha=0.75)
 percentages = values / np.sum(values) * 100
 
@@ -63,13 +62,13 @@ fig.savefig(folder_data_preproc / f'plots/n_cutsites.png')
 
 #%%
 csv_dir = folder_data_preproc / "evaluate_pseudo_continuous_tensors"
-plot_dir = folder_data_preproc / "plots/evaluate_pseudo_continuous"
-plot_combined_dir = folder_data_preproc / "plots/cut_sites_evaluate_pseudo_continuous"
+plot_dir = folder_data_preproc / "plots/likelihood_continuous"
+plot_combined_dir = folder_data_preproc / "plots/cutsites_likelihood_continuous"
 
 os.makedirs(plot_dir, exist_ok=True)
 os.makedirs(plot_combined_dir, exist_ok=True)
 
-def plot_cut_sites(df, gene, n_fragments):
+def plot_cutsites(df, gene, n_fragments):
     fig, ax = plt.subplots(figsize=(15, 15))
 
     ax.scatter(df['x'], df['y'], s=1, marker='s', color='black')
@@ -82,7 +81,7 @@ def plot_cut_sites(df, gene, n_fragments):
 
     plt.savefig(folder_data_preproc / f'plots/cutsites/{gene}.png')
 
-def plot_cut_sites_histo(df, df_long, gene, n_fragments):
+def plot_cutsites_histo(df, df_long, gene, n_fragments):
     fig, axs = plt.subplots(figsize=(15, 10), ncols=2, gridspec_kw={'width_ratios': [1, 3]})
 
     ax_hist = axs[0]
@@ -119,7 +118,7 @@ def plot_model_continuous(gene):
     file_name = plot_dir / f"{gene}.png"
     plt.savefig(file_name, dpi=300)
 
-def plot_cut_sites_model_continuous(df, gene, n_fragments):
+def plot_cutsites_model_continuous(df, gene, n_fragments):
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(15, 20), gridspec_kw={'height_ratios': [1, 1]})
 
     # Modify subplot configuration
@@ -175,10 +174,10 @@ def plot_model_quantile(gene):
     plt.savefig(folder_data_preproc / "plots/evaluate_pseudo2" / (gene + ".pdf"))
 
 os.makedirs(folder_data_preproc / "plots/evaluate_pseudo2", exist_ok=True)
-# df = pd.read_csv(folder_data_preproc / "quantile_time_evaluate_pseudo/ENSG00000263961.csv")
 
 #%%
 for x in range(promoters.shape[0]):
+    print(x)
     gene = promoters.index[x]
     gene_ix = fragments.var.loc[gene]['ix']
     mask = mapping[:,1] == gene_ix
@@ -195,12 +194,11 @@ for x in range(promoters.shape[0]):
     df_long = pd.melt(df, id_vars=['cell_ix', 'gene_ix', 'cell', 'latent_time', 'rank', 'height'], value_vars=['cut_start', 'cut_end'], var_name='cut_type', value_name='position')
     df_long = df_long.rename(columns={'position': 'x', 'rank': 'y'})
     
-    # plot_cut_sites(df_long, gene, n_fragments)
-    # plot_cut_sites_histo(df, df_long, gene, n_fragments)
-    # plot_model_continuous(gene)
-    # plot_cut_sites_model_continuous(df_long, gene, n_fragments)
-
-    plot_model_quantile(gene)
+    # plot_cutsites(df_long, gene, n_fragments)
+    # plot_cutsites_histo(df, df_long, gene, n_fragments)
+    plot_model_continuous(gene)
+    plot_cutsites_model_continuous(df_long, gene, n_fragments)
+    # plot_model_quantile(gene)
 
 print(f"Done! Plots saved to {folder_data_preproc}")
 

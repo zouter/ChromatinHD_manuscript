@@ -104,7 +104,7 @@ def plot_cut_sites_histo(df, df_long, gene, n_fragments):
 
     plt.savefig(folder_data_preproc / f'plots/cutsites_histo/{gene}.png')
 
-def plot_evaluate_pseudo(gene):
+def plot_model_continuous(gene):
     file_name = csv_dir / f"{gene}.csv"
     probsx = np.loadtxt(file_name, delimiter=',')
 
@@ -119,7 +119,7 @@ def plot_evaluate_pseudo(gene):
     file_name = plot_dir / f"{gene}.png"
     plt.savefig(file_name, dpi=300)
 
-def plot_cut_sites_evaluate_pseudo(df, gene, n_fragments):
+def plot_cut_sites_model_continuous(df, gene, n_fragments):
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(15, 20), gridspec_kw={'height_ratios': [1, 1]})
 
     # Modify subplot configuration
@@ -161,8 +161,24 @@ def plot_cut_sites_evaluate_pseudo(df, gene, n_fragments):
     file_name = plot_combined_dir / f"{gene}.png"
     plt.savefig(file_name, dpi=300)
 
-for x in range(promoters.shape[0]):
+#%%
+def plot_model_quantile(gene):
+    df = pd.read_csv(folder_data_preproc / f"quantile_time_evaluate_pseudo/{gene}.csv")
+    pseudocoordinates = torch.linspace(0, 1, 1000)
+    print(gene)
 
+    fig, axes = plt.subplots(df.shape[0], 1, figsize=(20, 1*df.shape[0]), sharex = True, sharey = True)
+    for i, ax in zip(range(df.shape[0]), axes):
+        ax.plot(pseudocoordinates.numpy(), df.iloc[i, 1:], label = i, color = "#0000FF", lw = 2, zorder = 20)
+        ax.plot(pseudocoordinates.numpy(), df.iloc[i, 1:], label = i, color = "#FFFFFF", lw = 3, zorder = 10)
+
+    plt.savefig(folder_data_preproc / "plots/evaluate_pseudo2" / (gene + ".pdf"))
+
+os.makedirs(folder_data_preproc / "plots/evaluate_pseudo2", exist_ok=True)
+# df = pd.read_csv(folder_data_preproc / "quantile_time_evaluate_pseudo/ENSG00000263961.csv")
+
+#%%
+for x in range(promoters.shape[0]):
     gene = promoters.index[x]
     gene_ix = fragments.var.loc[gene]['ix']
     mask = mapping[:,1] == gene_ix
@@ -181,61 +197,64 @@ for x in range(promoters.shape[0]):
     
     # plot_cut_sites(df_long, gene, n_fragments)
     # plot_cut_sites_histo(df, df_long, gene, n_fragments)
-    # plot_evaluate_pseudo(gene)
-    plot_cut_sites_evaluate_pseudo(df_long, gene, n_fragments)
+    # plot_model_continuous(gene)
+    # plot_cut_sites_model_continuous(df_long, gene, n_fragments)
+
+    plot_model_quantile(gene)
 
 print(f"Done! Plots saved to {folder_data_preproc}")
 
 # TODO
 # select hspc marker genes
 
-#%%
-fig, axes = plt.subplots(nrows=4, ncols=4, figsize=(60, 60))
+# #%%
+# fig, axes = plt.subplots(nrows=4, ncols=4, figsize=(60, 60))
 
-for i, ax in enumerate(axes.flat):
-    if i >= promoters.shape[0]:
-        # if there are fewer genes than axes, hide the extra axes
-        ax.axis('off')
-        continue
+# for i, ax in enumerate(axes.flat):
+#     if i >= promoters.shape[0]:
+#         # if there are fewer genes than axes, hide the extra axes
+#         ax.axis('off')
+#         continue
     
-    gene = promoters.index[i]
-    gene_ix = fragments.var.loc[gene]['ix']
-    mask = mapping[:,1] == gene_ix
-    mapping_sub = mapping[mask]
-    coordinates_sub = coordinates[mask]
-    n_fragments = coordinates_sub.shape[0]
+#     gene = promoters.index[i]
+#     gene_ix = fragments.var.loc[gene]['ix']
+#     mask = mapping[:,1] == gene_ix
+#     mapping_sub = mapping[mask]
+#     coordinates_sub = coordinates[mask]
+#     n_fragments = coordinates_sub.shape[0]
 
-    tens = torch.cat((mapping_sub, coordinates_sub), dim=1)
-    df = pd.DataFrame(tens.numpy())
-    df.columns = ['cell_ix', 'gene_ix', 'cut_start', 'cut_end']
-    df['height'] = 1
+#     tens = torch.cat((mapping_sub, coordinates_sub), dim=1)
+#     df = pd.DataFrame(tens.numpy())
+#     df.columns = ['cell_ix', 'gene_ix', 'cut_start', 'cut_end']
+#     df['height'] = 1
 
 
-    df = pd.merge(df, latent_time, left_on='cell_ix', right_index=True)
-    df_long = pd.melt(df, id_vars=['cell_ix', 'gene_ix', 'cell', 'latent_time', 'rank', 'height'], value_vars=['cut_start', 'cut_end'], var_name='cut_type', value_name='position')
-    df_long = df_long.rename(columns={'position': 'x', 'rank': 'y'})
+#     df = pd.merge(df, latent_time, left_on='cell_ix', right_index=True)
+#     df_long = pd.melt(df, id_vars=['cell_ix', 'gene_ix', 'cell', 'latent_time', 'rank', 'height'], value_vars=['cut_start', 'cut_end'], var_name='cut_type', value_name='position')
+#     df_long = df_long.rename(columns={'position': 'x', 'rank': 'y'})
 
-    ax.scatter(df_long['x'], df_long['y'], s=1, marker='s', color='black')
-    ax.set_title(f"{gene} (cut sites = {2 * n_fragments})", fontsize=12)
-    ax.set_xlabel('Position', fontsize=10)
-    ax.set_ylabel('Latent Time', fontsize=10)
-    ax.set_xlim([0, 1])
-    ax.set_ylim([0, 1])
-    ax.set_facecolor('white')
+#     ax.scatter(df_long['x'], df_long['y'], s=1, marker='s', color='black')
+#     ax.set_title(f"{gene} (cut sites = {2 * n_fragments})", fontsize=12)
+#     ax.set_xlabel('Position', fontsize=10)
+#     ax.set_ylabel('Latent Time', fontsize=10)
+#     ax.set_xlim([0, 1])
+#     ax.set_ylim([0, 1])
+#     ax.set_facecolor('white')
 
-# adjust spacing between subplots
-plt.subplots_adjust(hspace=0.5, wspace=0.5)
-plt.savefig(folder_data_preproc / f'plots/cutsites_subplot.png')
+# # adjust spacing between subplots
+# plt.subplots_adjust(hspace=0.5, wspace=0.5)
+# plt.savefig(folder_data_preproc / f'plots/cutsites_subplot.png')
  
-#%%
-plot_dir = folder_data_preproc / "plots/evaluate_pseudo_continuous_3D"
+# #%%
+# plot_dir = folder_data_preproc / "plots/evaluate_pseudo_continuous_3D"
 
-for gene_oi in range(promoters.shape[0]):
-    file_name = csv_dir / f"tensor_gene_oi_{gene_oi}.csv"
-    probsx = np.loadtxt(file_name, delimiter=',')
+# for gene_oi in range(promoters.shape[0]):
+#     file_name = csv_dir / f"tensor_gene_oi_{gene_oi}.csv"
+#     probsx = np.loadtxt(file_name, delimiter=',')
 
-    fig = go.Figure(data=[go.Surface(z=probsx)])
-    fig.update_layout(title=f'Probs for gene_oi = {gene_oi}', template='plotly_white')
-    fig.show()
-    if gene_oi == 3:
-        break
+#     fig = go.Figure(data=[go.Surface(z=probsx)])
+#     fig.update_layout(title=f'Probs for gene_oi = {gene_oi}', template='plotly_white')
+#     fig.show()
+#     if gene_oi == 3:
+#         break
+# %%

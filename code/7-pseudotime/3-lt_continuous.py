@@ -127,7 +127,11 @@ loaders_validation.restart()
 trainer = chd.train.Trainer(model, loaders_train, loaders_validation, optimizer, n_epochs = 50, checkpoint_every_epoch=1, optimize_every_step = 1)
 trainer.train()
 
+pickle.dump(model.to("cpu"), open("./3-lt_continuous.pkl", "wb"))
+
 #%%
+model = pickle.load(open("./3-lt_continuous.pkl", "rb"))
+
 pseudocoordinates = torch.linspace(0, 1, 1000)
 latent_times = torch.linspace(0, 1, 101)
 latent_times = torch.flip(latent_times, [0])

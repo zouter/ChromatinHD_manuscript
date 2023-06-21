@@ -22,6 +22,9 @@ promoter_name, window = "10k10k", np.array([-10000, 10000])
 # load data
 promoters = pd.read_csv(folder_data_preproc / ("promoters_" + promoter_name + ".csv"), index_col = 0)
 fragments = chd.data.Fragments(folder_data_preproc / "fragments_myeloid" / promoter_name)
+fragments.window = window
+fragments.create_cut_data()
+
 genes = pd.read_csv(folder_data_preproc / "genes.csv", index_col = 0)
 info_genes_cells = pd.read_csv(folder_data_preproc / "info_genes_cells.csv")
 s_genes = info_genes_cells['s_genes'].dropna().tolist()
@@ -30,6 +33,10 @@ hspc_marker_genes = info_genes_cells['hspc_marker_genes'].dropna().tolist()
 latent_time = pd.read_csv(folder_data_preproc / 'MV2_latent_time_myeloid.csv')
 latent_time['rank_raw'] = latent_time['latent_time'].rank()
 latent_time['rank'] = latent_time['rank_raw'] / latent_time.shape[0]
+latent_time['quantile'] = pd.qcut(latent_time['latent_time'], q=10, labels=False)
+
+latent = pd.get_dummies(latent_time['quantile'], prefix='quantile')
+latent_torch = torch.from_numpy(latent.values).to(torch.float)
 
 # %%
 coordinates = fragments.coordinates
@@ -38,6 +45,8 @@ coordinates = coordinates / 20000
 
 mapping = fragments.mapping
 mapping_cutsites = torch.bincount(mapping[:, 1]) * 2
+
+#%%
 # calculate the range that contains 90% of the data
 sorted_tensor, _ = torch.sort(mapping_cutsites)
 ten_percent = mapping_cutsites.numel() // 10
@@ -62,10 +71,12 @@ fig.savefig(folder_data_preproc / f'plots/n_cutsites.png')
 
 #%%
 csv_dir = folder_data_preproc / "evaluate_pseudo_continuous_tensors"
-plot_dir = folder_data_preproc / "plots/likelihood_continuous"
+plot_dir_quantile = folder_data_preproc / "plots/likelihood_quantile"
+plot_dir_continuous = folder_data_preproc / "plots/likelihood_continuous"
 plot_combined_dir = folder_data_preproc / "plots/cutsites_likelihood_continuous"
 
-os.makedirs(plot_dir, exist_ok=True)
+os.makedirs(plot_dir_quantile, exist_ok=True)
+os.makedirs(plot_dir_continuous, exist_ok=True)
 os.makedirs(plot_combined_dir, exist_ok=True)
 
 def plot_cutsites(df, gene, n_fragments):
@@ -115,7 +126,7 @@ def plot_model_continuous(gene):
     ax.set_xlabel('Position')
     ax.set_ylabel('Latent Time')
 
-    file_name = plot_dir / f"{gene}.png"
+    file_name = plot_dir_continuous / f"{gene}.png"
     plt.savefig(file_name, dpi=300)
 
 def plot_cutsites_model_continuous(df, gene, n_fragments):
@@ -152,7 +163,6 @@ def plot_cutsites_model_continuous(df, gene, n_fragments):
     ax2.set_xlabel('Position')
     ax2.set_ylabel('Latent Time')
 
-    # Add colorbar
     cbar_ax = fig.add_axes([0.15, 0.07, 0.7, 0.02])  # [left, bottom, width, height]
     cbar = plt.colorbar(heatmap, cax=cbar_ax, orientation='horizontal')
     cbar.set_label('Probability of finding a cut site at given position and latent time')
@@ -160,20 +170,29 @@ def plot_cutsites_model_continuous(df, gene, n_fragments):
     file_name = plot_combined_dir / f"{gene}.png"
     plt.savefig(file_name, dpi=300)
 
-#%%
-def plot_model_quantile(gene):
-    df = pd.read_csv(folder_data_preproc / f"quantile_time_evaluate_pseudo/{gene}.csv")
+def plot_model_quantile(latent_torch, gene_oi, fragments):
+    gene_id = fragments.var.index[gene_oi]
+    probs = pd.read_csv(folder_data_preproc / f"quantile_time_evaluate_pseudo/{gene_id}.csv")
+
+    bins = np.linspace(0, 1, 500)
+    binmids = (bins[1:] + bins[:-1])/2
+    binsize = binmids[1] - binmids[0]
     pseudocoordinates = torch.linspace(0, 1, 1000)
-    print(gene)
 
-    fig, axes = plt.subplots(df.shape[0], 1, figsize=(20, 1*df.shape[0]), sharex = True, sharey = True)
-    for i, ax in zip(range(df.shape[0]), axes):
-        ax.plot(pseudocoordinates.numpy(), df.iloc[i, 1:], label = i, color = "#0000FF", lw = 2, zorder = 20)
-        ax.plot(pseudocoordinates.numpy(), df.iloc[i, 1:], label = i, color = "#FFFFFF", lw = 3, zorder = 10)
+    fig, axes = plt.subplots(probs.shape[0], 1, figsize=(20, 1*probs.shape[0]), sharex = True, sharey = True)
+    for i, ax in zip(reversed(range(probs.shape[0])), axes):
+        n_cells = latent_torch[:, i].sum()
 
-    plt.savefig(folder_data_preproc / "plots/evaluate_pseudo2" / (gene + ".pdf"))
+        fragments_oi = (latent_torch[fragments.cut_local_cell_ix, i] != 0) & (fragments.cut_local_gene_ix == gene_oi)
+        bincounts, _ = np.histogram(fragments.cut_coordinates[fragments_oi].cpu().numpy(), bins = bins)
+        freq = round((fragments_oi.sum()/n_cells).item(), 3)
 
-os.makedirs(folder_data_preproc / "plots/evaluate_pseudo2", exist_ok=True)
+        ax.bar(binmids, bincounts / n_cells * len(bins), width = binsize, color = "#888888", lw = 0)
+        ax.plot(pseudocoordinates.numpy(), probs.iloc[i, 1:], label = i, color = "#0000FF", lw = 2, zorder = 20)
+        ax.plot(pseudocoordinates.numpy(), probs.iloc[i, 1:], label = i, color = "#FFFFFF", lw = 3, zorder = 10)
+        ax.set_ylabel(f"{probs.iloc[i]['cluster']}\n freq={freq}", rotation = 0, ha = "right", va = "center")
+
+    plt.savefig(plot_dir_quantile / (gene_id + ".png"))
 
 #%%
 for x in range(promoters.shape[0]):
@@ -196,12 +215,13 @@ for x in range(promoters.shape[0]):
     
     # plot_cutsites(df_long, gene, n_fragments)
     # plot_cutsites_histo(df, df_long, gene, n_fragments)
-    plot_model_continuous(gene)
-    plot_cutsites_model_continuous(df_long, gene, n_fragments)
-    # plot_model_quantile(gene)
+    # plot_model_continuous(gene)
+    # plot_cutsites_model_continuous(df_long, gene, n_fragments)
+    plot_model_quantile(latent_torch, x, fragments)
 
 print(f"Done! Plots saved to {folder_data_preproc}")
 
+#%%
 # TODO
 # select hspc marker genes
 
@@ -244,7 +264,7 @@ print(f"Done! Plots saved to {folder_data_preproc}")
 # plt.savefig(folder_data_preproc / f'plots/cutsites_subplot.png')
  
 # #%%
-# plot_dir = folder_data_preproc / "plots/evaluate_pseudo_continuous_3D"
+# plot_dir_continuous = folder_data_preproc / "plots/evaluate_pseudo_continuous_3D"
 
 # for gene_oi in range(promoters.shape[0]):
 #     file_name = csv_dir / f"tensor_gene_oi_{gene_oi}.csv"

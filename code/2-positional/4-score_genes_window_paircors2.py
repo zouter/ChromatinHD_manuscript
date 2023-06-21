@@ -46,14 +46,12 @@ splitter = "permutations_5fold5repeat"
 promoter_name, window = "100k100k", np.array([-100000, 100000])
 outcome_source = "magic"
 prediction_name = "v20_initdefault"
-n_repeats = 1
 
 # splitter = "permutations_5fold5repeat"
 # promoter_name, window = "10k10k", np.array([-10000, 10000])
 # outcome_source = "magic"
 # prediction_name = "v20"
 # prediction_name = "v21"
-# n_repeats = 100
 
 promoters = pd.read_csv(
     folder_data_preproc / ("promoters_" + promoter_name + ".csv"), index_col=0
@@ -181,7 +179,7 @@ genes_all_oi = (
 print(len(genes_all_oi))
 
 design = pd.DataFrame({"gene": genes_all_oi})
-design["force"] = False
+design["force"] = True
 
 for gene, subdesign in design.groupby("gene", sort=False):
     genes_oi = genes_all == gene
@@ -216,61 +214,33 @@ for gene, subdesign in design.groupby("gene", sort=False):
         )
 
         cellgenedeltacors = window_scoring.cellgenedeltacors
+        cellgenelosts = window_scoring.cellgenelosts
+
+        losts = []
+        for x in tqdm.tqdm(cellgenelosts):
+            losts.append(x.mean("cell").sel(gene=gene))
+        losts = np.stack(losts).mean(0)
+
+        windows_oi = window_scoring.genescores.coords["window"][losts > 0.01]
+
+        print(len(windows_oi))
 
         cors = []
         for x in tqdm.tqdm(cellgenedeltacors):
-            cors.append(np.corrcoef(x.sel(gene=gene).values))
+            cors.append(np.corrcoef(x.sel(window=windows_oi).sel(gene=gene).values))
         cors = np.stack(cors)
         cors[np.isnan(cors)] = 0
 
-        random_cors = []
-        for i in tqdm.tqdm(range(n_repeats)):
-            random_cors_ = []
-            for x in cellgenedeltacors:
-                random_cors_.append(
-                    np.corrcoef(
-                        x.sel(gene=gene).values,
-                        x.sel(gene=gene).values[:, np.random.permutation(x.shape[1])],
-                    )[x.shape[0] :, : x.shape[0]]
-                )
-            random_cors.append(random_cors_)
-        random_cors = np.stack(random_cors)
-        random_cors[np.isnan(random_cors)] = 0
-
-        random_cors = np.concatenate(
-            [
-                random_cors,
-                np.swapaxes(random_cors, -1, -2),
-            ],
-            0,
+        cors_flattened = pd.DataFrame(
+            cors.mean(0), index=windows_oi, columns=windows_oi
         )
+        cors_flattened.index.name = "window1"
+        cors_flattened.columns.name = "window2"
 
-        cors_flattened = cors.reshape((cors.shape[0], -1))
-        interaction = pd.DataFrame(
-            {
-                "cor": cors_flattened.mean(0),
-                "window_ix1": np.tile(
-                    np.arange(cors.shape[1])[:, None], cors.shape[1]
-                ).flatten(),
-                "window_ix2": np.tile(
-                    np.arange(cors.shape[1])[:, None], cors.shape[1]
-                ).T.flatten(),
-                "window1": np.tile(
-                    window_scoring.genescores.coords["window"].values[:, None],
-                    len(window_scoring.genescores.coords["window"].values),
-                ).flatten(),
-                "window2": np.tile(
-                    window_scoring.genescores.coords["window"].values[:, None],
-                    len(window_scoring.genescores.coords["window"].values),
-                ).T.flatten(),
-            }
-        )
+        interaction = cors_flattened.stack().reset_index().rename(columns={0: "cor"})
         interaction["distance"] = np.abs(
             interaction["window1"] - interaction["window2"]
         )
-        interaction["pval"] = (1 - (cors >= random_cors).mean(0).mean(0)).flatten()
-        # interaction["pval"] = 1 - (cors.mean(0) > random_cors.mean(1)).mean(0).flatten()
-        # interaction = interaction.query("distance > 500")
         interaction["deltacor1"] = (
             window_scoring.genescores.sel(gene=gene)
             .mean("model")
@@ -299,13 +269,22 @@ for gene, subdesign in design.groupby("gene", sort=False):
             .to_pandas()[interaction["window2"]]
             .values
         )
-
-        import statsmodels.stats.multitest
-
-        interaction["qval"] = statsmodels.stats.multitest.fdrcorrection(
-            interaction["pval"]
-        )[1]
+        interaction["effect1"] = (
+            window_scoring.genescores.sel(gene=gene)
+            .mean("model")
+            .sel(phase="test")["effect"]
+            .to_pandas()[interaction["window1"]]
+            .values
+        )
+        interaction["effect2"] = (
+            window_scoring.genescores.sel(gene=gene)
+            .mean("model")
+            .sel(phase="test")["effect"]
+            .to_pandas()[interaction["window2"]]
+            .values
+        )
 
         interaction.to_pickle(scores_folder / "interaction.pkl")
+        window_scoring.save(scores_folder)
     else:
         print(gene, "already done")

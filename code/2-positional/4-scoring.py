@@ -63,16 +63,16 @@ promoter_name, window = "10k10k", np.array([-10000, 10000])
 prediction_name = "v20_initdefault"
 outcome_source = "counts"
 
-splitter = "permutations_5fold5repeat"
-promoter_name, window = "10k10k", np.array([-10000, 10000])
-outcome_source = "magic"
-prediction_name = "v20"
+# splitter = "permutations_5fold5repeat"
+# promoter_name, window = "10k10k", np.array([-10000, 10000])
+# outcome_source = "magic"
+# prediction_name = "v20"
 # prediction_name = "v21"
 
-# splitter = "permutations_5fold5repeat"
-# promoter_name, window = "100k100k", np.array([-100000, 100000])
-# prediction_name = "v20_initdefault"
-# outcome_source = "magic"
+splitter = "permutations_5fold5repeat"
+promoter_name, window = "100k100k", np.array([-100000, 100000])
+prediction_name = "v20_initdefault"
+outcome_source = "magic"
 
 # fragments
 promoters = pd.read_csv(
@@ -85,11 +85,6 @@ fragments.obs.index.name = "cell"
 
 # create design to run
 from design import get_design, get_folds_inference
-
-
-class Prediction(chd.flow.Flow):
-    pass
-
 
 # folds & minibatching
 folds = pickle.load((fragments.path / "folds" / (splitter + ".pkl")).open("rb"))
@@ -279,6 +274,40 @@ scorer_folder.mkdir(exist_ok=True, parents=True)
 size_scoring.save(scorer_folder)
 
 # %% [markdown]
+# ## Size at TSS
+
+# %%
+# load nothing scoring
+scorer_folder = prediction.path / "scoring" / "nothing"
+nothing_scoring = chd.scoring.prediction.Scoring.load(scorer_folder)
+
+# %%
+size_filterer = chd.scoring.prediction.filterers.SizeIntervalFilterer(-500, 500, 20)
+Scorer2 = chd.scoring.prediction.Scorer2
+size_scorer = Scorer2(
+    models,
+    folds[: len(models)],
+    loaders,
+    outcome,
+    fragments.var.index,
+    fragments.obs.index,
+    device=device,
+)
+
+# %%
+models = [model.to("cpu") for model in models]
+size_scoring = size_scorer.score(
+    filterer=size_filterer,
+    extract_per_cellxgene=False,
+    nothing_scoring=nothing_scoring,
+)
+
+# %%
+scorer_folder = prediction.path / "scoring" / "size_tss"
+scorer_folder.mkdir(exist_ok=True, parents=True)
+size_scoring.save(scorer_folder)
+
+# %% [markdown]
 # ## Subset
 
 # %%
@@ -300,6 +329,7 @@ symbol = "IPP"
 # symbol = "CD74"
 symbol = "TNFAIP2"
 symbol = "CD74"
+symbol = "BCL2"
 # symbol = "BCL11B"
 genes_oi = transcriptome.var["symbol"] == symbol
 gene = transcriptome.var.index[genes_oi][0]
@@ -557,16 +587,44 @@ sns.heatmap(
     vmax=0.2,
 )
 
+# %% [markdown]
+# ### Per celltype
+
 # %%
-deltacors_celltype = {}
+deltacors_celltype = {
+    celltype: pd.Series(0, index=window_scoring.genescores.coords["window"].values)
+    for celltype in transcriptome.adata.obs["celltype"].unique()
+}
 for celltype, obs_celltype in transcriptome.adata.obs.groupby("celltype"):
     # deltacors_celltype[celltype] = (
     #     deltacors.sel(gene
     # =gene, cell=obs_celltype.index).mean("cell").to_pandas()
     # )
-    deltacors_celltype[celltype] = (
-        deltacors.sel(gene=gene, cell=obs_celltype.index).mean("cell").to_pandas()
-    )
+    for cellgenedeltacors_fold in cellgenedeltacors:
+        deltacors_celltype[celltype] += (
+            cellgenedeltacors_fold.sel(
+                gene=gene,
+                cell=obs_celltype.index.intersection(
+                    cellgenedeltacors_fold.coords["cell"]
+                ),
+            )
+            .mean("cell")
+            .to_pandas()
+        )
+
+deltacors_celltype = pd.concat(deltacors_celltype)
+
+# %%
+x = deltacors_celltype.unstack()
+# x = x.loc[:, x.columns > 50000]
+# x = x.loc[:, (x.columns < 10000) & (x.columns > -10000)]
+sns.heatmap(x)
+
+# %%
+window_scoring.genescores["cor"].sel(phase="test").mean("model").mean(
+    "gene"
+).to_pandas().plot()
+
 
 # %%
 fig, ax = plt.subplots()

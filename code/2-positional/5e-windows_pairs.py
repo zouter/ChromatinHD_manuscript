@@ -72,9 +72,9 @@ splitter = "permutations_5fold5repeat"
 promoter_name, window = "10k10k", np.array([-10000, 10000])
 prediction_name = "v20"
 
-# splitter = "permutations_5fold5repeat"
-# promoter_name, window = "100k100k", np.array([-100000, 100000])
-# prediction_name = "v20_initdefault"
+splitter = "permutations_5fold5repeat"
+promoter_name, window = "100k100k", np.array([-100000, 100000])
+prediction_name = "v20_initdefault"
 
 # fragments
 promoters = pd.read_csv(
@@ -141,7 +141,7 @@ symbol = "CD74"
 # symbol = "BCL2"
 # symbol = "CCL4"
 # symbol = "EBF1"
-# symbol = "LYN"
+symbol = "LYN"
 # symbol = transcriptome.symbol("ENSG00000175985")
 print(symbol)
 genes_oi = transcriptome.var["symbol"] == symbol

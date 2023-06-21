@@ -30,14 +30,9 @@ import seaborn as sns
 
 sns.set_style("ticks")
 
-import pickle
-
-import scanpy as sc
-
 import torch
 
 import tqdm.auto as tqdm
-import xarray as xr
 
 # %%
 import chromatinhd as chd
@@ -48,9 +43,6 @@ manuscript = Manuscript(chd.get_git_root() / "manuscript")
 
 
 # %%
-device = "cuda:0"
-# device = "cpu"
-
 folder_root = chd.get_output()
 folder_data = folder_root / "data"
 
@@ -64,6 +56,7 @@ transcriptome = chd.data.Transcriptome(folder_data_preproc / "transcriptome")
 
 #
 promoter_name, window = "10k10k", np.array([-10000, 10000])
+# promoter_name, window = "100k100k", np.array([-100000, 100000])
 
 # fragments
 promoters = pd.read_csv(
@@ -81,21 +74,58 @@ counts = torch.bincount(
 )
 
 # %%
-fig, ax = plt.subplots()
-ax.hist(counts[:1000], bins=np.arange(0, 10, 1))
-
-
-# %%
 bincounts = torch.bincount(counts, minlength=10)
+bindensity = bincounts / bincounts.sum()
+
 
 # %%
-plt.plot(bincounts[1:] / bincounts[:-1])
+perc_zero = bindensity[0].sum()
+perc_only_one = bindensity[1].sum()
+perc_only_two = bindensity[2].sum()
+perc_more_than_one = bindensity[2:].sum()
 
 # %%
-bincounts[1].sum() / bincounts.sum()
+fig, ax = plt.subplots(figsize=(2, 2))
+bins = np.arange(0, 10)
+ax.bar(bins, bindensity[: len(bins)])
+ax.annotate(
+    f"{perc_zero:.0%}",
+    (0.0 - 0.4, perc_zero),
+    # (0, 0),
+    # textcoords="offset points",
+    va="bottom",
+    ha="left",
+)
+ax.annotate(
+    f"{perc_only_one:.0%}",
+    (1.0 - 0.4, perc_only_one),
+    # (0, 0),
+    # textcoords="offset points",
+    va="bottom",
+    ha="left",
+)
+ax.annotate(
+    f"{perc_more_than_one:.0%} →",
+    (2.0 - 0.4, perc_only_two),
+    # (0, 0),
+    # textcoords="offset points",
+    va="bottom",
+    ha="left",
+)
+ax.set_xlabel(
+    f"Number of fragments\nper cell and gene in\n{window_width/1000:.0f}kb window around TSS"
+)
+ax.set_ylim(0, ax.get_ylim()[1] * 1.1)
+ax.yaxis.set_major_formatter(mpl.ticker.PercentFormatter(1.0))
+ax.set_ylabel("Fraction of cells")
+
+manuscript.save_figure(fig, "5", "fragments_per_cell_and_gene_" + promoter_name)
 
 # %%
-bincounts[2:].sum() / bincounts.sum()
-# %%
-bincounts[2:].sum() / bincounts[1].sum()
+import IPython
+
+IPython.display.Markdown(
+    f"""Note that in the current multiome data, the co-occurence of multiple fragments close to a gene (-10kb and +10kb from TSS) within the same cell is relatively rare, with {perc_more_than_one:.1%} of cells containing more than one fragment within this window, compared to {perc_only_one:.1%} of cells containing only a single fragment."""
+)
+
 # %%

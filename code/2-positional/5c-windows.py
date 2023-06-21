@@ -62,15 +62,15 @@ promoter_name, window = "10k10k", np.array([-10000, 10000])
 outcome_source = "counts"
 prediction_name = "v20_initdefault"
 
-# splitter = "permutations_5fold5repeat"
-# promoter_name, window = "100k100k", np.array([-100000, 100000])
-# outcome_source = "magic"
-# prediction_name = "v20_initdefault"
-
 splitter = "permutations_5fold5repeat"
-promoter_name, window = "10k10k", np.array([-10000, 10000])
+promoter_name, window = "100k100k", np.array([-100000, 100000])
 outcome_source = "magic"
-prediction_name = "v20"
+prediction_name = "v20_initdefault"
+
+# splitter = "permutations_5fold5repeat"
+# promoter_name, window = "10k10k", np.array([-10000, 10000])
+# outcome_source = "magic"
+# prediction_name = "v20"
 
 promoters = pd.read_csv(
     folder_data_preproc / ("promoters_" + promoter_name + ".csv"), index_col=0
@@ -379,6 +379,7 @@ gene_id = transcriptome.gene_id("LTB")
 gene_id = transcriptome.gene_id("NKG7")
 gene_id = transcriptome.gene_id("FOXO3")
 gene_id = transcriptome.gene_id("FOSB")
+gene_id = transcriptome.gene_id("BCL2")
 # gene_id = transcriptome.gene_id("CTLA4")
 # gene_id = "ENSG00000182901"
 

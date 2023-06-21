@@ -14,7 +14,7 @@ dataset_peakcaller_combinations = pd.DataFrame.from_records(
                 "brain",
                 "alzheimer",
                 "pbmc10k_gran",
-                "pbmc10k_eqtl",
+                # "pbmc10k_eqtl",
             ],
             ["10k10k"],
             [
@@ -26,7 +26,6 @@ dataset_peakcaller_combinations = pd.DataFrame.from_records(
                 "macs2_leiden_0.1",
                 "encode_screen",
                 "1k1k",
-                "gene_body",
                 "stack",
             ],
         ),
@@ -56,10 +55,16 @@ dataset_peakcaller_combinations = pd.DataFrame.from_records(
             ["10k10k"],
             ["cellranger"],
         ),
+        itertools.product(
+            [
+                "pbmc10k",
+            ],
+            ["100k100k"],
+            ["cellranger"],
+        ),
     ),
     columns=["dataset", "promoter", "peakcaller"],
 )
-dataset_peakcaller_combinations["promoter"] = "10k10k"
 
 dataset_splitter_combinations = pd.DataFrame.from_records(
     itertools.chain(
@@ -87,6 +92,11 @@ dataset_splitter_combinations = pd.DataFrame.from_records(
             ["10k10k"],
             ["random_5fold", "leiden_0.1"],
         ),
+        itertools.product(
+            ["pbmc10k", "pbmc10k_gran", "pbmc3k"],
+            ["10k10k"],
+            ["permutations_5fold5repeat"],
+        ),
     ),
     columns=["dataset", "promoter", "splitter"],
 )
@@ -99,6 +109,7 @@ dataset_splitter_method_combinations = pd.concat(
                     [
                         "lymphoma",
                         "pbmc10k",
+                        "pbmc3k",
                         "pbmc10k_gran",
                         "e18brain",
                         "brain",
@@ -110,6 +121,7 @@ dataset_splitter_method_combinations = pd.concat(
                 {
                     "method": [
                         "v20",
+                        "v21",
                         "v20_initdefault",
                         "counter",
                     ]
@@ -133,6 +145,8 @@ dataset_splitter_peakcaller_predictor_combinations = chd.utils.crossing(
         {
             "predictor": [
                 "linear",
+                "lasso",
+                "xgboost",
             ]
         }
     ),
@@ -197,7 +211,7 @@ dataset_latent_combinations = pd.DataFrame.from_records(
                 "brain",
                 "alzheimer",
                 "pbmc10k_gran",
-                "pbmc10k_eqtl",
+                # "pbmc10k_eqtl",
             ],
             ["leiden_0.1"],
         ),
@@ -226,7 +240,7 @@ dataset_latent_method_combinations = pd.concat(
                         "brain",
                         "alzheimer",
                         "pbmc10k_gran",
-                        "pbmc10k_eqtl",
+                        # "pbmc10k_eqtl",
                     ]
                 )
             ],
@@ -247,7 +261,16 @@ dataset_latent_peakcaller_diffexp_combinations = pd.concat(
             dataset_latent_peakcaller_combinations.query(
                 "peakcaller in ['cellranger', 'macs2_improved', 'macs2_leiden_0.1_merged']"
             ),
-            pd.DataFrame({"diffexp": ["signac"]}),
+            pd.DataFrame(
+                {
+                    "diffexp": [
+                        "signac",
+                        # "scanpy_logreg",
+                        "scanpy_wilcoxon",
+                        # "chromvar",
+                    ]
+                }
+            ),
         ),
     ]
 )
@@ -282,7 +305,7 @@ dataset_latent_peakcaller_diffexp_method_motifscan_enricher_combinations = (
 
 dataset_qtl_combinations = pd.DataFrame(
     [
-        ["pbmc10k", "gwas_immune"],
+        ["pbmc10k", "gwas_immune2"],
         ["pbmc10k", "onek1k_0.2"],
         ["pbmc10k", "gtex_immune"],
         # ["brain", "gwas_cns"],
@@ -292,13 +315,24 @@ dataset_qtl_combinations = pd.DataFrame(
     columns=["dataset", "motifscan"],
 )
 
-
 dataset_latent_peakcaller_diffexp_method_qtl_enricher_combinations = pd.merge(
-    chd.utils.crossing(
-        dataset_latent_peakcaller_combinations,
-        pd.DataFrame({"method": ["v9_128-64-32"]}),
-        pd.DataFrame({"diffexp": ["scanpy"]}),
-        pd.DataFrame({"enricher": ["cluster_vs_all"]}),
+    pd.concat(
+        [
+            chd.utils.crossing(
+                dataset_latent_peakcaller_combinations,
+                pd.DataFrame({"method": ["v9_128-64-32"]}),
+                pd.DataFrame({"diffexp": ["scanpy"]}),
+                pd.DataFrame({"enricher": ["cluster_vs_all"]}),
+            ),
+            chd.utils.crossing(
+                dataset_latent_peakcaller_combinations.query(
+                    "peakcaller in ['cellranger', 'macs2_improved', 'macs2_leiden_0.1_merged']"
+                ),
+                pd.DataFrame({"method": ["v9_128-64-32"]}),
+                pd.DataFrame({"diffexp": ["signac", "scanpy_wilcoxon"]}),
+                pd.DataFrame({"enricher": ["cluster_vs_all"]}),
+            ),
+        ]
     ),
     dataset_qtl_combinations,
 )

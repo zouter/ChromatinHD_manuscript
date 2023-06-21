@@ -64,8 +64,8 @@ dataset_name = "pbmc10k"
 folder_data_preproc = folder_data / dataset_name
 
 # %%
-promoter_name, window = "10k10k", np.array([-10000, 10000])
-# promoter_name, window = "100k100k", np.array([-100000, 100000])
+# promoter_name, window = "10k10k", np.array([-10000, 10000])
+promoter_name, window = "100k100k", np.array([-100000, 100000])
 
 # %%
 transcriptome = chd.data.Transcriptome(folder_data_preproc / "transcriptome")
@@ -118,7 +118,10 @@ scores.query("mine > 1").head(10)
 # gene_id = transcriptome.gene_id("JCHAIN")
 # gene_id = transcriptome.gene_id("CD74")
 # gene_id = transcriptome.gene_id("IPP")
-gene_id = transcriptome.gene_id("LYN")
+# gene_id = transcriptome.gene_id("LYN")
+# gene_id = transcriptome.gene_id("BCL2")
+gene_id = transcriptome.gene_id("CD74")
+# gene_id = transcriptome.gene_id("RPS14")
 # gene_id = transcriptome.gene_id("CCL4")
 
 # %%
@@ -165,9 +168,11 @@ obs = obs.set_index("ix")
 
 # %%
 window_oi = window
-window_oi = [0, 10000]
-window_oi = [-18000, -14000]
-window_oi = [-10000, 10000]
+# window_oi = [0, 10000]
+# window_oi = [-18000, -14000]
+# window_oi = [-10000, 10000]
+window_oi = [-100000, 100000]
+# window_oi = [60000, 90000]
 
 # %%
 fig, (ax_fragments, ax_gex) = plt.subplots(

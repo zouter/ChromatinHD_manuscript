@@ -49,20 +49,20 @@ import chromatinhd as chd
 folder_root = chd.get_output()
 folder_data = folder_root / "data"
 
-# dataset_name = "pbmc10k"
-# main_url = "https://cf.10xgenomics.com/samples/cell-arc/2.0.0/pbmc_granulocyte_sorted_10k/pbmc_granulocyte_sorted_10k"
-# genome = "GRCh38.107"
-# organism = "hs"
+dataset_name = "pbmc10k"
+main_url = "https://cf.10xgenomics.com/samples/cell-arc/2.0.0/pbmc_granulocyte_sorted_10k/pbmc_granulocyte_sorted_10k"
+genome = "GRCh38.107"
+organism = "hs"
 
 # dataset_name = "pbmc10k_gran"
 # main_url = "https://cf.10xgenomics.com/samples/cell-arc/2.0.0/pbmc_unsorted_10k/pbmc_unsorted_10k"
 # genome = "GRCh38.107"
 # organism = "hs"
 
-dataset_name = "pbmc3k"
-main_url = "https://cf.10xgenomics.com/samples/cell-arc/2.0.0/pbmc_granulocyte_sorted_3k/pbmc_granulocyte_sorted_3k"
-genome = "GRCh38.107"
-organism = "hs"
+# dataset_name = "pbmc3k"
+# main_url = "https://cf.10xgenomics.com/samples/cell-arc/2.0.0/pbmc_granulocyte_sorted_3k/pbmc_granulocyte_sorted_3k"
+# genome = "GRCh38.107"
+# organism = "hs"
 
 # dataset_name = "lymphoma"; main_url = "https://cf.10xgenomics.com/samples/cell-arc/2.0.0/lymph_node_lymphoma_14k/lymph_node_lymphoma_14k"; genome = "GRCh38.107"; organism = "hs"
 # dataset_name = "e18brain"; main_url = "https://cf.10xgenomics.com/samples/cell-arc/2.0.0/e18_mouse_brain_fresh_5k/e18_mouse_brain_fresh_5k";  genome = "mm10"; organism = "mm"
@@ -96,7 +96,7 @@ if not (folder_data_preproc / "genome").exists():
 # # ! wget {main_url}_atac_possorted_bam.bam.bai -O {folder_data_preproc}/bam/atac_possorted_bam.bam.bai
 # ! echo wget {main_url}_atac_possorted_bam.bam -O {folder_data_preproc}/bam/atac_possorted_bam.bam
 # ! echo wget {main_url}_atac_possorted_bam.bam.bai -O {folder_data_preproc}/bam/atac_possorted_bam.bam.bai
-# ! echo wget {main_url}_atac_fragments.tsv.gz -O {folder_data_preproc}/bam/atac_fragments.tsv.gz
+! echo wget {main_url}_atac_fragments.tsv.gz -O {folder_data_preproc}/bam/atac_fragments.tsv.gz
 
 # %%
 genome_folder = "/data/genome/GATK/hg38"

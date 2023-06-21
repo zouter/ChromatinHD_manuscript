@@ -16,37 +16,51 @@ import numpy as np
 import pandas as pd
 import scanpy as sc
 import tqdm.auto as tqdm
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+import plotly.express as px
+import seaborn as sns
+sns.set_style('ticks')
 
 import chromatinhd as chd
 import chromatinhd.loaders.fragments
 import chromatinhd.models.likelihood.v9 as vae_model
 
-import plotly.express as px
-import matplotlib.pyplot as plt
-import matplotlib as mpl
-import seaborn as sns
-sns.set_style('ticks')
-# %config InlineBackend.figure_format='retina'
-
 # %%
 folder_root = chd.get_output()
-folder_data = folder_root / "data"
-dataset_name = "hspc"
-folder_data_preproc = folder_data / dataset_name
-
-# %%
+folder_data_preproc = folder_root / "data" / "hspc"
 promoter_name, window = "10k10k", np.array([-10000, 10000])
+
 promoters = pd.read_csv(folder_data_preproc / ("promoters_" + promoter_name + ".csv"), index_col = 0)
-folds = pd.read_pickle(folder_data_preproc / "fragments_myeloid" / promoter_name / "folds.pkl")
+
+df = pd.read_csv(folder_data_preproc / "MV2_latent_time_myeloid.csv", index_col = 0)
+df['quantile'] = pd.qcut(df['latent_time'], q=10, labels=False)
+latent = pd.get_dummies(df['quantile'], prefix='quantile')
+latent_torch = torch.from_numpy(latent.values).to(torch.float)
+
+cluster_info = pd.DataFrame()
+cluster_info['cluster'] = list(latent.columns)
+cluster_info['label'] = list(latent.columns)
+cluster_info['dimension'] = range(latent.shape[-1])
+cluster_info["color"] = sns.color_palette("husl", latent.shape[1])
+cluster_info.set_index('cluster', inplace=True)
+
 fragments = chd.data.Fragments(folder_data_preproc / "fragments_myeloid" / promoter_name)
 fragments.window = window
+fragments.obs.index.name = "cell"
+fragments.obs["cluster"] = df['quantile'] # order of cells/barcodes is identical
+fragments.create_cut_data()
 
+# delete transcriptome object eventually
+transcriptome = chd.data.Transcriptome(folder_data_preproc / "transcriptome")
+transcriptome.var.index = transcriptome.var["Accession"]
+transcriptome.var.index.name = "gene"
+
+folds = pd.read_pickle(folder_data_preproc / "fragments_myeloid" / promoter_name / "folds.pkl")
 cells_train = folds[0]['cells_train']
 cells_validation = folds[0]['cells_validation']
 
 # %% 
-# ## Create loaders
-
 n_cells_step = 100
 n_genes_step = 50
 
@@ -83,63 +97,38 @@ minibatches_validation = chd.loaders.minibatching.create_bins_random(
 )
 loaders_validation.initialize(minibatches_validation)
 
-# %%
-# ## Model
-# ### Load latent space
-latent_name = "latent_time"
-latent_folder = folder_data_preproc / "latent"
-df = pd.read_csv(folder_data_preproc / "MV2_latent_time_myeloid.csv", index_col = 0)
-df['quantile'] = pd.qcut(df['latent_time'], q=10, labels=False)
-fragments.obs["cluster"] = df['quantile']
-
-latent = pd.get_dummies(df['quantile'], prefix='quantile')
-latent_torch = torch.from_numpy(latent.values).to(torch.float)
-n_latent_dimensions = latent.shape[-1]
-
-cluster_info = pd.DataFrame()
-cluster_info['cluster'] = list(latent.columns)
-cluster_info['label'] = list(latent.columns)
-cluster_info['dimension'] = range(n_latent_dimensions)
-cluster_info["color"] = sns.color_palette("husl", latent.shape[1])
-cluster_info.set_index('cluster', inplace=True)
-
-#%%
-transcriptome = chromatinhd.data.Transcriptome(folder_data_preproc / "transcriptome")
-transcriptome.var.index = transcriptome.var["Accession"]
-transcriptome.var.index.name = "gene"
-
 # TODO move this to separate script
 # latent_name = "celltype"
 # latent_folder = folder_data_preproc / "latent"
 # latent = pickle.load((latent_folder / (latent_name + ".pkl")).open("rb"))
 # latent_torch = torch.from_numpy(latent.values).to(torch.float)
-# n_latent_dimensions = latent.shape[-1]
-
+# latent.shape[-1] = latent.shape[-1]
 # cluster_info = pd.read_pickle(latent_folder / (latent_name + "_info.pkl"))
 # cluster_info["color"] = sns.color_palette("husl", latent.shape[1])
 # fragments.obs["cluster"] = pd.Categorical(pd.from_dummies(latent).iloc[:, 0])
 
 # %%
-# ### Create model
-reflatent = torch.eye(n_latent_dimensions).to(torch.float)
-reflatent_idx = torch.from_numpy(np.where(latent.values)[1])
-
-# %%
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 model = vae_model.Decoding(fragments, torch.from_numpy(latent.values), nbins = (128, 64, 32, ))
-
-# %%
-device = "cuda"
 model = model.to(device)
-
-# %%
-fragments.create_cut_data()
 model.n_genes = fragments.n_genes
-gene_oi = 0
-bc = torch.bincount(fragments.genemapping)
-pseudocoordinates = torch.linspace(0, 1, 1000).to(device)
 
 #%%
-def plot_distribution(latent, latent_torch, cluster_info, fragments, transcriptome, gene_oi, model, device, prior = True):
+# TODO separate function for inference and plotting
+# reverse y axis order, but double check
+
+def evaluate_pseudo_quantile(latent, gene_oi, model, device):
+    pseudocoordinates = torch.linspace(0, 1, 1000).to(device)
+    probs = []
+    for i in range(latent.shape[1]):
+        pseudolatent = torch.zeros((len(pseudocoordinates), latent.shape[1])).to(device)
+        pseudolatent[:, i] = 1.
+        prob = model.evaluate_pseudo(pseudocoordinates.to(device), latent = pseudolatent.to(device), gene_oi = gene_oi)
+        probs.append(prob)
+    probs = np.stack(probs)
+    return probs
+    
+def plot_distribution(latent, latent_torch, cluster_info, fragments, gene_oi, model, device, prior = True):
     fig, axes = plt.subplots(latent.shape[1], 1, figsize=(20, 1*latent.shape[1]), sharex = True, sharey = True)
 
     probs = []
@@ -149,7 +138,7 @@ def plot_distribution(latent, latent_torch, cluster_info, fragments, transcripto
     binsize = binmids[1] - binmids[0]
     fragments_oi_all = (fragments.cut_local_gene_ix == gene_oi)
 
-    gene_id = transcriptome.var.index[gene_oi]
+    gene_id = fragments.var.index[gene_oi]
 
     for i, ax in zip(range(latent.shape[1]), axes):
         lib_all = model.libsize.cpu().numpy()
@@ -166,26 +155,28 @@ def plot_distribution(latent, latent_torch, cluster_info, fragments, transcripto
 
         pseudolatent = torch.zeros((len(pseudocoordinates), latent.shape[1])).to(device)
         pseudolatent[:, i] = 1.
-        
         prob = model.evaluate_pseudo(pseudocoordinates.to(device), latent = pseudolatent.to(device), gene_oi = gene_oi)
+        
         ax.plot(pseudocoordinates.cpu().numpy(), np.exp(prob), label = i, color = color, lw = 2, zorder = 20)
         ax.plot(pseudocoordinates.cpu().numpy(), np.exp(prob), label = i, color = "#FFFFFFFF", lw = 3, zorder = 10)
         
         ax.set_ylabel(f"{cluster_info.iloc[i]['label']}\n freq={fragments_oi.sum()/n_cells}", rotation = 0, ha = "right", va = "center")
-        ax.set_ylim(0, 40)
+        # ax.set_ylim(0, 40)
         
         probs.append(prob)
 
     suffix = "_prior" if prior else ""
-    plt.savefig(folder_data_preproc / ("plots/evaluate_pseudo" + suffix) / (gene_id + ".pdf"))
+    plt.savefig(folder_data_preproc / ("plots/evaluate_pseudo" + suffix) / (gene_id + ".png"))
 
     probs = np.stack(probs)
     return probs
 
 #%%
-# probs = plot_distribution(latent, latent_torch, cluster_info, fragments, transcriptome, gene_oi, model, device, prior=True)
+# probs = plot_distribution(latent, latent_torch, cluster_info, fragments, gene_oi, model, device, prior=True)
 
 # %%
+gene_oi = 0
+
 main = chd.grid.Grid(padding_height=0.1)
 fig = chd.grid.Figure(main)
 
@@ -204,7 +195,7 @@ ax.set_xlim(0-0.5, plotdata.shape[1]-0.5)
 ax.set_xticks([])
 ax.set_ylabel("$h_0$", rotation = 0, ha = "right", va = "center")
 
-ax = main[1, 0] = chd.grid.Ax(dim = (10, n_latent_dimensions * 0.25))
+ax = main[1, 0] = chd.grid.Ax(dim = (10, latent.shape[-1] * 0.25))
 ax = ax.ax
 plotdata = (model.decoder.logit_weight.data[gene_oi].cpu().numpy())
 ax.imshow(plotdata, aspect = "auto", cmap = mpl.cm.RdBu_r, vmax = np.log(2), vmin = np.log(1/2))
@@ -284,12 +275,8 @@ model = pickle.load(open("./model.pkl", "rb"))
 # %%
 # ## Inference single gene
 sns.histplot(model.decoder.rho_weight.weight.data.numpy().flatten())
-
-# %%
 z = model.decoder.logit_weight.weight.data.numpy().flatten()
 sns.histplot(z[:100])
-
-# %%
 scipy.stats.laplace.fit(z)
 
 # %%
@@ -301,27 +288,29 @@ model = model.to(device)
 
 # %%
 dir_csv = folder_data_preproc / 'quantile_time_evaluate_pseudo'
-dir_plots = folder_data_preproc / 'evaluate_pseudo'
+dir_plots = folder_data_preproc / 'plots/evaluate_pseudo'
 os.makedirs(dir_csv, exist_ok=True)
 os.makedirs(dir_plots, exist_ok=True)
 
+pseudocoordinates = torch.linspace(0, 1, 1000).to(device)
+
 for gene_oi in range(len(promoters)):
-    gene_id = transcriptome.var.index[gene_oi]
-    probs = plot_distribution(latent, latent_torch, cluster_info, fragments, transcriptome, gene_oi, model, device, prior=False)
+    gene_id = fragments.var.index[gene_oi]
+    probs = plot_distribution(latent, latent_torch, cluster_info, fragments, gene_oi, model, device, prior=False)
+    probs = evaluate_pseudo_quantile(latent, gene_oi, model, device)
     probs_df = pd.DataFrame(np.exp(probs), columns = pseudocoordinates.tolist(), index = cluster_info.index)
     probs_df.to_csv(folder_data_preproc / 'quantile_time_evaluate_pseudo' / f"{gene_id}.csv")
 
+print("Done \n")
 # %%
-sns.heatmap(probs, cmap = mpl.cm.RdBu_r)
-probs_diff = probs - probs.mean(0, keepdims = True)
-sns.heatmap(probs_diff, cmap = mpl.cm.RdBu_r, center = 0.)
+# sns.heatmap(probs, cmap = mpl.cm.RdBu_r)
+# probs_diff = probs - probs.mean(0, keepdims = True)
+# sns.heatmap(probs_diff, cmap = mpl.cm.RdBu_r, center = 0.)
 
-# %%
-plt.figure(figsize=(8, 8))
-heatmap = plt.pcolor(probs_df, cmap='YlOrRd')
-plt.colorbar(heatmap)
-plt.xticks([0, len(probs_df.columns)-1], ['0', '1'])
-plt.yticks(np.arange(len(probs_df.index)) + 0.5, probs_df.index)
-plt.show()
-
-# %%
+# # %%
+# plt.figure(figsize=(8, 8))
+# heatmap = plt.pcolor(probs_df, cmap='YlOrRd')
+# plt.colorbar(heatmap)
+# plt.xticks([0, len(probs_df.columns)-1], ['0', '1'])
+# plt.yticks(np.arange(len(probs_df.index)) + 0.5, probs_df.index)
+# plt.show()

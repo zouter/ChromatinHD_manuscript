@@ -18,6 +18,7 @@ folder_data_preproc = folder_data / dataset_name
 csv_dir = folder_data_preproc / "evaluate_pseudo_continuous_tensors"
 files = sorted(os.listdir(csv_dir))
 
+#%%
 probsx_all = []
 for x in files:
     probsx = np.loadtxt(csv_dir / x, delimiter=',')
@@ -50,13 +51,11 @@ for i in range(probsx_all_reshaped.size(1)):
     model = LinearRegression(input_size=1).to(device)
     criterion = nn.MSELoss()
     optimizer = optim.SGD(model.parameters(), lr=0.2)
-    loss_history = []
 
     # Perform linear regression
     for epoch in range(500):
-        y_data = probsx_all_reshaped[:, i].reshape(-1, 1)
-
         # Forward pass
+        y_data = probsx_all_reshaped[:, i].reshape(-1, 1)
         outputs = model(lt)
         loss = criterion(outputs, y_data)
 
@@ -65,16 +64,6 @@ for i in range(probsx_all_reshaped.size(1)):
         loss.backward()
         optimizer.step()
 
-        # Append the loss to the history list
-    #     loss_history.append(loss.item())
-
-    # plt.plot(loss_history)
-    # plt.xlabel('Epoch')
-    # plt.ylabel('Loss')
-    # plt.title('Loss Curve')
-    # plt.show()
-
-    # Add the trained model to the list of regression models
     # regression_models.append(model)
     regression_models.append(model.linear.weight.item())
 
@@ -104,3 +93,19 @@ for x in range(probsx_all_reshaped.shape[-1]):
         break
 
 # %%
+regression_slopes = torch.load(csv_dir / 'regression_slopes.pt')
+
+# %%
+x_values = range(regression_slopes.shape[1])
+
+for x in range(regression_slopes.shape[-1]):
+    y_values = regression_slopes[:, :, x].squeeze().tolist()
+
+    plt.bar(x_values, y_values)
+    plt.xlabel('Position')
+    plt.ylabel('Slope')
+    plt.title('xxx')
+    plt.show()
+
+    if x == 4:
+        break

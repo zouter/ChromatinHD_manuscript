@@ -285,7 +285,7 @@ model = model.to(device).eval()
 model = model.to(device)
 
 # %%
-dir_csv = folder_data_preproc / 'likelihood_quantile_data'
+dir_csv = folder_data_preproc / 'likelihood_quantile'
 os.makedirs(dir_csv, exist_ok=True)
 
 pseudocoordinates = torch.linspace(0, 1, 1000).to(device)

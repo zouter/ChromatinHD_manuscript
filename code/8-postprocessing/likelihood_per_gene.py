@@ -14,9 +14,14 @@ import matplotlib.pyplot as plt
 # %%
 # set folder paths
 folder_root = chd.get_output()
-folder_data = folder_root / "data"
-dataset_name = "hspc"
-folder_data_preproc = folder_data / dataset_name
+folder_data_preproc = folder_root / "data" / "hspc"
+
+nbins = (256, )
+nbins = (128, 64, 32, )
+nbins = (128, )
+model_pattern = f"3-lt_continuous_{'_'.join(str(n) for n in nbins)}_fold_"
+models = sorted([file for file in os.listdir('.') if model_pattern in file])
+models_name = [x.replace('3-lt_continuous_', '').replace('.pkl', '') for x in models]
 
 l_1 = pd.read_csv(folder_data_preproc / '3-lt_continuous_128_64_32_likelihood_per_gene.csv', header=None)
 l_2 = pd.read_csv(folder_data_preproc / '3-lt_continuous_128_likelihood_per_gene.csv', header=None)

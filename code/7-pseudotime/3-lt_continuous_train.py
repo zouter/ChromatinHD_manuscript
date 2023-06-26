@@ -6,6 +6,7 @@ if IPython.get_ipython() is not None:
 
 import os
 import torch
+import torch_scatter
 import pickle
 import pathlib
 import tempfile
@@ -104,14 +105,18 @@ print(data.cut_coordinates)
 
 #%%
 gene_oi = 1
-# get index
 data.cut_local_gene_ix == gene_oi
 
 #%%
 # ### Create model
+nbins = (256, )
 nbins = (128, 64, 32, )
-model = likelihood_model.Model(fragments, latent, nbins = nbins)
+nbins = (128, )
+model_name = '_'.join(str(n) for n in nbins)
 
+#%%
+model = likelihood_model.Model(fragments, latent, nbins = nbins)
+  
 # %%
 model.forward(data)
 
@@ -127,20 +132,34 @@ loaders_validation.restart()
 trainer = chd.train.Trainer(model, loaders_train, loaders_validation, optimizer, n_epochs = 50, checkpoint_every_epoch=1, optimize_every_step = 1)
 trainer.train()
 
-pickle.dump(model.to("cpu"), open("./3-lt_continuous.pkl", "wb"))
+pickle.dump(model.to("cpu"), open(f"./3-lt_continuous_{model_name}.pkl", "wb"))
 
 #%%
-model = pickle.load(open("./3-lt_continuous.pkl", "rb"))
+model = pickle.load(open(f"./3-lt_continuous_{model_name}.pkl", "rb"))
 
+#%%
+likelihood_per_gene = torch.zeros(fragments.n_genes)
+for data in loaders_validation:
+    with torch.no_grad():
+        model.forward(data)
+    loaders_validation.submit_next()
+
+    cut_gene_ix = data.genes_oi_torch[data.cut_local_gene_ix]
+    torch_scatter.scatter_add(model.track["likelihood"], cut_gene_ix, out = likelihood_per_gene).detach().cpu()
+
+np.savetxt(folder_data_preproc / f'3-lt_continuous_{model_name}_likelihood_per_gene.csv', likelihood_per_gene.numpy(), delimiter=',')
+
+#%%
 pseudocoordinates = torch.linspace(0, 1, 1000)
 latent_times = torch.linspace(0, 1, 101)
 latent_times = torch.flip(latent_times, [0])
 
 #%%
-csv_dir = folder_data_preproc / "evaluate_pseudo_continuous_tensors"
+csv_dir = folder_data_preproc / f"likelihood_continuous_{model_name}"
 os.makedirs(csv_dir, exist_ok=True)
 
 for gene_oi in range(promoters.shape[0]):
+    print(gene_oi)
     gene_name = promoters.index[gene_oi]
     probs = model.evaluate_pseudo(pseudocoordinates, latent_times, gene_oi)
     probsx = torch.exp(probs)
@@ -165,55 +184,55 @@ for gene_oi in range(promoters.shape[0]):
 # probs_all = torch.cat((probs0, probs1, probs2), dim=0)
 # sum(probs_all != probs3) # should sum to 0
 
-#%%
-transcriptome = chd.data.Transcriptome(folder_data_preproc / "transcriptome")
+# #%%
+# transcriptome = chd.data.Transcriptome(folder_data_preproc / "transcriptome")
 
-gene_name = 'MPO'
-gene_ix = transcriptome.gene_ix(gene_name) # double check if this is the correct gene_ix
+# gene_name = 'MPO'
+# gene_ix = transcriptome.gene_ix(gene_name) # double check if this is the correct gene_ix
 
-#%%
-cumulative_sum_list = [0] + [sum(nbins[:i+1]) for i in range(len(nbins))]
+# #%%
+# cumulative_sum_list = [0] + [sum(nbins[:i+1]) for i in range(len(nbins))]
 
-fig, axs = plt.subplots(3, 1, figsize=(8, 10))  # create a 3x1 grid of subplots
+# fig, axs = plt.subplots(3, 1, figsize=(8, 10))  # create a 3x1 grid of subplots
 
-for i in range(len(nbins)):
-    x = cumulative_sum_list[i]
-    y = cumulative_sum_list[i+1]
-    print(x, y)
-    heatmap = axs[i].pcolor(model.decoder.delta_height_slope.data[:, x:y], cmap=plt.cm.RdBu)
+# for i in range(len(nbins)):
+#     x = cumulative_sum_list[i]
+#     y = cumulative_sum_list[i+1]
+#     print(x, y)
+#     heatmap = axs[i].pcolor(model.decoder.delta_height_slope.data[:, x:y], cmap=plt.cm.RdBu)
 
-fig.colorbar(heatmap, ax=axs)  # add a colorbar for each subplot
-plt.savefig(folder_data_preproc / "plots" / ("test" + ".pdf"))
+# fig.colorbar(heatmap, ax=axs)  # add a colorbar for each subplot
+# plt.savefig(folder_data_preproc / "plots" / ("test" + ".pdf"))
 
 
-#%%
-cumulative_sum_list = [0] + [sum(nbins[:i+1]) for i in range(len(nbins))]
+# #%%
+# cumulative_sum_list = [0] + [sum(nbins[:i+1]) for i in range(len(nbins))]
 
-fig, axs = plt.subplots(3, 1, figsize=(8, 10))  # create a 3x1 grid of subplots
+# fig, axs = plt.subplots(3, 1, figsize=(8, 10))  # create a 3x1 grid of subplots
 
-for i in range(len(nbins)):
-    x = cumulative_sum_list[i]
-    y = cumulative_sum_list[i+1]
-    print(x, y)
-    heatmap = axs[i].pcolor(torch.abs(model.decoder.delta_height_slope.data[:, x:y]), cmap=plt.cm.Blues)
+# for i in range(len(nbins)):
+#     x = cumulative_sum_list[i]
+#     y = cumulative_sum_list[i+1]
+#     print(x, y)
+#     heatmap = axs[i].pcolor(torch.abs(model.decoder.delta_height_slope.data[:, x:y]), cmap=plt.cm.Blues)
 
-fig.colorbar(heatmap, ax=axs)  # add a colorbar for each subplot
-plt.savefig(folder_data_preproc / "plots" / ("test2" + ".pdf"))
+# fig.colorbar(heatmap, ax=axs)  # add a colorbar for each subplot
+# plt.savefig(folder_data_preproc / "plots" / ("test2" + ".pdf"))
 
-#%%
-cumulative_sum_list = [0] + [sum(nbins[:i+1]) for i in range(len(nbins))]
-for i in range(len(nbins)):
-    x = cumulative_sum_list[i]
-    y = cumulative_sum_list[i+1]
-    print(x, y)
-    plt.figure()
-    plt.plot(torch.abs(model.decoder.delta_height_slope.data[:, x:y]).mean(0))
-    plt.savefig(folder_data_preproc / "plots" / ("delta_height_slope_" + str(nbins[i]) + ".pdf"))
-plt.show() 
+# #%%
+# cumulative_sum_list = [0] + [sum(nbins[:i+1]) for i in range(len(nbins))]
+# for i in range(len(nbins)):
+#     x = cumulative_sum_list[i]
+#     y = cumulative_sum_list[i+1]
+#     print(x, y)
+#     plt.figure()
+#     plt.plot(torch.abs(model.decoder.delta_height_slope.data[:, x:y]).mean(0))
+#     plt.savefig(folder_data_preproc / "plots" / ("delta_height_slope_" + str(nbins[i]) + ".pdf"))
+# plt.show() 
 
-#%%
-trainer.trace.plot()
-pd.DataFrame(trainer.trace.train_steps).groupby("epoch").mean()["loss"].plot()
-pd.DataFrame(trainer.trace.validation_steps).groupby("epoch").mean()["loss"].plot()
+# #%%
+# trainer.trace.plot()
+# pd.DataFrame(trainer.trace.train_steps).groupby("epoch").mean()["loss"].plot()
+# pd.DataFrame(trainer.trace.validation_steps).groupby("epoch").mean()["loss"].plot()
 
 # %%

@@ -26,6 +26,7 @@ design_2["dataset"] = design_2["testdataset"]
 
 design = pd.concat([design_1, design_2])
 design.index = np.arange(len(design))
+print(design)
 
 # design = design.loc[~design["peakcaller"].str.startswith("rolling")].copy()
 # design = design.query("dataset == 'morf_20'").copy()
@@ -34,30 +35,45 @@ design.index = np.arange(len(design))
 # design = design.loc[
 #     ~((design["dataset"] == "alzheimer") & (design["peakcaller"] == "genrich"))
 # ]
-design = design.query("dataset == 'pbmc10k'")
-design = design.query("promoter == '100k100k'")
+# design = design.query("dataset == 'pbmc10k'")
+# design = design.query("dataset == 'pbmc10k'")
+design = design.query("promoter == '20kpromoter'")
+# design = design.query("testdataset == 'pbmc10k_gran-pbmc10k'")
+# design = design.query("testdataset == 'lymphoma-pbmc10k'")
 
 design["force"] = False
 print(design)
 
-for (dataset_name, promoter), design_dataset in design.groupby(["dataset", "promoter"]):
+for (dataset_name, promoters_name), design_dataset in design.groupby(
+    ["dataset", "promoter"]
+):
     # transcriptome
     folder_data_preproc = folder_data / dataset_name
 
     # fragments
     # promoter_name, window = "1k1k", np.array([-1000, 1000])
-    if promoter == "10k10k":
+    if promoters_name == "10k10k":
         window = np.array([-10000, 10000])
-    elif promoter == "100k100k":
+    elif promoters_name == "100k100k":
         window = np.array([-100000, 100000])
+    elif promoters_name == "20kpromoter":
+        window = np.array([-20000, 0])
 
-    fragments = chd.data.Fragments(folder_data_preproc / "fragments" / promoter)
-    fragments.window = window
+    fragments = chd.data.Fragments(folder_data_preproc / "fragments" / promoters_name)
 
     for peakcaller, subdesign in design_dataset.groupby("peakcaller"):
-        peakcounts = chd.peakcounts.FullPeak(
-            folder=chd.get_output() / "peakcounts" / dataset_name / peakcaller
-        )
+        if promoters_name == "10k10k":
+            peakcounts = chd.peakcounts.FullPeak(
+                folder=chd.get_output() / "peakcounts" / dataset_name / peakcaller
+            )
+        else:
+            peakcounts = chd.peakcounts.FullPeak(
+                folder=chd.get_output()
+                / "peakcounts"
+                / dataset_name
+                / peakcaller
+                / promoters_name
+            )
 
         desired_outputs = [peakcounts.path / ("counts.pkl")]
         force = subdesign["force"].iloc[0]
@@ -66,10 +82,15 @@ for (dataset_name, promoter), design_dataset in design.groupby(["dataset", "prom
 
         if force:
             print(subdesign)
-            promoters = pd.read_csv(
-                folder_data_preproc / ("promoters_" + promoter + ".csv"),
-                index_col=0,
-            )
+
+            try:
+                promoters = pd.read_csv(
+                    folder_data_preproc / ("promoters_" + promoters_name + ".csv"),
+                    index_col=0,
+                )
+            except FileNotFoundError as e:
+                print(e)
+                continue
 
             if peakcaller == "stack":
                 peaks = promoters.reset_index()[["chr", "start", "end", "gene"]]

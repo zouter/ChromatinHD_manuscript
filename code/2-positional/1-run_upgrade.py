@@ -25,24 +25,18 @@ from chromatinhd_manuscript.designs import (
     dataset_splitter_method_combinations as design,
 )
 
-splitter = "random_5fold"
-promoter_name, window = "10k10k", np.array([-10000, 10000])
-# prediction_name = "v20"
-prediction_name = "counter"
-# prediction_name = "v21"
+base_method_name = "v20"
 
-design = design.query("splitter == 'random_5fold'")
-# design = design.query("splitter == 'permutations_5fold5repeat'")
-design = design.query("method == 'counter'")
-# design = design.query("method == 'v20'")
+design = design.query("splitter == 'permutations_5fold5repeat'")
+# design = design.query("method == 'v20_initdefault'")
 # design = design.query("method == 'v21'")
-# design = design.query("dataset == 'pbmc10k'")
+design = design.query("method == 'v22'")
+design = design.query("dataset == 'pbmc10k'")
 # design = design.query("dataset == 'pbmc3k'")
-design = design.query("promoter == '20kpromoter'")
-# design = design.query("promoter == '100k100k'")
+design = design.query("promoter == '100k100k'")
 
 outcome_source = "counts"
-# outcome_source = "magic"
+outcome_source = "magic"
 
 design = design.copy()
 design["force"] = True
@@ -88,6 +82,15 @@ for (dataset_name, promoter_name), subdesign in design.groupby(["dataset", "prom
         for method_name, subdesign in subdesign.groupby("method"):
             method_info = methods_info[method_name]
 
+            base_prediction = chd.flow.Flow(
+                chd.get_output()
+                / "prediction_positional"
+                / dataset_name
+                / promoter_name
+                / splitter
+                / base_method_name
+            )
+
             prediction = chd.flow.Flow(
                 chd.get_output()
                 / "prediction_positional"
@@ -112,6 +115,12 @@ for (dataset_name, promoter_name), subdesign in design.groupby(["dataset", "prom
                     force = True
 
                 if force:
+                    base_model = pickle.load(
+                        (
+                            base_prediction.path / ("model_" + str(fold_ix) + ".pkl")
+                        ).open("rb")
+                    )
+
                     fold = get_folds_training(fragments, [copy.copy(fold)])[0]
 
                     # loaders
@@ -141,7 +150,9 @@ for (dataset_name, promoter_name), subdesign in design.groupby(["dataset", "prom
                     loaders_validation.shuffle_on_iter = False
 
                     # model
-                    model = method_info["model_cls"](**method_info["model_parameters"])
+                    model = method_info["model_cls"](
+                        **method_info["model_parameters"], base_model=base_model
+                    )
 
                     # optimization
                     optimize_every_step = 1

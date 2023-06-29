@@ -89,6 +89,9 @@ step = 1000
 # cool_name = "gu_2021_500bp"
 # step = 500
 
+# cool_name = "harris_2023_500bp"
+# step = 500
+
 
 # %%
 genes_oi = transcriptome.gene_id(
@@ -280,7 +283,7 @@ cbar.set_label(
 ax.set_ylabel("HiC max-pool\ndistance", rotation=0, ha="right", va="center")
 
 if cool_name == "rao_2014_1kb":
-    manuscript.save_figure(fig, "5", "maxpool_hic_copredictivity")
+    manuscript.save_figure(fig, "5", "maxpool_hic_copredictivity_all_genes")
 
 # %%
 gene_scores["logodds"] = np.log(gene_scores["odds"])
@@ -323,7 +326,7 @@ gene_scores_nondiffexp = gene_scores.query("gene not in @genes_diffexp")
 gene_scores.query("k == 0")["logodds"].hist()
 gene_scores_diffexp.query("k == 0")["logodds"].hist()
 # %%
-fig, ax = plt.subplots(figsize=(1.5, 1.2))
+fig, ax = plt.subplots(figsize=(2, 2))
 
 plotdata = gene_scores.groupby("k")["logodds"].mean()
 ax.plot(plotdata.index, np.exp(plotdata))
@@ -351,10 +354,10 @@ ax.yaxis.set_major_formatter(mpl.ticker.ScalarFormatter())
 ax.xaxis.set_major_formatter(chd.plotting.DistanceFormatter(base=1e-3))
 ax.set_xlabel("HiC max-pool distance")
 ax.set_ylabel(
-    "Odds ratio \nhigh Hi-C and \nhigh co-predictivity",
-    rotation=0,
-    ha="right",
-    va="center",
+    "Odds ratio high Hi-C\nand high co-predictivity",
+    # rotation=0,
+    # ha="right",
+    # va="center",
 )
 
 if cool_name == "rao_2014_1kb":
@@ -408,7 +411,7 @@ print(f"odds = {odds_diffexp:.2f}, q90 = {q90_diffexp:.2f}, q10 = {q10_diffexp:.
 import IPython.display
 
 IPython.display.Markdown(
-    f"""Furthermore, when we compared the local co-predictivity with increasingly max-pooled DNA proximity signals, the concordance between the two measurements increased up to 2-fold at about 5kb of max-pooling  (odds = {odds:.2f}, q10-q90 across genes = {q10_diffexp:.2f}-{q90_diffexp:.2f}), bringing it in line with that observed in co-accessibility analyses [@plinerCiceroPredictsCisRegulatory2018]."""
+    f"""Furthermore, when we compared the local co-predictivity with increasingly max-pooled DNA proximity signals, the concordance between the two measurements increased up to 2-fold at about 5kb of max-pooling (FIG:maxpool_hic_copredictivity#, odds = {odds:.2f}, q10-q90 across genes = {q10_diffexp:.2f}-{q90_diffexp:.2f}), bringing it in line with that observed in co-accessibility analyses [@plinerCiceroPredictsCisRegulatory2018]."""
 )
 
 # %%

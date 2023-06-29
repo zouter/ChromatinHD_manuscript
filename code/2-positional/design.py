@@ -7,6 +7,7 @@ import chromatinhd.models.positional.v14
 import chromatinhd.models.positional.v15
 import chromatinhd.models.positional.v20
 import chromatinhd.models.positional.v21
+import chromatinhd.models.positional.v22
 
 import pickle
 import numpy as np
@@ -71,6 +72,13 @@ def get_design(transcriptome, fragments):
         "model_parameters": {
             **general_model_parameters,
         },
+        "loader_cls": chromatinhd.loaders.fragments.Fragments,
+        "loader_parameters": general_loader_parameters,
+    }
+
+    design["v22"] = {
+        "model_cls": chromatinhd.models.positional.v22.Model,
+        "model_parameters": {},
         "loader_cls": chromatinhd.loaders.fragments.Fragments,
         "loader_parameters": general_loader_parameters,
     }

@@ -110,15 +110,15 @@ symbol = "ZNF652"
 symbol = "IPP"
 symbol = "LYN"
 # symbol = "TNFAIP2"
-# symbol = "CD74"
+symbol = "CD74"
 # symbol = "TCF3"
 # symbol = "JCHAIN"
 # symbol = "BCL11B"
-symbol = "TCF3"
+# symbol = "TCF3"
 genes_oi = transcriptome.var["symbol"] == symbol
 gene = transcriptome.var.index[genes_oi][0]
 
-gene = "ENSG00000231389"
+# gene = "ENSG00000231389"
 
 
 # %% [markdown]
@@ -130,6 +130,16 @@ window_scoring = chd.scoring.prediction.Scoring.load(scores_folder)
 
 scores_folder = prediction.path / "scoring" / "windowsize_gene" / gene
 windowsize_scoring = chd.scoring.prediction.Scoring.load(scores_folder)
+
+# %%
+windowscores = (
+    window_scoring.genescores["deltacor"]
+    .sel(phase=["validation", "test"])
+    .mean("model")
+    .mean("phase")
+    .sel(gene=gene)
+    .to_pandas()
+)
 
 # %%
 scores = (
@@ -194,7 +204,16 @@ design_size["label"] = [
 ]
 
 # %%
-plt.plot(scores["window"], scores["deltacor_gene"], marker=".")
+plt.scatter(
+    scores.query("size == 30")["deltacor"],
+    scores.query("size == 30")["deltacor_gene"],
+    marker=".",
+)
+
+# %%
+plt.plot(
+    scores["deltacor_gene"],
+)
 
 # %%
 fig, ax = plt.subplots(figsize=(30, 5))
@@ -202,23 +221,76 @@ fig, ax = plt.subplots(figsize=(30, 5))
 plotdata = scores
 bottom = np.zeros(len(plotdata["window"].unique()))
 for size, plotdata_size in plotdata.groupby("size"):
+    print(size)
     x = np.clip(plotdata_size["deltacor"], -np.inf, 0)
-    # x = np.clip(plotdata_size["lost"], -np.inf, np.inf)
+    x[np.isnan(x)] = 0.0
     ax.bar(
         plotdata_size["window"],
         x,
+        bottom=bottom,
         width=100,
         label=design_size.loc[size, "label"],
         lw=0,
     )
-    bottom += x
-# ax.set_xlim([90000, 100000])
-# ax.set_xlim([-60000, -40000])
-# ax.set_xlim([-10000, 10000])
-ax.set_xlim([50000, 60000])
-# ax.set_xlim([80000, 90000])
+    bottom += x.values
+ax.invert_yaxis()
+
+focus = -250.0
+ax.set_xlim([focus - 1000, focus + 1000])
+ax2 = ax.twinx()
+ax2.plot(windowscores.index, windowscores, marker=".", label="gene")
+ax2.set_ylim(top=0)
+ax2.invert_yaxis()
+ax.axvline(focus)
 ax.legend()
 
+# %%
+foci = []
+for window, score in windowscores.sort_values().items():
+    if score > -1e-4:
+        break
+    add = True
+    for focus in foci:
+        if abs(window - focus["window"]) < 1000:
+            add = False
+            break
+    if add:
+        focus = {"window": window, "deltacor": score}
+        focus["windows"] = design_windows.index[
+            abs(design_windows.index - window) < 1000
+        ]
+        foci.append(focus)
+foci = pd.DataFrame(foci)
+
+# %%
+deltacor_by_window = (
+    scores.set_index(["window", "size"])["deltacor"]
+    .unstack()
+    .reindex(index=window_scoring.design.index)
+)
+
+# %%
+stack = []
+pad = 5
+for focus in foci.itertuples():
+    ix = window_scoring.design.index.tolist().index(focus.window)
+    print(ix)
+    left_ix = max(0, ix - pad)
+    right_ix = min(deltacor_by_window.shape[0], ix + pad + 1)
+    val = deltacor_by_window.iloc[left_ix:right_ix]
+    val = np.pad(
+        val,
+        ((pad - (ix - left_ix), (pad + 1) - (right_ix - ix)), (0, 0)),
+        mode="constant",
+        constant_values=np.nan,
+    )
+    stack.append(val)
+stack = np.stack(stack)
+
+# %%
+mean = np.nanmean(stack, 0)
+mean = mean / np.std(mean, 0)
+sns.heatmap(mean)
 
 # %%
 fig, ax = plt.subplots(figsize=(30, 5))

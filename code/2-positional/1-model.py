@@ -61,6 +61,7 @@ folder_data_preproc = folder_data / dataset_name
 # %%
 # promoter_name, window = "4k2k", (2000, 4000)
 promoter_name, window = "10k10k", np.array([-10000, 10000])
+promoter_name, window = "100k100k", np.array([-100000, 100000])
 promoters = pd.read_csv(
     folder_data_preproc / ("promoters_" + promoter_name + ".csv"), index_col=0
 )
@@ -340,7 +341,6 @@ effect = effect - mean_gene_expression[data.genes_oi]
 # ## Single example
 
 # %%
-transcriptome.create_X()
 transcriptome.X
 mean_gene_expression = transcriptome.X.dense().mean(0)
 
@@ -361,8 +361,6 @@ model.forward(data)
 
 # %%
 import chromatinhd.loaders
-import chromatinhd.loaders.fragments
-import chromatinhd.loaders.fragmentmotif
 
 # %%
 from design import get_design, get_folds_training
@@ -372,7 +370,7 @@ design = get_design(transcriptome, fragments)
 
 # %%
 prediction_name = "v20"
-prediction_name = "counter"
+# prediction_name = "counter"
 design_row = design[prediction_name]
 
 # %%
@@ -394,7 +392,6 @@ print("collected")
 loaders = chd.loaders.LoaderPool(
     design_row["loader_cls"], design_row["loader_parameters"], n_workers=20
 )
-print("haha!")
 loaders_validation = chd.loaders.LoaderPool(
     design_row["loader_cls"], design_row["loader_parameters"], n_workers=5
 )
@@ -444,7 +441,7 @@ fold = folds[0]
 #     new_minibatch_sets.append({"tasks":tasks})
 
 # %%
-n_epochs = 20
+n_epochs = 30
 checkpoint_every_epoch = 1
 
 # %%
@@ -457,18 +454,18 @@ from chromatinhd.models.positional.trainer import Trainer
 # %%
 # optimization
 optimize_every_step = 1
-lr = 1e-3  # / optimize_every_step
+lr = 1e-2  # / optimize_every_step
 optim = chd.optim.SparseDenseAdam(
     model.parameters_sparse(),
     model.parameters_dense(autoextend=False),
     lr=lr,
-    weight_decay=lr / 2,
+    weight_decay=1e-5,
 )
 
 # train
 import chromatinhd.train
 
-outcome = transcriptome.X.dense()
+outcome = torch.tensor(transcriptome.adata.layers["magic"])
 trainer = Trainer(
     model,
     loaders,
@@ -496,5 +493,59 @@ pd.DataFrame(trainer.trace.train_steps).groupby("checkpoint").mean()["loss"].plo
 # pickle.dump(model, open("../../" + dataset_name + "_" + "baseline_model.pkl", "wb"))
 
 # %%
-model = model.to("cpu")
-pickle.dump(model, open(prediction.path / ("model_" + str(fold_ix) + ".pkl"), "wb"))
+# model = model.to("cpu")
+# pickle.dump(model, open(prediction.path / ("model_" + str(fold_ix) + ".pkl"), "wb"))
+
+# %%
+from chromatinhd.models.positional.v22 import Model as Model22
+
+model2 = Model22(model)
+
+# %%
+data = loaders_validation.pull()
+
+# %%
+a = model.forward(data)
+b = model2.forward(data)
+
+# %%
+a.detach().cpu().numpy() - b.detach().cpu().numpy()
+
+# %%
+# optimization
+optimize_every_step = 1
+lr = 1e-2  # / optimize_every_step
+optim = chd.optim.SparseDenseAdam(
+    model2.parameters_sparse(),
+    model2.parameters_dense(autoextend=False),
+    lr=lr,
+    weight_decay=1e-5,
+)
+
+# train
+import chromatinhd.train
+
+outcome = torch.tensor(transcriptome.adata.layers["magic"])
+trainer = Trainer(
+    model2,
+    loaders,
+    loaders_validation,
+    outcome,
+    loss,
+    optim,
+    checkpoint_every_epoch=checkpoint_every_epoch,
+    optimize_every_step=optimize_every_step,
+    n_epochs=n_epochs,
+    device="cuda",
+)
+trainer.train(fold["minibatches_train_sets"], fold["minibatches_validation_trace"])
+
+# %%
+pd.DataFrame(trainer.trace.validation_steps).groupby("checkpoint").mean()["loss"].plot(
+    label="validation"
+)
+pd.DataFrame(trainer.trace.train_steps).groupby("checkpoint").mean()["loss"].plot(
+    label="train"
+)
+
+# %%

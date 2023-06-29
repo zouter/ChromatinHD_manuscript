@@ -45,9 +45,6 @@ manuscript = Manuscript(chd.get_git_root() / "manuscript")
 
 
 # %%
-device = "cuda:0"
-# device = "cpu"
-
 folder_root = chd.get_output()
 folder_data = folder_root / "data"
 

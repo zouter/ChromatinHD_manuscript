@@ -106,10 +106,13 @@ transcriptome.var.loc[genes_all_oi].head(30)
 # %%
 folds = pickle.load((fragments.path / "folds" / (splitter + ".pkl")).open("rb"))
 
-# symbol = "BCL2"
-symbol = "TNFAIP2"
-symbol = "KLF12"
-symbol = "CD14"
+symbol = "BCL2"
+# symbol = "TNFAIP2"
+# symbol = "KLF12"
+# symbol = "CD14"
+# symbol = "AXIN2"
+symbol = "FLYWCH1"
+symbol = "PPP2R3C"
 # symbol = transcriptome.symbol("ENSG00000170345")
 print(symbol)
 genes_oi = transcriptome.var["symbol"] == symbol
@@ -517,6 +520,7 @@ main = chd.grid.Grid(padding_height=0.1)
 fig = chd.grid.Figure(main)
 
 resolution = 1 / 4500
+# resolution = 1 / 1000
 gap = 0.025
 panel_width = regions["width"].sum() * resolution + len(regions) * gap
 
@@ -621,7 +625,7 @@ if symbol in ["BCL2"]:
         orientation="vertical",
     )
     panel_interaction_legend.ax.set_ylabel(
-        "Co-predictive\n(cor $\\Delta$cor)",
+        "Co-predictivity\n(cor $\\Delta$cor)",
         rotation=0,
         ha="left",
         va="center",

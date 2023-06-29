@@ -74,6 +74,7 @@ design_peaks["method"] = design_peaks["peakcaller"] + "/" + design_peaks["predic
 design_peaks_traintest["method"] = (
     design_peaks_traintest["peakcaller"] + "/" + design_peaks_traintest["predictor"]
 )
+# design_peaks = design_peaks.loc[design_peaks["predictor"] == "lasso"]
 
 # %%
 design = pd.concat(
@@ -84,13 +85,17 @@ design.index.name = "design_ix"
 
 # %%
 design = design.query("dataset != 'alzheimer'").copy()
+# design = design.query("dataset == 'pbmc10k'").copy()
+# design = design.query("dataset == 'pbmc3k-pbmc10k'").copy()
 # design = design.query("dataset == 'pbmc10k_gran-pbmc10k'").copy()
 # design = design.query("dataset == 'pbmc10k_gran-pbmc10k'").copy()
 
 # %%
 design = design.query("splitter in ['random_5fold', 'all']").copy()
-design = design.query("promoter in ['10k10k']").copy()
-design = design.query("method != 'v20_initdefault'").copy()
+# design = design.query("promoter in ['10k10k']").copy()
+design = design.query("promoter in ['20kpromoter']").copy()
+design = design.query("method not in ['v20_initdefault', 'v21', 'v22']").copy()
+design = design.loc[design["peakcaller"] != "stack"]
 
 # %%
 design["traindataset"] = [
@@ -139,6 +144,7 @@ scores["cor_diff"] = (
 
 design["found"].mean()
 
+
 # %%
 metric_ids = ["cor"]
 
@@ -168,6 +174,12 @@ methods_info.loc[pd.isnull(methods_info["color"]), "color"] = "black"
 methods_info.loc[pd.isnull(methods_info["label"]), "label"] = methods_info.index[
     pd.isnull(methods_info["label"])
 ]
+methods_info["section"] = [
+    predictor if ~pd.isnull(predictor) else type
+    for predictor, type in zip(methods_info["predictor"], methods_info["type"])
+]
+
+section_info = methods_info.groupby("section").first()
 
 # %%
 metrics_info = pd.DataFrame(
@@ -200,13 +212,12 @@ datasets_info = pd.DataFrame(
 datasets_info["label"] = datasets_info.index.get_level_values("dataset")
 datasets_info = datasets_info.sort_values("label")
 datasets_info["ix"] = np.arange(len(datasets_info))
-datasets_info["label"] = datasets_info["label"].str.replace("-", "→\n")
+datasets_info["label"] = datasets_info["label"].str.replace("-", "←\n")
 
 # %% [markdown]
 # ### Across datasets and metrics
 
 # %%
-
 score_relative_all = scores_all
 
 # %%
@@ -290,7 +301,7 @@ for metric, metric_info in metrics_info.iterrows():
     ax.set_xticks(metric_info["ticks"])
     ax.set_xticklabels(metric_info["ticklabels"])
 
-    ax = axes[metric_info["ix"], 1]
+    ax = axes[metric_info["ix"], 0]
     ax.set_xlabel(metric_info["label"])
 
 # Methods
@@ -301,6 +312,12 @@ for ax in axes[:, 0]:
 for ax in axes.flatten():
     ax.set_ylim(methods_info["ix"].min() - 0.5, 0.5)
 
+# Sections
+for ax in axes.flatten():
+    for section in section_info["ix"]:
+        ax.axhline(section + 0.5, color="#000000", lw=0.5, zorder=0, dashes=(2, 2))
+
+# %%
 manuscript.save_figure(fig, "2", "positional_all_scores_datasets")
 
 # %% [markdown]
@@ -333,10 +350,13 @@ datasets_info["datagroup"] = (
 
 # %%
 group_ids = [*methods_info.index.names, "datagroup", "phase"]
-scores_all["datagroup"] = (
-    datasets_info["datagroup"]
-    .reindex(scores_all.reset_index()[datasets_info.index.names])
-    .values
+scores_all["datagroup"] = pd.Categorical(
+    (
+        datasets_info["datagroup"]
+        .reindex(scores_all.reset_index()[datasets_info.index.names])
+        .values
+    ),
+    categories=datagroups_info.index,
 )
 score_relative_all = scores_all.groupby(group_ids).mean()
 
@@ -437,7 +457,7 @@ for metric, metric_info in metrics_info.iterrows():
     ax.set_xticks(metric_info["ticks"])
     ax.set_xticklabels(metric_info["ticklabels"])
 
-    ax = axes[metric_info["ix"], 1]
+    ax = axes[metric_info["ix"], 0]
     ax.set_xlabel(metric_info["label"])
 
 # Methods
@@ -447,6 +467,11 @@ for ax in axes[:, 0]:
 
 for ax in axes.flatten():
     ax.set_ylim(methods_info["ix"].min() - 0.5, 0.5)
+
+# Sections
+for ax in axes.flatten():
+    for section in section_info["ix"]:
+        ax.axhline(section + 0.5, color="#000000", lw=0.5, zorder=0, dashes=(2, 2))
 
 manuscript.save_figure(fig, "2", "positional_all_scores_datagroups")
 
@@ -531,47 +556,13 @@ for ax in axes.flatten():
 manuscript.save_figure(fig, "2", "positional_all_scores")
 
 # %% [markdown]
-# ## Dependency on # of cells and predictive power
-
-# %%
-traindataset_info = pd.DataFrame(index=design["traindataset"].unique())
-traindataset_info["n_trained_cells"] = [
-    len(
-        chd.data.Transcriptome(
-            chd.get_output() / "data" / dataset_name / "transcriptome"
-        ).obs
-    )
-    for dataset_name in traindataset_info.index
-]
-traindataset_info
-
-# %%
-score_relative_all["traindataset"] = design["traindataset"][
-    score_relative_all.design_ix
-].values
-score_relative_all["n_trained_cells"] = traindataset_info.loc[
-    score_relative_all["traindataset"], "n_trained_cells"
-].values
-
-# %%
-plotdata = score_relative_all.xs("v20", level="method").xs("test", level="phase")
-
-# %%
-fig, ax = plt.subplots()
-ax.scatter(plotdata["n_trained_cells"], plotdata["cor_diff"])
-ax.set_xscale("log")
-
-# %%
-plotdata.sort_values("n_trained_cells")
-
-# %% [markdown]
 # ## Compare against CRE methods
 
-
 # %%
-method_oi1 = "v20"
-method_oi2 = "cellranger/linear"
-# method_oi2 = "rolling_500/xgboost"
+# method_oi1 = "v20"
+# method_oi2 = "cellranger/linear"
+method_oi1 = "rolling_50/linear"
+method_oi2 = "rolling_500/linear"
 plotdata = pd.DataFrame(
     {
         "cor_b": scores.xs(method_oi2, level="method").xs("validation", level="phase")[
@@ -605,7 +596,7 @@ plt.scatter(
     s=1,
 )
 ax.set_xlabel(f"$\Delta$ cor {method_oi2}")
-ax.set_ylabel("$\Delta$ cor ChromatinHD", rotation=0, ha="right", va="center")
+ax.set_ylabel(f"$\Delta$ cor {method_oi1}", rotation=0, ha="right", va="center")
 
 # %%
 plotdata.loc["pbmc10k"].sort_values("diff", ascending=False).head(20)
@@ -641,9 +632,9 @@ plotdata.loc["pbmc10k"].query("cor_a > 0.1").sort_values(
     "diff", ascending=False
 ).to_csv(scores_dir / "difference_with_peakcalling_large.csv")
 
-plotdata.loc["pbmc10k"].query("cor_a > 0.1").sort_values(
-    "diff", ascending=False
-).head(20)
+plotdata.loc["pbmc10k"].query("cor_a > 0.1").sort_values("diff", ascending=False).head(
+    20
+)
 
 # %%
 

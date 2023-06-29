@@ -129,7 +129,9 @@ genes_oi = (
 # %%
 import pickle
 
-cool_name = "rao_2014_1kb"
+# cool_name = "rao_2014_1kb"
+cool_name = "harris_2023_500bp"
+
 hic_file = folder_data_preproc / "hic" / promoter_name / f"{cool_name}.pkl"
 gene_hics = pickle.load(hic_file.open("rb"))
 
@@ -191,69 +193,6 @@ for gene in tqdm.tqdm(genes_oi):
             "rvalue": lm.rvalue,
         }
     )
-
-    # maxpool
-    # hic2 = maxpool_hic(hic, bins_hic)
-    # matching2 = chdm.hic.create_matching(
-    #     bins_hic,
-    #     scores_oi,
-    #     # scores_oi.query("qval < 0.2"),
-    #     hic2,
-    # )
-
-    # matching2_oi = matching2.query("distance > 1000")
-    # lm2 = scipy.stats.linregress(
-    #     matching2_oi["balanced"],
-    #     matching2_oi["cor"],
-    # )
-
-    # score.update(
-    #     {
-    #         "rvalue_maxpool": lm2.rvalue,
-    #     }
-    # )
-
-    # # maxpool
-    # hic2 = maxipool_hic(hic, bins_hic)
-    # matching2 = chdm.hic.create_matching(
-    #     bins_hic,
-    #     scores_oi,
-    #     # scores_oi.query("qval < 0.2"),
-    #     hic2,
-    # )
-
-    # matching2_oi = matching2.query("distance > 1000")
-    # lm2 = scipy.stats.linregress(
-    #     matching2_oi["balanced"],
-    #     matching2_oi["cor"],
-    # )
-
-    # score.update(
-    #     {
-    #         "rvalue_maxipool": lm2.rvalue,
-    #     }
-    # )
-
-    # # maxpool
-    # hic2 = maxipool_hic(hic, bins_hic, k=2)
-    # matching2 = chdm.hic.create_matching(
-    #     bins_hic,
-    #     scores_oi,
-    #     # scores_oi.query("qval < 0.2"),
-    #     hic2,
-    # )
-
-    # matching2_oi = matching2.query("distance > 1000")
-    # lm2 = scipy.stats.linregress(
-    #     matching2_oi["balanced"],
-    #     matching2_oi["cor"],
-    # )
-
-    # score.update(
-    #     {
-    #         "rvalue_maxipool_5": lm2.rvalue,
-    #     }
-    # )
 
     genescores.append(score)
 

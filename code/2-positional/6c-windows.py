@@ -62,15 +62,15 @@ promoter_name, window = "10k10k", np.array([-10000, 10000])
 outcome_source = "counts"
 prediction_name = "v20_initdefault"
 
-splitter = "permutations_5fold5repeat"
-promoter_name, window = "100k100k", np.array([-100000, 100000])
-outcome_source = "magic"
-prediction_name = "v20_initdefault"
-
 # splitter = "permutations_5fold5repeat"
-# promoter_name, window = "10k10k", np.array([-10000, 10000])
+# promoter_name, window = "100k100k", np.array([-100000, 100000])
 # outcome_source = "magic"
-# prediction_name = "v20"
+# prediction_name = "v20_initdefault"
+
+splitter = "permutations_5fold5repeat"
+promoter_name, window = "10k10k", np.array([-10000, 10000])
+outcome_source = "magic"
+prediction_name = "v20"
 
 promoters = pd.read_csv(
     folder_data_preproc / ("promoters_" + promoter_name + ".csv"), index_col=0
@@ -92,26 +92,30 @@ prediction = chd.flow.Flow(
 )
 
 # %%
-scores = {}
-for gene in tqdm.tqdm(promoters.index):
-    scores_folder = prediction.path / "scoring" / "window_gene" / gene
+if (prediction.path / "scoring" / "window_gene" / "genescores.pkl").exists():
+    genescores = pd.read_pickle(
+        prediction.path / "scoring" / "window_gene" / "genescores.pkl"
+    )
+    design = pd.read_pickle(prediction.path / "scoring" / "window_gene" / "design.pkl")
+else:
+    scores = {}
+    for gene in tqdm.tqdm(promoters.index):
+        scores_folder = prediction.path / "scoring" / "window_gene" / gene
 
-    if scores_folder.exists():
-        try:
-            scoring = chd.scoring.prediction.Scoring.load(scores_folder)
-        except FileNotFoundError:
-            continue
-        scores[gene] = scoring.genescores
-# genescores = (
-#     xr.concat(scores.values(), dim=pd.Index(scores.keys(), name="gene"))
-#     .mean("model")
-#     .to_dataframe()
-# )
-genescores = xr.concat(
-    [scores.mean("model") for scores in scores.values()],
-    dim=pd.Index(scores.keys(), name="gene"),
-).to_dataframe()
-design = scoring.design
+        if scores_folder.exists():
+            try:
+                scoring = chd.scoring.prediction.Scoring.load(scores_folder)
+            except FileNotFoundError:
+                continue
+            scores[gene] = scoring.genescores
+    genescores = xr.concat(
+        [scores.mean("model") for scores in scores.values()],
+        dim=pd.Index(scores.keys(), name="gene"),
+    ).to_dataframe()
+    design = scoring.design
+
+    genescores.to_pickle(prediction.path / "scoring" / "window_gene" / "genescores.pkl")
+    design.to_pickle(prediction.path / "scoring" / "window_gene" / "design.pkl")
 
 # %%
 # fix retained being nan because of no fragments present
@@ -607,6 +611,7 @@ IPython.display.HTML(
 # %%
 sns.ecdfplot(genescores[metric].loc["test"].groupby("gene").mean().sort_values())
 sns.ecdfplot(genescores[metric].loc["validation"].groupby("gene").mean().sort_values())
+plt.axvline(0, color="#333333", lw=0.5)
 
 # %% [markdown]
 # ### Enhancers and repressors
@@ -781,7 +786,7 @@ ax.set_xlabel(
 ax.set_xlim(-1, 1)
 ax.axvline(0, dashes=(2, 2), color="#333333")
 ax.axhline(0.5, dashes=(2, 2), color="#333333")
-ax.set_ylabel("Proportion")
+ax.set_ylabel("% genes")
 ax.yaxis.set_major_formatter(mpl.ticker.PercentFormatter(xmax=1))
 
 if dataset_name == "pbmc10k":
@@ -1039,8 +1044,8 @@ localpeaks = center_peaks(peaks, promoters)
 # match all localpeaks with the windows
 matched_peaks, matched_windows = np.where(
     (
-        (localpeaks["start"].values[:, None] < np.array(design)[:, 1][None, :])
-        & (localpeaks["end"].values[:, None] > np.array(design)[:, 0][None, :])
+        (localpeaks["start"].values[:, None] < np.array(design)[:, 0][None, :])
+        & (localpeaks["end"].values[:, None] > np.array(design)[:, 1][None, :])
     )
 )
 
@@ -1182,27 +1187,35 @@ genescores_matched_oi = genescores_matched.iloc[
 ]
 
 # %%
-fig, ax = plt.subplots(figsize=(5, 3))
-ax.plot(genescores_matched_oi["perc"], 1 - genescores_matched_oi["cum_matched"])
-annot = f"{1-perc_within_a_peak:.2%}"
+fig, ax = plt.subplots(figsize=(1.5, 1.5))
+ax.plot(
+    genescores_matched_oi["perc"], genescores_matched_oi["cum_matched"], color="#333"
+)
+annot = f"{perc_within_a_peak:.1%}"
 ax.annotate(
     annot,
-    xy=(top_cutoff, 1 - perc_within_a_peak),
+    xy=(top_cutoff, perc_within_a_peak),
     xycoords=("data", "data"),
-    xytext=(0, 10),
+    xytext=(0, -15),
     textcoords="offset points",
-    va="bottom",
-    ha="right",
+    va="top",
+    ha="center",
     color="red",
-    bbox=dict(fc="#FFFFFF88"),
+    # bbox=dict(fc="#FFFFFF88"),
+    # arrow with no pad
+    arrowprops=dict(arrowstyle="->", color="red", shrinkA=0, shrinkB=0, lw=1),
 )
 ax.xaxis.set_major_formatter(mpl.ticker.PercentFormatter(xmax=1))
 ax.yaxis.set_major_formatter(mpl.ticker.PercentFormatter(xmax=1))
 ax.set_ylim(0, 1)
-ax.set_xlabel("Top loci (acording to $\Delta$ cor)")
-ax.set_title(
-    "% of most predictive loci not contained in a peak", rotation=0, loc="left"
-)
+ax.set_xlabel("Top windows\nupstream of TSS\n(ordered by $\Delta$ cor)")
+ax.set_ylabel("% of windows in peak")
+# ax.set_title(
+#     "% of most predictive windows\nnot contained in a peak", rotation=0, loc="left"
+# )
+
+if dataset_name == "pbmc10k":
+    manuscript.save_figure(fig, "4", f"predictive_windows_not_in_peak")
 
 # %%
 # if you're interested in the genes with the least matched regions
@@ -1225,6 +1238,63 @@ special_genes["predictive_positions_not_in_peak"] = (
     .groupby("gene")["matched"]
     .all()
 )
+
+# %% [markdown]
+# Of the top 5% most predictive sites upstream of tss, how many are inside a peak?
+
+# %%
+genescores_matched2 = genescores_matched.loc[genescores_matched["window"] < 0].copy()
+genescores_matched2["ix"] = np.arange(1, genescores_matched2.shape[0] + 1)
+genescores_matched2["cum_matched"] = (
+    np.cumsum(genescores_matched2["matched"]) / genescores_matched2["ix"]
+)
+genescores_matched2["perc"] = genescores_matched2["ix"] / genescores_matched2.shape[0]
+
+# %%
+top_cutoff = 0.1
+perc_within_a_peak = genescores_matched2["cum_matched"].iloc[
+    int(genescores_matched2.shape[0] * top_cutoff)
+]
+print(perc_within_a_peak)
+print(
+    f"Perhaps there are many windows that are predictive, but are not contained in any peak?\nIndeed, {1-perc_within_a_peak:.2%} of the top {top_cutoff:.0%} predictive windows does not lie within a peak."
+)
+
+# %%
+genescores_matched_oi = genescores_matched2.iloc[
+    : int(top_cutoff * genescores_matched2.shape[0] * 2)
+]
+
+# %%
+fig, ax = plt.subplots(figsize=(1.5, 1.5))
+ax.plot(
+    genescores_matched_oi["perc"], genescores_matched_oi["cum_matched"], color="#333"
+)
+annot = f"{perc_within_a_peak:.1%}"
+ax.annotate(
+    annot,
+    xy=(top_cutoff, perc_within_a_peak),
+    xycoords=("data", "data"),
+    xytext=(0, -15),
+    textcoords="offset points",
+    va="top",
+    ha="center",
+    color="red",
+    # bbox=dict(fc="#FFFFFF88"),
+    # arrow with no pad
+    arrowprops=dict(arrowstyle="->", color="red", shrinkA=0, shrinkB=0, lw=1),
+)
+ax.xaxis.set_major_formatter(mpl.ticker.PercentFormatter(xmax=1))
+ax.yaxis.set_major_formatter(mpl.ticker.PercentFormatter(xmax=1))
+ax.set_ylim(0, 1)
+ax.set_xlabel("Top windows\n(ordered by $\Delta$ cor)")
+ax.set_ylabel("% of windows in peak")
+# ax.set_title(
+#     "% of most predictive windows\nnot contained in a peak", rotation=0, loc="left"
+# )
+
+if dataset_name == "pbmc10k":
+    manuscript.save_figure(fig, "4", f"predictive_windows_not_in_peak_upstream")
 
 # %% [markdown]
 # ### Are opposing effects put into the same peak?
@@ -1262,7 +1332,7 @@ gene_peak_scores["effect_highest"] = np.maximum(
     np.abs(gene_peak_scores["effect_min"]), np.abs(gene_peak_scores["effect_max"])
 )
 gene_peak_scores["effect_highest_cutoff"] = (
-    gene_peak_scores["effect_highest"] / 100
+    gene_peak_scores["effect_highest"] / 8
 )  # we put the cutoff at 1/8 of the highest effect
 
 # %%
@@ -1284,6 +1354,22 @@ gene_peak_scores["cum_updown"] = (
 )
 gene_peak_scores["perc"] = gene_peak_scores["ix"] / gene_peak_scores.shape[0]
 
+# %%
+gene_peak_scores["cum_updown"].plot()
+
+# %% [markdown]
+# Of the top X% most predictive peaks, how many have a single effect?
+
+# %%
+top_cutoff = 0.2
+perc_updown = gene_peak_scores["cum_updown"].iloc[
+    int(gene_peak_scores.shape[0] * top_cutoff)
+]
+print(perc_updown)
+print(
+    f"Perhaps within a peak there may be both windows that are positively and negatively correlated with gene expression?\nIndeed, {perc_updown:.2%} of the top {top_cutoff:.0%} predictive peaks contains both positive and negative effects."
+)
+
 # %% [markdown]
 # Of the top X% most predictive peaks, are retained and $\Delta$ cor correlated?
 
@@ -1292,8 +1378,11 @@ gene_peak_scores["ix"] = np.arange(1, gene_peak_scores.shape[0] + 1)
 gene_peak_scores["cum_cor_retained_deltacor"] = (
     np.cumsum(gene_peak_scores["cor_retained_deltacor"]) / gene_peak_scores["ix"]
 )
+
 # %%
-top_cutoff = 0.2
+gene_peak_scores["cum_cor_retained_deltacor"].plot()
+# %%
+top_cutoff = 0.1
 perc_updown = gene_peak_scores["cor_retained_deltacor"].iloc[
     int(gene_peak_scores.shape[0] * top_cutoff)
 ]
@@ -1312,19 +1401,6 @@ sns.ecdfplot(
     gene_peak_scores["cor_retained_deltacor"].iloc[
         : int(gene_peak_scores.shape[0] * top_cutoff)
     ]
-)
-
-# %% [markdown]
-# Of the top X% most predictive peaks, how many have a single effect?
-
-# %%
-top_cutoff = 0.2
-perc_updown = gene_peak_scores["cum_updown"].iloc[
-    int(gene_peak_scores.shape[0] * top_cutoff)
-]
-print(perc_updown)
-print(
-    f"Perhaps within a peak there may be both windows that are positively and negatively correlated with gene expression?\nIndeed, {perc_updown:.2%} of the top {top_cutoff:.0%} predictive peaks contains both positive and negative effects."
 )
 
 # %%
@@ -1398,12 +1474,22 @@ genescores_matched_loci[genescores_matched_loci > 0] = 0
 gene_order = genescores_matched_loci.sum(1).sort_values(ascending=True).index[:5000]
 
 # %%
-fig, ax = plt.subplots(figsize=(10, 3))
+fig = chd.grid.Figure(chd.grid.Grid())
+
+panel, ax = fig.main.add_right(chd.grid.Panel((5, 2)))
+inside_peaks = (
+    genescores_matched_loci.iloc[:, 1].sum() / genescores_matched_loci.sum().sum()
+)
+outside_peaks = (
+    genescores_matched_loci.iloc[:, 0].sum() / genescores_matched_loci.sum().sum()
+)
 ax.bar(
     np.arange(len(gene_order)),
     -genescores_matched_loci.loc[gene_order, True],
     width=1,
     lw=0,
+    label="In peaks ({}%)".format(int(inside_peaks * 100)),
+    color="#0074D9",
 )
 ax.bar(
     np.arange(len(gene_order)),
@@ -1411,11 +1497,20 @@ ax.bar(
     bottom=-genescores_matched_loci.loc[gene_order, True],
     width=1,
     lw=0,
+    label="Outside peaks ({}%)".format(int(outside_peaks * 100)),
+    color="#FF851B",
 )
 ax.set_xlim(0, len(gene_order) + 1)
 ax.set_xlabel("Genes (sorted by $\\Delta$ cor)")
 ax.set_ylabel("$\\Delta$ cor")
 sns.despine()
+ax.legend(loc="upper left", ncol=2, frameon=False)
+
+fig.plot()
+
+# %%
+manuscript.save_figure(fig, "4", "information_beyond_peaks")
+
 
 # %%
 special_genes["information_beyond_peaks"] = (

@@ -148,3 +148,7 @@ prediction_methods = pd.concat([peakcaller_predictor_methods])
 prediction_methods.loc["v20", "label"] = "ChromatinHD"
 prediction_methods.loc["v20", "color"] = "#0074D9"
 prediction_methods.loc["v20", "type"] = "ours"
+
+prediction_methods.loc["counter", "label"] = "Counter"
+prediction_methods.loc["counter", "color"] = "#0074D9"
+prediction_methods.loc["counter", "type"] = "ours"

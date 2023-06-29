@@ -12,11 +12,10 @@ dataset_peakcaller_combinations = pd.DataFrame.from_records(
                 "lymphoma",
                 "e18brain",
                 "brain",
-                "alzheimer",
                 "pbmc10k_gran",
                 # "pbmc10k_eqtl",
             ],
-            ["10k10k"],
+            ["10k10k", "20kpromoter"],
             [
                 "rolling_100",
                 "rolling_500",
@@ -48,7 +47,6 @@ dataset_peakcaller_combinations = pd.DataFrame.from_records(
                 "lymphoma",
                 "e18brain",
                 "brain",
-                "alzheimer",
                 "pbmc10k_gran",
                 # "morf_20", # was not processed using cellranger
             ],
@@ -87,7 +85,6 @@ dataset_splitter_combinations = pd.DataFrame.from_records(
                 "pbmc10k_gran",
                 "e18brain",
                 "brain",
-                "alzheimer",
             ],
             ["10k10k"],
             ["random_5fold", "leiden_0.1"],
@@ -96,6 +93,14 @@ dataset_splitter_combinations = pd.DataFrame.from_records(
             ["pbmc10k", "pbmc10k_gran", "pbmc3k"],
             ["10k10k"],
             ["permutations_5fold5repeat"],
+        ),
+        itertools.product(
+            [
+                "pbmc10k"
+                #  , "pbmc10k_gran", "lymphoma", "e18brain", "brain"
+            ],
+            ["20kpromoter"],
+            ["random_5fold"],
         ),
     ),
     columns=["dataset", "promoter", "splitter"],
@@ -113,7 +118,6 @@ dataset_splitter_method_combinations = pd.concat(
                         "pbmc10k_gran",
                         "e18brain",
                         "brain",
-                        "alzheimer",
                     ]
                 )
             ],
@@ -122,6 +126,7 @@ dataset_splitter_method_combinations = pd.concat(
                     "method": [
                         "v20",
                         "v21",
+                        "v22",
                         "v20_initdefault",
                         "counter",
                     ]
@@ -192,7 +197,7 @@ traindataset_testdataset_splitter_peakcaller_combinations = pd.merge(
 traindataset_testdataset_splitter_peakcaller_predictor_combinations = (
     chd.utils.crossing(
         traindataset_testdataset_splitter_peakcaller_combinations,
-        pd.DataFrame({"predictor": ["linear"]}),
+        pd.DataFrame({"predictor": ["linear", "lasso", "xgboost"]}),
     )
 )
 
@@ -209,7 +214,6 @@ dataset_latent_combinations = pd.DataFrame.from_records(
                 "pbmc10k",
                 "e18brain",
                 "brain",
-                "alzheimer",
                 "pbmc10k_gran",
                 # "pbmc10k_eqtl",
             ],
@@ -238,7 +242,6 @@ dataset_latent_method_combinations = pd.concat(
                         "pbmc10k",
                         "e18brain",
                         "brain",
-                        "alzheimer",
                         "pbmc10k_gran",
                         # "pbmc10k_eqtl",
                     ]

@@ -181,48 +181,27 @@ scores = pd.DataFrame(scores)
 # ## Plot all combinations
 
 # %%
-methods_info = (
-    design.groupby(["peakcaller", "diffexp"]).first().index.to_frame(index=False)
+# %%
+methods_info = chdm.methods.peakcaller_diffexp_combinations
+
+methods_info["label"] = np.where(
+    ~pd.isnull(methods_info.reset_index()["peakcaller"]),
+    (
+        chdm.peakcallers.reindex(methods_info.reset_index()["peakcaller"])[
+            "label"
+        ].reset_index(drop=True)
+        + " ("
+        + chdm.diffexps.reindex(methods_info.reset_index()["diffexp"])[
+            "label_short"
+        ].reset_index(drop=True)
+        + ")"
+    ).values,
+    "ChromatinHD differential",
 )
 
-methods_info["type"] = "predefined"
-methods_info.loc[
-    methods_info["peakcaller"].isin(
-        [
-            "cellranger",
-            "macs2_improved",
-            "macs2_leiden_0.1_merged",
-            "macs2_leiden_0.1",
-            "genrich",
-        ]
-    ),
-    "type",
-] = "peak"
-methods_info.loc[
-    methods_info["peakcaller"].str.startswith("rolling").fillna(False), "type"
-] = "rolling"
+# methods_info = methods_info.sort_values(["diffexp", "type", "peakcaller"])
 
-methods_info.loc[methods_info["type"] == "baseline", "color"] = "#888888"
-methods_info.loc[methods_info["type"] == "ours", "color"] = "#0074D9"
-methods_info.loc[methods_info["type"] == "rolling", "color"] = "#FF851B"
-methods_info.loc[methods_info["type"] == "peak", "color"] = "#FF4136"
-methods_info.loc[methods_info["type"] == "predefined", "color"] = "#2ECC40"
-methods_info.loc[pd.isnull(methods_info["color"]), "color"] = "#DDDDDD"
-
-methods_info["type"] = pd.Categorical(
-    methods_info["type"], ["peak", "predefined", "rolling"]
-)
-
-methods_info = methods_info.set_index(["peakcaller", "diffexp"])
-methods_info["label"] = (
-    methods_info.index.get_level_values("diffexp")
-    + " "
-    + methods_info.index.get_level_values("peakcaller")
-)
-
-methods_info = methods_info.sort_values(["diffexp", "type", "peakcaller"])
-
-methods_info["ix"] = -np.arange(methods_info.shape[0])
+# methods_info["ix"] = -np.arange(methods_info.shape[0])
 
 # %%
 datasets_info = pd.DataFrame(
@@ -265,7 +244,7 @@ metrics_info = pd.DataFrame(
         #     "ticklabels": ["½", "1", "2"],
         # },
         {
-            "label": "# genes with \nQTL ratio",
+            "label": "ratio genes\nwith QTLs\n(ChromatinHD\n/method)",
             "metric": "logratio_up",
             "limits": (np.log(1 / 2), np.log(2)),
             "ticks": [np.log(1 / 2), 0, np.log(2)],
@@ -364,7 +343,7 @@ for metric, metric_info in metrics_info.iterrows():
     ax.set_xticks(metric_info["ticks"])
     ax.set_xticklabels(metric_info["ticklabels"])
 
-    ax = axes[metric_info["ix"], 1]
+    ax = axes[metric_info["ix"], 0]
     ax.set_xlabel(metric_info["label"])
 
 # Methods
@@ -374,6 +353,8 @@ for ax in axes[:, 0]:
 
 for ax in axes.flatten():
     ax.set_ylim(methods_info["ix"].min() - 0.5, 0.5)
+
+manuscript.save_figure(fig, "2", "likelihood_all_qtl_datasets")
 
 # %%
 np.exp(
@@ -402,7 +383,7 @@ meanscores = scores_joined.groupby(group_ids)[
 ].mean()
 
 # %%
-panel_width = 5 / 4
+panel_width = 4 / 4
 panel_resolution = 1 / 8
 
 fig, axes = plt.subplots(

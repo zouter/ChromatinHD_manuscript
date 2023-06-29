@@ -65,7 +65,9 @@ organism = "hs"
 # organism = "hs"
 
 # dataset_name = "lymphoma"; main_url = "https://cf.10xgenomics.com/samples/cell-arc/2.0.0/lymph_node_lymphoma_14k/lymph_node_lymphoma_14k"; genome = "GRCh38.107"; organism = "hs"
-# dataset_name = "e18brain"; main_url = "https://cf.10xgenomics.com/samples/cell-arc/2.0.0/e18_mouse_brain_fresh_5k/e18_mouse_brain_fresh_5k";  genome = "mm10"; organism = "mm"
+
+dataset_name = "e18brain"; main_url = "https://cf.10xgenomics.com/samples/cell-arc/2.0.0/e18_mouse_brain_fresh_5k/e18_mouse_brain_fresh_5k";  genome = "mm10"; organism = "mm"
+
 # dataset_name = "alzheimer"; main_url = "https://cf.10xgenomics.com/samples/cell-arc/2.0.1/Multiome_RNA_ATAC_Mouse_Brain_Alzheimers_AppNote/Multiome_RNA_ATAC_Mouse_Brain_Alzheimers_AppNote";  genome = "mm10"; organism = "mm"
 # dataset_name = "brain"; main_url = "https://s3-us-west-2.amazonaws.com/10x.files/samples/cell-arc/2.0.0/human_brain_3k/human_brain_3k"; genome = "GRCh38.107"; organism = "hs"
 
@@ -647,7 +649,7 @@ fragments_tabix = tabix.open(str(folder_data_preproc / "atac_fragments.tsv.gz"))
 # promoter_name, (padding_negative, padding_positive) = "4k2k", (2000, 4000)
 promoter_name, (padding_negative, padding_positive) = "10k10k", (10000, 10000)
 # promoter_name, (padding_negative, padding_positive) = "100k100k", (100000, 100000)
-# promoter_name, (padding_negative, padding_positive) = "20kpromoter", (20000, 0)
+promoter_name, (padding_negative, padding_positive) = "20kpromoter", (20000, 0)
 # promoter_name, (padding_negative, padding_positive) = "1k1k", (1000, 1000)
 
 # %%

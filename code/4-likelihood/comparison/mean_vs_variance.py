@@ -156,9 +156,6 @@ y = probs_diff
 desired_x = torch.arange(*window)
 
 # %%
-import chromatinhd
-
-# %%
 probs_interpolated = chd.utils.interpolate_1d(
     desired_x, torch.from_numpy(x)[0][0], torch.from_numpy(probs)
 ).numpy()
@@ -255,7 +252,8 @@ for i, (bin, locusscores_bin) in enumerate(locusscores.groupby("probs_mean_bin")
         np.exp(locusscores_bin[metric]),
         density=True,
         bins=np.logspace(np.log10(1), np.log10(4), 50),
-        color=bin_info.loc[bin, "color"],
+        color="grey",
+        # color=bin_info.loc[bin, "color"],
         lw=0,
     )
     ax.set_ylim(0, 2)
@@ -267,6 +265,7 @@ for i, (bin, locusscores_bin) in enumerate(locusscores.groupby("probs_mean_bin")
     ax.set_ylabel("")
     sns.despine(ax=ax)
     ax.set_xticks([])
+    ax.set_xticks([], minor=True)
 
 ax = axes[int(len(axes) / 2) - 1]
 ax.set_ylabel(
@@ -397,7 +396,7 @@ for i, (bin, locusscores_bin) in enumerate(locusscores.groupby("probs_mean_bin")
     sns.ecdfplot(locusscores_bin[metric], ax=ax, color=cmap(norm(bin)))
 
 # %% [markdown]
-# ### Enrichment
+# ## Enrichment
 
 # %%
 # mixture_interpolated = probs_interpolated - probs_interpolated.mean(-1, keepdims = True)
@@ -406,23 +405,23 @@ mixture_interpolated = probs_interpolated
 # %%
 # cluster_oi = "Lymphoma"
 # cluster_oi = "pDCs"
-cluster_oi = "Monocytes"
+# cluster_oi = "Monocytes"
 # cluster_oi = "cDCs"
-# cluster_oi = "CD4 T"
+cluster_oi = "CD4 T"
 # cluster_oi = "leiden_0"
 # cluster_oi = "CD8 T"
 # cluster_oi = "B"
 cluster_ix = cluster_info.index.tolist().index(cluster_oi)
 
 # %%
-k = 100
-probs_mean_pooled = (
-    torch.nn.functional.max_pool1d(
-        torch.from_numpy(probs_interpolated), k, stride=1, padding=(k // 2,)
-    )[..., :-1]
-    .mean(1)
-    .numpy()
-)
+# k = 100
+# probs_mean_pooled = (
+#     torch.nn.functional.max_pool1d(
+#         torch.from_numpy(probs_interpolated), k, stride=1, padding=(k // 2,)
+#     )[..., :-1]
+#     .mean(1)
+#     .numpy()
+# )
 
 probs_mean = probs_interpolated.mean(1)
 
@@ -437,13 +436,16 @@ q = np.linspace(0, 1, n_cuts + 1)[1:-1]
 probs_mean_cuts = np.quantile(probs_mean.flatten(), q)
 clusterprobs_diff_cuts = np.quantile(clusterprobs_diff.flatten(), q)
 
-probs_mean_cuts = np.linspace(
-    np.quantile(probs_mean.flatten(), 0.01),
-    np.quantile(probs_mean.flatten(), 0.99),
-    n_cuts - 1,
-)
+# probs_mean_cuts = np.linspace(
+#     np.quantile(probs_mean.flatten(), 0.01),
+#     np.quantile(probs_mean.flatten(), 0.99),
+#     n_cuts - 1,
+# )
 # probs_mean_cuts = np.linspace(1, 3, n_cuts-1)
 # probs_mean_cuts = np.linspace(5, 12, n_cuts-1)
+probs_mean_cuts = np.log(np.array([0.1, 0.2, 0.5, 1.0, 2.0, 5.0, 10.0]))
+
+
 clusterprobs_diff_cuts = np.linspace(
     np.quantile(clusterprobs_diff.flatten(), 0.01),
     np.quantile(clusterprobs_diff.flatten(), 0.999),
@@ -495,12 +497,16 @@ motifscan = chd.data.Motifscan(motifscan_folder)
 motifscan.n_motifs = len(motifscan.motifs)
 
 # %%
-motif_ix_oi = motifscan.motifs.index.tolist().index(
-    motifscan.motifs.loc[motifscan.motifs.index.str.contains("SPI1")].index[0]
-)
-# motif_ix_oi = motifscan.motifs.index.tolist().index(motifscan.motifs.loc[motifscan.motifs.index.str.contains("TCF7")].index[0])
+# motif_ix_oi = motifscan.motifs.index.tolist().index(
+#     motifscan.motifs.loc[motifscan.motifs.index.str.contains("SPI1")].index[0]
+# )
+# motif_ix_oi = motifscan.motifs.index.tolist().index(
+#     motifscan.motifs.loc[motifscan.motifs.index.str.contains("TCF7")].index[0]
+# )
 # motif_ix_oi = motifscan.motifs.index.tolist().index(motifscan.motifs.loc[motifscan.motifs.index.str.contains("IRF4")].index[0])
-# motif_ix_oi = motifscan.motifs.index.tolist().index(motifscan.motifs.loc[motifscan.motifs.index.str.contains("RUNX3")].index[0])
+motif_ix_oi = motifscan.motifs.index.tolist().index(
+    motifscan.motifs.loc[motifscan.motifs.index.str.contains("RUNX3")].index[0]
+)
 # motif_ix_oi = motifscan.motifs.index.tolist().index(motifscan.motifs.loc[motifscan.motifs.index.str.contains("dc")].index[0])
 # motif_ix_oi = motifscan.motifs.index.tolist().index(motifscan.motifs.loc[motifscan.motifs.index.str.contains("Rheumatoid arthritis")].index[0])
 
@@ -576,7 +582,7 @@ motifclustermapping = pd.DataFrame(
         [motifs.loc[motifs.index.str.contains("TFE2")].index[0], ["B", "pDCs"]],  # TCF3
         [motifs.loc[motifs.index.str.contains("BHA15")].index[0], ["pDCs"]],
         [motifs.loc[motifs.index.str.contains("FOS")].index[0], ["cDCs"]],
-        [motifs.loc[motifs.index.str.contains("RORA")].index[0], ["MAIT"]],
+        [motifs.loc[motifs.index.str.contains("IRF1")].index[0], ["cDCs"]],
     ],
     columns=["motif", "clusters"],
 ).set_index("motif")
@@ -594,26 +600,56 @@ n_cuts = 10
 q = np.linspace(0, 1, n_cuts + 1)[1:-1]
 
 # %%
-# probs_mean_cuts = np.linspace(np.quantile(probs_mean_pooled.flatten(), 0.01), np.quantile(probs_mean_pooled.flatten(), 0.99), n_cuts-1)
-probs_mean_cuts = np.linspace(
-    np.quantile(probs_mean.flatten(), 0.01),
-    np.quantile(probs_mean.flatten(), 0.99),
-    n_cuts - 1,
+# probs_mean_cuts = np.linspace(
+#     np.quantile(probs_mean.flatten(), 0.01),
+#     np.quantile(probs_mean.flatten(), 0.99),
+#     n_cuts - 1,
+# )
+probs_mean_bins = pd.DataFrame(
+    {"cut": np.log(np.array([0.1, 0.2, 0.5, 1.0, 2.0, 5.0, 10.0, np.inf]))}
 )
-clusterprobs_diff_cuts = np.linspace(
-    np.quantile(clusterprobs_diff.flatten(), 0.01),
-    np.quantile(clusterprobs_diff.flatten(), 0.999),
-    n_cuts - 1,
+labels = [
+    f"< {round(i, 2)}"
+    for i in (
+        np.exp(probs_mean_bins["cut"].values[[0]]) / (window[1] - window[0]) * 100 * 100
+    )
+] + [
+    f"≥ {round(i, 2)}"
+    for i in (
+        np.exp(probs_mean_bins["cut"].values[:-1]) / (window[1] - window[0]) * 100 * 100
+    )
+]
+probs_mean_bins["label"] = labels
+
+clusterprobs_diff_bins = pd.DataFrame(
+    {"cut": np.log(np.array([1 / 8, 1 / 4, 1 / 2, 1, 2, 4, 8, np.inf]))}
+)
+clusterprobs_diff_bins["label"] = ["<⅛", "⅛-¼", "¼-½", "½-1", "1-2", "2-4", "4-8", ">8"]
+clusterprobs_diff_bins["label"] = ["<⅛", ">⅛", ">¼", ">½", ">1", ">2", ">4", ">8"]
+clusterprobs_diff_bins["label"] = ["", "⅛", "¼", "½", "1", "2", "4", "8"]
+
+# clusterprobs_diff_cuts = np.linspace(
+#     np.quantile(clusterprobs_diff.flatten(), 0.01),
+#     np.quantile(clusterprobs_diff.flatten(), 0.999),
+#     n_cuts - 1,
+# )
+
+# %%
+bin = np.digitize(probs_mean[:, None, :], probs_mean_bins["cut"], right=True) + (
+    np.digitize(clusterprobs_diff, clusterprobs_diff_bins["cut"], right=True)
+) * (len(probs_mean_bins))
+
+# %%
+n = np.bincount(
+    bin.flatten(), minlength=len(probs_mean_bins) * len(clusterprobs_diff_bins)
 )
 
 # %%
-# bin = np.digitize(probs_mean_pooled[:, None, :], probs_mean_cuts, right = True) + (np.digitize(clusterprobs_diff, clusterprobs_diff_cuts, right = True)) * (n_cuts)
-bin = np.digitize(probs_mean[:, None, :], probs_mean_cuts, right=True) + (
-    np.digitize(clusterprobs_diff, clusterprobs_diff_cuts, right=True)
-) * (n_cuts)
+sns.heatmap(np.reshape(np.log(n), (len(probs_mean_bins), len(clusterprobs_diff_bins))))
 
 # %%
 odds_cluster_motifs = []
+contingencies_cluster_motifs = []
 for _, (cluster, motif) in tqdm.tqdm(
     motifclustermapping[["cluster", "motif"]].iterrows()
 ):
@@ -629,14 +665,117 @@ for _, (cluster, motif) in tqdm.tqdm(
 
     bin_oi = bin[:, cluster_ix]
     bins_bg = np.reshape(
-        np.bincount(bin_oi.flatten(), minlength=n_cuts**2), (n_cuts, n_cuts)
+        np.bincount(
+            bin_oi.flatten(),
+            minlength=len(probs_mean_bins) * len(clusterprobs_diff_bins),
+        ),
+        (len(probs_mean_bins), len(clusterprobs_diff_bins)),
     )
     bins_oi = np.reshape(
-        np.bincount(bin_oi.flatten()[position_indices], minlength=n_cuts**2),
-        (n_cuts, n_cuts),
+        np.bincount(
+            bin_oi.flatten()[position_indices],
+            minlength=len(probs_mean_bins) * len(clusterprobs_diff_bins),
+        ),
+        (len(probs_mean_bins), len(clusterprobs_diff_bins)),
     )
     odds = (bins_oi / bins_bg) / (position_chosen.sum() / len(bin_oi.flatten()))
     odds_cluster_motifs.append(odds)
+
+    cont = np.stack(
+        [
+            bins_oi,
+            bins_bg,
+            np.ones_like(bins_oi) * position_chosen.sum(),
+            np.ones_like(bins_oi) * len(bin_oi.flatten()),
+        ],
+    )
+    contingencies_cluster_motifs.append(cont)
+
+# %% [markdown]
+# ### Common contingency
+
+# %%
+weights = np.array([cont[0].sum() for cont in contingencies_cluster_motifs])
+weights = weights / weights.sum()
+weights[:] = 1.0
+contingencies = np.stack(contingencies_cluster_motifs)
+contingency = np.sum(contingencies * weights[:, None, None, None], 0)
+odds = (contingency[0] / contingency[1]) / (contingency[2] / contingency[3])
+odds[np.isnan(odds)] = 1.0
+
+# %%
+fig, ax = plt.subplots(figsize=(2.5, 2))
+cmap = mpl.cm.PiYG
+norm = mpl.colors.Normalize(vmin=np.log(0.125), vmax=np.log(8.0))
+ax.matshow(np.log(odds).T, cmap=cmap, norm=norm)
+
+# no y-ticks for figure 4
+# ax.set_ylabel("Mean accessibility (??)")
+# ax.set_yticks(np.arange(len(probs_mean_bins)))
+# ax.set_yticklabels(probs_mean_bins["label"])
+ax.set_yticks([])
+ax.tick_params(axis="y", length=5, which="minor")
+ax.set_yticks([-0.5] + list(np.arange(len(clusterprobs_diff_bins)) + 0.5), minor=True)
+
+ax.tick_params(
+    axis="x", rotation=0, bottom=True, top=False, labelbottom=True, labeltop=False
+)
+ax.set_xlabel("Fold accessibility change")
+ax.set_xticks(np.arange(len(clusterprobs_diff_bins)) - 0.5)
+ax.set_xticklabels(clusterprobs_diff_bins["label"])
+
+manuscript.save_figure(fig, "4", "mean_vs_variance_motif_enrichment")
+
+# %%
+fig_colorbar = plt.figure(figsize=(0.1, 1.5))
+ax_colorbar = fig_colorbar.add_axes([0.05, 0.05, 0.5, 0.9])
+mappable = mpl.cm.ScalarMappable(norm=norm, cmap=cmap)
+colorbar = plt.colorbar(mappable, cax=ax_colorbar, orientation="vertical")
+colorbar.set_label("Odds motif enrichment")
+colorbar.set_ticks(np.log([0.125, 1, 8]))
+colorbar.set_ticklabels(["⅛", "1", "8"])
+manuscript.save_figure(fig_colorbar, "4", "colorbar_odds")
+
+# %%
+fig = chd.grid.Figure(chd.grid.Wrap(padding_width=0.1, padding_height=0.0))
+
+cmap = mpl.cm.PiYG
+norm = mpl.colors.Normalize(vmin=np.log(0.125), vmax=np.log(8.0))
+
+for (_, (cluster, motif)), odds in zip(
+    motifclustermapping[["cluster", "motif"]].iterrows(), odds_cluster_motifs
+):
+    panel, ax = fig.main.add(chd.grid.Panel((0.8, 0.8)))
+    ax.matshow(np.log(odds).T, cmap=cmap, norm=norm)
+    ax.set_xticks([])
+    ax.set_yticks([])
+    if motifscan.motifs.loc[motif]["gene"] in transcriptome.var.index:
+        symbol = transcriptome.symbol(motifscan.motifs.loc[motif]["gene"])
+    else:
+        symbol = motifscan.motifs.loc[motif]["gene_label"]
+
+    ax.set_title(f"{cluster} {symbol}", fontsize=8)
+
+# set ticks for bottom left
+panel, ax = fig.main.get_bottom_left_corner()
+ax.set_ylabel("Mean accessibility")
+ax.set_yticks(np.arange(len(probs_mean_bins)))
+ax.set_yticklabels(probs_mean_bins["label"])
+
+ax.tick_params(
+    axis="x", rotation=0, bottom=True, top=False, labelbottom=True, labeltop=False
+)
+ax.set_xlabel("Fold accessibility change")
+ax.set_xticks(np.arange(len(clusterprobs_diff_bins)) - 0.5)
+ax.set_xticklabels(clusterprobs_diff_bins["label"])
+
+fig.plot()
+
+manuscript.save_figure(fig, "4", "mean_vs_variance_motif_enrichment_individual")
+
+
+# %% [markdown]
+# ### Individual contingencies mean
 
 # %%
 odds = np.stack(odds_cluster_motifs)
@@ -648,15 +787,14 @@ odds[odds == 0] = 1.0
 # %%
 fig, ax = plt.subplots(figsize=(2.5, 2))
 cmap = mpl.cm.PiYG
-norm = mpl.colors.CenteredNorm()
-sns.heatmap(np.log(odds).mean(0), ax=ax, cmap=cmap, norm=norm)
-ax.set_ylabel("Differential\naccessibility\nbin", rotation=0, ha="right", va="center")
-ax.set_xlabel("Mean accessibility bin")
-ax.invert_yaxis()
+norm = mpl.colors.Normalize(vmin=np.log(0.25), vmax=np.log(4.0))
+ax.matshow(np.log(odds).mean(0).T, cmap=cmap, norm=norm)
+ax.set_ylabel("Mean accessibility (??)")
+ax.set_yticks(np.arange(len(probs_mean_bins)))
+ax.set_yticklabels(probs_mean_bins["label"])
 
-# %%
-fig, ax = plt.subplots(figsize=(2.5, 2))
-sns.heatmap(odds[0].T, ax=ax)
-ax.invert_yaxis()
+ax.set_xlabel("Fold accessibility change")
+ax.set_xticks(np.arange(len(clusterprobs_diff_bins)))
+ax.set_xticklabels(clusterprobs_diff_bins["label"])
 
-# %%
+# manuscript.save_figure(fig, "4", "mean_vs_variance_motif_enrichment")

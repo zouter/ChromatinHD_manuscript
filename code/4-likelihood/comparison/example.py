@@ -141,6 +141,10 @@ class Example:
                             ["cDCs"],
                         ],
                         [
+                            motifs.loc[motifs.index.str.contains("IRF1")].index[0],
+                            ["cDCs"],
+                        ],
+                        [
                             motifs.loc[motifs.index.str.contains("TFE2")].index[0],
                             ["B"],
                         ],  # TCF3
@@ -439,5 +443,5 @@ class Example:
                     width=panel_width,
                     row_height=0.4,
                 ),
-                1,
+                column=wrap_differential,
             )

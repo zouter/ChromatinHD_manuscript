@@ -13,6 +13,11 @@
 #     name: python3
 # ---
 
+# %% [markdown]
+# # Rank gene-motif correspondence
+
+# This notebook
+
 # %%
 import IPython
 
@@ -63,8 +68,6 @@ dataset_name = "pbmc10k"
 # dataset_name = "e18brain"
 # dataset_name = "brain"
 # dataset_name = "alzheimer"
-# dataset_name = "GSE198467_H3K27ac"
-# dataset_name = "GSE198467_single_modality_H3K27me3"
 folder_data_preproc = folder_data / dataset_name
 
 # %%
@@ -205,9 +208,10 @@ motifs_oi = pd.DataFrame(
         # [motifs.loc[motifs.index.str.contains("NFKB")].index[0], ["Lymphoma"]],
         # [motifs.loc[motifs.index.str.contains("TFE2")].index[0], ["Lymphoma"]],
         # [motifs.loc[motifs.index.str.contains("Chronic lymphocytic leukemia")].index[0], ["Lymphoma"]],
-        [motifs.loc[motifs.index.str.contains("TFE2")].index[0], ["pDCs"]],
-        [motifs.loc[motifs.index.str.contains("BHA15")].index[0], ["pDCs"]],
-        [motifs.loc[motifs.index.str.contains("BC11A")].index[0], ["pDCs"]],
+        # [motifs.loc[motifs.index.str.contains("TFE2")].index[0], ["pDCs"]],
+        # [motifs.loc[motifs.index.str.contains("BHA15")].index[0], ["pDCs"]],
+        # [motifs.loc[motifs.index.str.contains("BC11A")].index[0], ["pDCs"]],
+        [motifs.loc[motifs.index.str.contains("IRF1")].index[0], ["cDCs"]],
     ],
     columns=["motif", "clusters"],
 ).set_index("motif")
@@ -268,18 +272,21 @@ scores["symbol"] = transcriptome.var.iloc[scores.index.get_level_values("gene_ix
 ).head(20)
 
 # %%
+sc.pl.umap(transcriptome.adata, color=["cluster", transcriptome.gene_id("CD86")])
+
+# %%
 # scores.query("symbol == 'SIAH2'")
 # scores.query("symbol == 'BCL2'")
 
 # %%
-celltype_oi = "pDCs"
+celltype_oi = "cDCs"
 sc.tl.rank_genes_groups(transcriptome.adata, "cluster")
-sc.get.rank_genes_groups_df(transcriptome.adata, "pDCs").assign(
+sc.get.rank_genes_groups_df(transcriptome.adata, celltype_oi).assign(
     symbol=lambda x: transcriptome.symbol(x["names"]).values
 ).set_index("symbol")
 # %%
 scores["lfc"] = (
-    sc.get.rank_genes_groups_df(transcriptome.adata, "Lymphoma")
+    sc.get.rank_genes_groups_df(transcriptome.adata, celltype_oi)
     .assign(symbol=lambda x: transcriptome.symbol(x["names"]).values)
     .set_index("symbol")
     .reindex(scores["symbol"])["logfoldchanges"]

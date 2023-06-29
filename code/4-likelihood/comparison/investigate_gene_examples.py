@@ -51,6 +51,42 @@ manuscript = Manuscript(chd.get_git_root() / "manuscript")
 # %%
 from example import Example
 
+chd.differential.plot.get_cmap_atac_diff()
+
+# %%
+# colorbar
+# %%
+fig_colorbar = plt.figure(figsize=(3.0, 0.1))
+ax_colorbar = fig_colorbar.add_axes([0.05, 0.05, 0.5, 0.9])
+mappable = mpl.cm.ScalarMappable(
+    norm=chd.differential.plot.get_norm_atac_diff(),
+    cmap=chd.differential.plot.get_cmap_atac_diff(),
+)
+colorbar = plt.colorbar(
+    mappable, cax=ax_colorbar, orientation="horizontal", extend="both"
+)
+colorbar.set_label("Differential accessibility")
+colorbar.set_ticks(np.log([0.25, 0.5, 1, 2, 4]))
+colorbar.set_ticklabels(["¼", "½", "1", "2", "4"])
+manuscript.save_figure(fig_colorbar, "3", "colorbar_atac_diff")
+
+# %%
+fig_colorbar = plt.figure(figsize=(0.1, 1.0))
+ax_colorbar = fig_colorbar.add_axes([0.05, 0.05, 0.5, 0.9])
+mappable = mpl.cm.ScalarMappable(
+    norm=chd.differential.plot.get_norm_atac_diff(),
+    cmap=chd.differential.plot.get_cmap_atac_diff(),
+)
+colorbar = plt.colorbar(
+    mappable,
+    cax=ax_colorbar,
+    extend="both",
+    orientation="vertical",
+)
+colorbar.set_label("Differential\naccessibility", va="center", rotation=0, ha="left ")
+colorbar.set_ticks(np.log([0.25, 0.5, 1, 2, 4]))
+colorbar.set_ticklabels(["¼", "½", "1", "2", "4"])
+manuscript.save_figure(fig_colorbar, "3", "colorbar_atac_diff_vertical")
 
 # %%
 motifs_to_merge = [["PO5F1_HUMAN.H11MO.0.A", "PO2F2_HUMAN.H11MO.0.A"]]
@@ -252,4 +288,23 @@ example = Example(
 example.fig.plot()
 example.fig.show()
 manuscript.save_figure(example.fig, "3", "example_differential_TNFAIP2")
+# %%
+motifs_to_merge = [
+    ["PO5F1_HUMAN.H11MO.0.A", "PO2F2_HUMAN.H11MO.0.A"],
+]
+example = Example(
+    "pbmc10k",
+    "10k10k",
+    "leiden_0.1",
+    "v9_128-64-32",
+    "cutoff_0001",
+    "HLA-DQA1",
+    motifs_to_merge,
+    subset_clusters=["cDCs"],
+)
+example.fig.plot()
+example.fig.show()
+
+manuscript.save_figure(example.fig, "3", "example_differential_HLADQA1")
+
 # %%

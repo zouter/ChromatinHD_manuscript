@@ -49,9 +49,9 @@ folder_data = folder_root / "data"
 # dataset_name = "brain"
 # dataset_name = "lymphoma"
 # dataset_name = "e18brain"
-# dataset_name = "pbmc10k"
+dataset_name = "pbmc10k"
 # dataset_name = "pbmc10k_gran"
-dataset_name = "pbmc3k"
+# dataset_name = "pbmc3k"
 # dataset_name = "GSE198467_H3K27ac"
 # dataset_name = "GSE198467_single_modality_H3K27me3"
 # dataset_name = "hspc"
@@ -60,7 +60,8 @@ dataset_name = "pbmc3k"
 folder_data_preproc = folder_data / dataset_name
 
 # %%
-promoter_name = "10k10k"
+# promoter_name = "10k10k"
+promoter_name = "20kpromoter"
 # promoter_name = "100k100k"
 
 # %%
@@ -75,7 +76,7 @@ fragments = chd.data.Fragments(folder_data_preproc / "fragments" / promoter_name
 
 # %%
 n_folds = 5
-n_folds = 20
+# n_folds = 20
 
 # %%
 # train/test split

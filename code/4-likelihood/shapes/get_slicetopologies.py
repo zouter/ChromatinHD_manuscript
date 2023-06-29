@@ -34,9 +34,11 @@ import pickle
 
 import scanpy as sc
 
+import pathlib
+
 import torch
 
-import tqdm.auto as tqdm
+import tqdm.auto as tqdmpbmc10k_eqtl
 
 # %%
 import chromatinhd as chd
@@ -124,6 +126,7 @@ n_latent_dimensions = latent.shape[-1]
 
 cluster_info = pd.read_pickle(latent_folder / (latent_name + "_info.pkl"))
 fragments.obs["cluster"] = pd.Categorical(pd.from_dummies(latent).iloc[:, 0])
+transcriptome.adata.obs["cluster"] = pd.Categorical(pd.from_dummies(latent).iloc[:, 0])
 
 # %% [markdown]
 # Interpolate probs for individual positions
@@ -146,53 +149,6 @@ probs_interpolated = chd.utils.interpolate_1d(
 ).numpy()
 
 # %% [markdown]
-# ----
-
-# %% [markdown]
-# Temporary look at local autocorrelation
-
-# %%
-probs_diff = probs_interpolated - probs_interpolated.mean(-1, keepdims=True)
-
-# %%
-gene_ix = transcriptome.gene_ix("CD74")
-
-# %%
-x = torch.from_numpy(probs_diff.transpose(2, 1, 0)[:, :, gene_ix])
-
-# %%
-cors = torch.cov(x) / (x.std(1) * (x.std(1)[:, None]))
-
-# %%
-pad = 200
-
-# %%
-cors_padded = torch.nn.functional.pad(cors, (pad, pad), value=torch.nan)
-
-# %%
-n_positions = cors_padded.shape[0]
-
-# %%
-indices = (
-    torch.arange(0, pad * 2 + 1)[None, :]
-    + torch.arange(0, n_positions)[:, None]
-    + torch.arange(0, n_positions)[:, None] * cors_padded.shape[1]
-)
-
-# %%
-resolution = 1 / 1000
-
-# %%
-fig, ax = plt.subplots(
-    figsize=((window[1] - window[0]) * resolution, (pad * 2) * resolution)
-)
-ax.matshow(cors_padded.flatten()[indices].T, vmin=-1, vmax=1, cmap=mpl.cm.PiYG_r)
-ax.axhline(pad, color="black", dashes=(2, 2), lw=1)
-
-# %% [markdown]
-# ----
-
-# %% [markdown]
 # ## Load slices
 
 # %%
@@ -208,7 +164,7 @@ pureregionresult = pickle.load((scores_dir / "slices.pkl").open("rb"))
 # %%
 import chromatinhd.peakcounts
 
-# peakcaller = "cellranger"
+# peakcaller = "cellranger"; peakcaller_label = "Cellranger"
 # peakcaller = "macs2"
 # peakcaller = "macs2_improved";peakcaller_label = "MACS2"
 # peakcaller = "encode_screen";peakcaller_label = "ENCODE SCREEN"
@@ -238,1300 +194,6 @@ peakresult = pickle.load((scores_dir / "slices.pkl").open("rb"))
 # %%
 peakresult.get_slicescores()
 
-# %%
-scores_dir = prediction.path / "scoring" / peakcaller / diffexp
-regionresult = pickle.load((scores_dir / "slices.pkl").open("rb"))
-
-# %% [markdown]
-# ## Positional overlap
-
-# %%
-methods_info = pd.DataFrame(
-    [
-        [
-            "peak",
-            "#FF4136",
-            f"Unique to differential {chdm.peakcallers.loc[peakcaller, 'label']}",
-        ],
-        ["common", "#B10DC9", f"Common"],
-        ["region", "#0074D9", f"Unique to ChromatinHD"],
-    ],
-    columns=["method", "color", "label"],
-).set_index("method")
-
-# %%
-position_chosen_region = regionresult.position_chosen
-position_chosen_peak = peakresult.position_chosen
-
-# %%
-(position_chosen_region & position_chosen_peak).sum() / (
-    position_chosen_region | position_chosen_peak
-).sum()
-
-# %%
-position_region = np.where(position_chosen_region)[0]
-position_peak = np.where(position_chosen_peak)[0]
-position_indices_peak_unique = np.where(
-    position_chosen_peak & (~position_chosen_region)
-)[0]
-position_indices_region_unique = np.where(
-    position_chosen_region & (~position_chosen_peak)
-)[0]
-position_indices_common = np.where(position_chosen_region & position_chosen_peak)[0]
-position_indices_intersect = np.where(position_chosen_region | position_chosen_peak)[0]
-
-# %%
-positions_region_unique = (
-    position_indices_region_unique % (window[1] - window[0])
-) + window[0]
-positions_region = (position_region % (window[1] - window[0])) + window[0]
-
-positions_peak_unique = (
-    position_indices_peak_unique % (window[1] - window[0])
-) + window[0]
-positions_peak = (position_peak % (window[1] - window[0])) + window[0]
-
-positions_common = (position_indices_common % (window[1] - window[0])) + window[0]
-
-positions_intersect = (position_indices_intersect % (window[1] - window[0])) + window[0]
-
-# %%
-# 200 bins => 100 bp bin size
-binmids = np.linspace(*window, 200 + 1)
-cuts = (binmids + (binmids[1] - binmids[0]) / 2)[:-1]
-
-# %%
-positions_region_unique_bincounts = np.bincount(
-    np.digitize(positions_region_unique, cuts, right=True), minlength=len(cuts) + 1
-)
-positions_region_bincounts = np.bincount(
-    np.digitize(positions_region, cuts), minlength=len(cuts) + 1
-)
-
-positions_peak_unique_bincounts = np.bincount(
-    np.digitize(positions_peak_unique, cuts), minlength=len(cuts) + 1
-)
-positions_peak_bincounts = np.bincount(
-    np.digitize(positions_peak, cuts), minlength=len(cuts) + 1
-)
-
-positions_common_bincounts = np.bincount(
-    np.digitize(positions_common, cuts), minlength=len(cuts) + 1
-)
-
-positions_intersect_bincounts = np.bincount(
-    np.digitize(positions_intersect, cuts), minlength=len(cuts) + 1
-)
-
-# %%
-fig, ax = plt.subplots()
-ax.plot(
-    binmids,
-    (positions_common_bincounts)
-    / (positions_intersect_bincounts)
-    / (positions_common_bincounts.sum() / positions_intersect_bincounts.sum()),
-    label="common",
-)
-ax.plot(
-    binmids,
-    (positions_peak_unique_bincounts / positions_peak_bincounts)
-    / (positions_peak_unique_bincounts.sum() / positions_peak_bincounts.sum()),
-    label="peak_unique",
-)
-ax.plot(
-    binmids,
-    (positions_region_unique_bincounts / positions_region_bincounts)
-    / (positions_region_unique_bincounts.sum() / positions_region_bincounts.sum()),
-    label="region_unique",
-)
-ax.axhline(1, dashes=(2, 2), color="#333")
-ax.set_yscale("log")
-ax.legend()
-ax.set_yticks([1 / 2, 1, 2, 1 / 4])
-ax.set_yticklabels([1 / 2, 1, 2, 1 / 4])
-
-# %%
-plotdata = pd.DataFrame(
-    {
-        "common": positions_common_bincounts,
-        "peak_unique": positions_peak_unique_bincounts,
-        "region_unique": positions_region_unique_bincounts,
-        "intersect": positions_intersect_bincounts,
-        "position": binmids,
-    }
-)
-plotdata["peak_unique_density"] = plotdata["peak_unique"] / plotdata["intersect"]
-plotdata["common_density"] = plotdata["common"] / plotdata["intersect"]
-plotdata["region_unique_density"] = plotdata["region_unique"] / plotdata["intersect"]
-
-# %%
-plotdata_last = (
-    plotdata[["peak_unique_density", "common_density", "region_unique_density"]]
-    .iloc[-10]
-    .to_frame(name="density")
-)
-plotdata_last["cumulative_density"] = (
-    np.cumsum(plotdata_last["density"]) - plotdata_last["density"] / 2
-)
-plotdata_mean = pd.Series(
-    {
-        "peak_unique_density": positions_peak_unique_bincounts.sum()
-        / positions_intersect_bincounts.sum(),
-        "region_unique_density": positions_region_unique_bincounts.sum()
-        / positions_intersect_bincounts.sum(),
-        "common_density": positions_common_bincounts.sum()
-        / positions_intersect_bincounts.sum(),
-    }
-)
-
-# %%
-import textwrap
-
-fig, ax = plt.subplots(figsize=(2.0, 2.0))
-ax.stackplot(
-    binmids,
-    plotdata["peak_unique_density"],
-    plotdata["common_density"],
-    plotdata["region_unique_density"],
-    baseline="zero",
-    colors=methods_info["color"],
-    lw=1.0,
-    ec="#FFFFFF",
-)
-ax.set_xlim(*window)
-ax.set_ylim(0, 1)
-transform = mpl.transforms.blended_transform_factory(ax.transAxes, ax.transData)
-x = 1.02
-
-label_peak = "\n".join(
-    textwrap.wrap(
-        f"{plotdata_mean['peak_unique_density']:.0%} {methods_info.loc['peak', 'label']}",
-        20,
-        drop_whitespace=False,
-    )
-)
-ax.text(
-    x,
-    plotdata_last.loc["peak_unique_density", "cumulative_density"],
-    label_peak,
-    transform=transform,
-    ha="left",
-    va="center",
-    color=methods_info.loc["peak", "color"],
-)
-
-label_common = (
-    f"{plotdata_mean['common_density']:.0%} {methods_info.loc['common', 'label']}"
-)
-ax.text(
-    x,
-    plotdata_last.loc["common_density", "cumulative_density"],
-    label_common,
-    transform=transform,
-    ha="left",
-    va="center",
-    color=methods_info.loc["common", "color"],
-)
-
-label_region = "\n".join(
-    textwrap.wrap(
-        f"{plotdata_mean['region_unique_density']:.0%} {methods_info.loc['region', 'label']}",
-        20,
-        drop_whitespace=False,
-    )
-)
-ax.text(
-    x,
-    plotdata_last.loc["region_unique_density", "cumulative_density"],
-    label_region,
-    transform=transform,
-    ha="left",
-    va="center",
-    color=methods_info.loc["region", "color"],
-)
-
-ax.yaxis.set_major_formatter(mpl.ticker.PercentFormatter(xmax=1))
-ax.set_xlabel("Distance to TSS")
-
-if peakcaller == "macs2_leiden_0.1_merged":
-    manuscript.save_figure(fig, "4", "peak_vs_chhd_positional")
-
-# %%
-import textwrap
-
-fig, axes = plt.subplots(2, 2, figsize=(4.0, 4.0), gridspec_kw={"hspace": 0.05})
-
-ax = axes[0, 0]
-ax.stackplot(
-    binmids,
-    plotdata["peak_unique_density"],
-    plotdata["common_density"],
-    plotdata["region_unique_density"],
-    baseline="zero",
-    colors=methods_info["color"],
-    lw=0.0,
-    # lw=1.0,
-    # ec="#FFFFFF",
-)
-ax.set_xlim(*window)
-ax.set_ylim(0, 1)
-transform = mpl.transforms.blended_transform_factory(ax.transAxes, ax.transData)
-x = 1.02
-
-label_peak = "\n".join(
-    textwrap.wrap(
-        f"{plotdata_mean['peak_unique_density']:.0%} {methods_info.loc['peak', 'label']}",
-        20,
-        drop_whitespace=False,
-    )
-)
-ax.text(
-    x,
-    plotdata_last.loc["peak_unique_density", "cumulative_density"],
-    label_peak,
-    transform=transform,
-    ha="left",
-    va="center",
-    color=methods_info.loc["peak", "color"],
-)
-
-label_common = (
-    f"{plotdata_mean['common_density']:.0%} {methods_info.loc['common', 'label']}"
-)
-ax.text(
-    x,
-    plotdata_last.loc["common_density", "cumulative_density"],
-    label_common,
-    transform=transform,
-    ha="left",
-    va="center",
-    color=methods_info.loc["common", "color"],
-)
-
-label_region = "\n".join(
-    textwrap.wrap(
-        f"{plotdata_mean['region_unique_density']:.0%} {methods_info.loc['region', 'label']}",
-        20,
-        drop_whitespace=False,
-    )
-)
-ax.text(
-    x,
-    plotdata_last.loc["region_unique_density", "cumulative_density"],
-    label_region,
-    transform=transform,
-    ha="left",
-    va="center",
-    color=methods_info.loc["region", "color"],
-)
-
-ax.yaxis.set_major_formatter(mpl.ticker.PercentFormatter(xmax=1))
-ax.set_yticks([0, 0.5, 1])
-ax.set_xticks([])
-
-ax = axes[1, 0]
-ax.fill_between(binmids, plotdata["common"], color=methods_info.loc["common", "color"])
-ax.fill_between(
-    binmids,
-    plotdata["common"],
-    plotdata["region_unique"],
-    color=methods_info.loc["region", "color"],
-    # lw = 1.0,
-    # ec = "#FFFFFF",
-)
-ax.fill_between(
-    binmids, -plotdata["peak_unique"], color=methods_info.loc["peak", "color"]
-)
-ax.axvline(0, dashes=(2, 2), color="#333", lw=1)
-ax.set_xlim(*window)
-ax.set_xticks([window[0], 0, window[1]])
-ax.xaxis.set_major_formatter(chromatinhd.plotting.gene_ticker)
-ax.set_xlabel("Distance to TSS")
-
-ax = axes[1, 1]
-ax.fill_between(binmids, plotdata["common"], color=methods_info.loc["common", "color"])
-ax.fill_between(
-    binmids,
-    plotdata["common"],
-    plotdata["region_unique"],
-    color=methods_info.loc["region", "color"],
-    # lw = 1.0,
-    # ec = "#FFFFFF",
-)
-ax.fill_between(
-    binmids, -plotdata["peak_unique"], color=methods_info.loc["peak", "color"]
-)
-ax.axvline(0, dashes=(2, 2), color="#333", lw=1)
-ax.set_xlim(*window)
-ax.set_xlim(-3000, 3000)
-ax.xaxis.set_major_formatter(chromatinhd.plotting.gene_ticker)
-ax.set_yticks([])
-
-ax = axes[0, 1]
-ax.axis("off")
-
-if peakcaller == "macs2_leiden_0.1_merged":
-    manuscript.save_figure(fig, "4", "peak_vs_chhd_positional")
-
-# %%
-fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(6, 3), sharey=True)
-ax1.stackplot(
-    binmids,
-    plotdata["peak_unique"],
-    plotdata["common"],
-    plotdata["region_unique"],
-    baseline="zero",
-    colors=methods_info["color"],
-    lw=1,
-    ec="#FFFFFF33",
-)
-ax1.set_xlim(*window)
-
-ax2.stackplot(
-    binmids,
-    plotdata["peak_unique"],
-    plotdata["common"],
-    plotdata["region_unique"],
-    baseline="zero",
-    colors=methods_info["color"],
-    lw=1,
-    ec="#FFFFFF33",
-)
-ax2.set_xlim(-3000, 3000)
-
-# %% [markdown]
-# ## Bystander regions
-
-# %%
-probs_diff_interpolated = probs_interpolated - probs_interpolated.mean(1, keepdims=True)
-
-# %%
-probs_interpolated.shape
-
-# %%
-print(
-    probs_diff_interpolated.flatten()[position_indices_peak_unique].mean(),
-    probs_diff_interpolated.flatten()[position_indices_region_unique].mean(),
-    probs_diff_interpolated.flatten()[position_indices_common].mean(),
-)
-
-# %%
-fig, ax = plt.subplots(figsize=(2, 2))
-sns.ecdfplot(
-    np.exp(probs_diff_interpolated.flatten()[position_indices_peak_unique][:1000000]),
-    color=methods_info.loc["peak", "color"],
-    ax=ax,
-)
-sns.ecdfplot(
-    np.exp(probs_diff_interpolated.flatten()[position_indices_region_unique][:1000000]),
-    color=methods_info.loc["region", "color"],
-    ax=ax,
-)
-sns.ecdfplot(
-    np.exp(probs_diff_interpolated.flatten()[position_indices_common][:1000000]),
-    color=methods_info.loc["common", "color"],
-    ax=ax,
-)
-ax.set_xscale("log")
-ax.set_xlim(0.5, 8)
-ax.set_xticks([0.5, 1, 2, 4, 8])
-ax.set_xticklabels(["½", 1, 2, 4, 8])
-ax.axvline(1, dashes=(2, 2), color="#333333")
-ax.set_xlabel("Accessibility fold change")
-ax.yaxis.set_major_formatter(mpl.ticker.PercentFormatter(xmax=1))
-
-if peakcaller == "macs2_leiden_0.1_merged":
-    manuscript.save_figure(fig, "4", "bystander_chhd_foldchange")
-
-# %% [markdown]
-# ### Per-peak look
-
-# %%
-peakscores = (
-    peakresult.get_slicescores()
-    .join(peakresult.get_slicedifferential(probs_interpolated))
-    .join(peakresult.get_sliceaverages(probs_interpolated))
-)
-
-# %%
-print(
-    f"Overall, we found that the percentage of non-differential positions was very variable, with {(peakscores['differential_positions'] == 0).mean():.1%} of the differential MACS2 peaks containing no differential positions, while {(peakscores['differential_positions'] == 1).mean():.1%} was fully differential (FIG:bystander_number_of_differential_positions). Only {(peakscores['differential_positions'] >= 0.5).mean():.1%} of differential peaks contained less than 50% differential positions (FIG:bystander_number_of_differential_positions), a statistic particularly driven by larger peaks (>1kb)."
-)
-
-# %%
-fig, ax = plt.subplots(figsize=(2.0, 2.0))
-sns.ecdfplot(peakscores["differential_positions"], color="#333333")
-peakscores["large"] = peakscores["length"] > 1000
-
-plotdata = peakscores.loc[peakscores["large"]]
-color = "orange"
-label = "Peak size > 1kb"
-sns.ecdfplot(plotdata["differential_positions"], color=color)
-q = 0.8
-median = np.quantile(plotdata["differential_positions"], q)
-ax.annotate(
-    label,
-    (median, q),
-    xytext=(-15, 15),
-    ha="right",
-    va="top",
-    arrowprops=dict(arrowstyle="-", color=color),
-    textcoords="offset points",
-    fontsize=8,
-    bbox=dict(boxstyle="round", fc="w", ec=color),
-)
-
-plotdata = peakscores.loc[~peakscores["large"]]
-color = "green"
-label = "Peak size < 1kb"
-sns.ecdfplot(plotdata["differential_positions"], color=color)
-q = 0.3
-median = np.quantile(plotdata["differential_positions"], q)
-ax.annotate(
-    label,
-    (median, q),
-    xytext=(15, -15),
-    ha="left",
-    va="top",
-    arrowprops=dict(arrowstyle="-", color=color),
-    textcoords="offset points",
-    fontsize=8,
-    bbox=dict(boxstyle="round", fc="w", ec=color),
-)
-
-
-plotdata = peakscores
-color = "black"
-label = "All"
-sns.ecdfplot(plotdata["differential_positions"], color=color)
-q = 0.5
-median = np.quantile(plotdata["differential_positions"], q)
-ax.annotate(
-    label,
-    (median, q),
-    xytext=(15, -15),
-    ha="left",
-    va="top",
-    arrowprops=dict(arrowstyle="-", color=color),
-    textcoords="offset points",
-    fontsize=8,
-    bbox=dict(boxstyle="round", fc="w", ec=color),
-)
-
-
-ax.set_xlabel("% differential positions\nwithin differential peak")
-ax.set_ylabel("% peaks")
-ax.yaxis.set_major_formatter(mpl.ticker.PercentFormatter(xmax=1))
-ax.xaxis.set_major_formatter(mpl.ticker.PercentFormatter(xmax=1))
-ax.set_yticks([0, 0.5, 1])
-
-if peakcaller == "macs2_leiden_0.1_merged":
-    manuscript.save_figure(fig, "4", "bystander_number_of_differential_positions")
-elif peakcaller in ["rolling_50", "rolling_100", "rolling_500"]:
-    ax.set_title(chdm.peakcallers.loc[peakcaller, "label"])
-    manuscript.save_figure(
-        fig, "4", f"bystander_number_of_differential_positions_{peakcaller}"
-    )
-
-# %%
-upstream_cutoff = -1000 - window[0]
-downstream_cutoff = +1000 - window[0]
-
-
-def classify_position_group(x, upstream_cutoff, downstream_cutoff):
-    return np.array(["upstream", "downstream", "promoter"])[
-        np.argmax(
-            np.vstack(
-                [
-                    x.end < upstream_cutoff,
-                    x.start > downstream_cutoff,
-                    np.repeat(True, len(x)),
-                ]
-            ),
-            0,
-        )
-    ]
-
-
-position_group_info = pd.DataFrame(
-    [
-        ["upstream", "Upstream -10kb→-1kb"],
-        ["promoter", "-1kb→+1kb"],
-        ["downstream", "Downstream +1kb→+10kb"],
-    ],
-    columns=["position_group", "label"],
-).set_index("position_group")
-
-# %%
-peakscores["position_group"] = classify_position_group(
-    peakscores, upstream_cutoff, downstream_cutoff
-)
-
-# %%
-fig, ax = plt.subplots(figsize=(2, 2))
-for position_group, peakscores_group in peakscores.groupby("position_group"):
-    sns.ecdfplot(
-        peakscores_group["differential_positions"],
-        label=position_group_info.loc[position_group, "label"],
-    )
-plt.legend(bbox_to_anchor=(0.5, -0.4), loc="upper center", fontsize=8, ncol=1)
-ax.set_xlabel("% differential positions\nwithin peak")
-ax.set_ylabel("% peaks")
-ax.yaxis.set_major_formatter(mpl.ticker.PercentFormatter(xmax=1))
-ax.xaxis.set_major_formatter(mpl.ticker.PercentFormatter(xmax=1))
-ax.set_yticks([0, 0.5, 1])
-
-if peakcaller == "macs2_leiden_0.1_merged":
-    manuscript.save_figure(
-        fig, "4", "bystander_number_of_differential_positions_positiongroups"
-    )
-
-# %%
-fig, axes = plt.subplots(1, 3, figsize=(1.5 * 3, 1.5), sharey=True, sharex=True)
-
-score = "max"
-xlim = (0.1, 100)
-xlabel = "Maximum accessibility"
-for ax, (position_group, plotdata_positiongroup) in zip(
-    axes, peakscores.groupby("position_group")
-):
-    sns.ecdfplot(
-        peakscores["differential_positions"],
-        ax=ax,
-        color="#33333333",
-    )
-    sns.ecdfplot(plotdata_positiongroup["differential_positions"], ax=ax, color="black")
-    ax.set_title(
-        "\n".join(
-            textwrap.wrap(position_group_info.loc[position_group]["label"], width=10)
-        )
-    )
-    ax.set_xticks([0, 0.5, 1])
-    ax.xaxis.set_major_formatter(mpl.ticker.PercentFormatter(xmax=1))
-    ax.set_xlabel("")
-ax = axes[0]
-ax.set_xlabel("% differential positions\nwithin peak")
-ax.set_ylabel("% peaks")
-ax.yaxis.set_major_formatter(mpl.ticker.PercentFormatter(xmax=1))
-
-ax.set_yticks([0, 0.5, 1])
-
-if peakcaller == "macs2_leiden_0.1_merged":
-    manuscript.save_figure(
-        fig, "4", "bystander_number_of_differential_positions_positiongroups"
-    )
-
-# %% [markdown]
-# ### Examples
-
-# %%
-slices_oi = (
-    peakscores.query("max_lfc > log(4)").sort_values("differential_positions").head(10)
-)
-# slices_oi = peakscores.query("max_lfc > log(4)").assign(group = lambda x:(x.passenger * 10)//1).groupby("group").first()
-# https://media.tenor.com/wn2_Qq6flogAAAAM/magical-magic.gif
-slices_oi = slices_oi.sort_values("length").iloc[
-    np.concatenate(
-        [np.arange(len(slices_oi), step=2), np.arange(len(slices_oi), 0, step=-2) - 1]
-    )
-]
-
-# %%
-probs_diff = probs - probs.mean(1, keepdims=True)
-
-# %%
-region_position_chosen = pureregionresult.position_chosen.reshape(
-    (fragments.n_genes, len(cluster_info), (window[1] - window[0]))
-)
-peak_position_chosen = peakresult.position_chosen.reshape(
-    (fragments.n_genes, len(cluster_info), (window[1] - window[0]))
-)
-
-# %%
-import chromatinhd.grid
-
-main = chd.grid.Grid()
-wrap = main[0, 0] = chd.grid.Wrap(5, padding_width=0.1, padding_height=0.3)
-fig = chd.grid.Figure(main)
-
-padding_height = 0.001
-resolution = 0.0005
-
-panel_height = 0.5
-
-total_width_cutoff = 10
-
-hatch_color = "#FFF4"
-
-for slice_oi in slices_oi.to_dict(orient="records"):
-    slice_oi = dict(slice_oi)
-
-    expanded_slice_oi = slice_oi.copy()
-    expanded_slice_oi["start"] = np.clip(
-        slice_oi["start"] - 1000, *(window - window[0])
-    )
-    expanded_slice_oi["end"] = np.clip(slice_oi["end"] + 1000, *(window - window[0]))
-
-    window_oi = (
-        np.array([expanded_slice_oi["start"], expanded_slice_oi["end"]]) + window[0]
-    )
-
-    gene_oi = expanded_slice_oi["gene_ix"]
-    cluster_ix = expanded_slice_oi["cluster_ix"]
-    cluster_info_oi = cluster_info.iloc[[cluster_ix]]
-
-    plotdata_atac = (
-        design.query("gene_ix == @gene_oi")
-        .copy()
-        .rename(columns={"active_latent": "cluster"})
-        .set_index(["coord", "cluster"])
-        .drop(columns=["batch", "gene_ix"])
-    )
-    plotdata_atac["prob"] = probs[gene_oi].flatten()
-    plotdata_atac["prob_diff"] = probs_diff[gene_oi].flatten()
-
-    plotdata_atac["prob"] = (
-        plotdata_atac["prob"]
-        - np.log(
-            plotdata_atac.reset_index()
-            .groupby(["cluster"])
-            .apply(
-                lambda x: np.trapz(
-                    np.exp(x["prob"]),
-                    x["coord"].astype(float) / (window[1] - window[0]),
-                )
-            )
-        ).mean()
-    )
-    plotdata_atac_mean = plotdata_atac[["prob"]].groupby("coord").mean()
-
-    resolution = 0.0005
-    panel_width = (window_oi[1] - window_oi[0]) * resolution
-
-    # differential atac
-    wrap_differential = chd.differential.plot.Differential(
-        plotdata_atac,
-        plotdata_atac_mean,
-        cluster_info_oi,
-        window_oi,
-        panel_width,
-        panel_height,
-        padding_height=padding_height,
-        title=False,
-    )
-    wrap.add(wrap_differential)
-
-    ax = wrap_differential.elements[0].ax
-
-    # add region and peak unique spans
-    region_position_chosen_oi = region_position_chosen[
-        gene_oi, cluster_ix, expanded_slice_oi["start"] : expanded_slice_oi["end"]
-    ]
-    peak_position_chosen_oi = peak_position_chosen[
-        gene_oi, cluster_ix, expanded_slice_oi["start"] : expanded_slice_oi["end"]
-    ]
-
-    chd.differential.plot.CommonUnique(
-        ax,
-        peak_position_chosen_oi,
-        region_position_chosen_oi,
-        expanded_slice_oi,
-        window,
-        methods_info,
-    )
-
-    # add labels
-    gene_label = transcriptome.var.iloc[gene_oi]["symbol"]
-    cluster_label = cluster_info.query("dimension == @cluster_ix")["label"][0]
-    position_label = str(int(slice_oi["start"] + slice_oi["length"] / 2) + window[0])
-
-    chd.differential.plot.LabelSlice(ax, gene_label, cluster_label, slice_oi, window)
-
-legend_panel = main[0, 1] = chd.grid.Panel((1, panel_height * 2))
-legend_panel.ax.axis("off")
-
-fig.plot()
-
-if peakcaller == "macs2_leiden_0.1_merged":
-    manuscript.save_figure(fig, "4", "bystander_examples")
-
-# %% [markdown]
-# ## Background
-
-# %% [markdown]
-# ### Examples
-
-# %%
-region_position_chosen = pureregionresult.position_chosen.reshape(
-    (fragments.n_genes, len(cluster_info), (window[1] - window[0]))
-)
-peak_position_chosen = peakresult.position_chosen.reshape(
-    (fragments.n_genes, len(cluster_info), (window[1] - window[0]))
-)
-
-# %%
-slicetopologies = regionresult.get_slicetopologies(probs_interpolated).join(
-    regionresult.get_slicescores()
-)
-
-# %%
-slices_oi = (
-    slicetopologies.query("dominance < 0.4")
-    .query("(mid > (@window[0] + 500)) & (mid < (@window[1] - 500))")
-    .query("length > 100")
-    .sort_values("differentialdominance", ascending=False)
-    .groupby("gene_ix", sort=False, as_index=False)
-    .first()
-    # .sort_values("differentialdominance", ascending=False)
-    .head(30)
-)
-
-# %%
-promoters = pd.read_csv(
-    folder_data_preproc / ("promoters_" + promoter_name + ".csv"), index_col=0
-)
-
-
-# %%
-peaks_folder = chd.get_output() / "peaks" / dataset_name
-
-# %%
-import chromatinhd.grid
-
-main = wrap = chd.grid.Wrap(5, padding_width=0.1, padding_height=0.3)
-fig = chd.grid.Figure(main)
-
-padding_height = 0.001
-resolution = 0.0005
-
-panel_height = 0.5
-
-total_width_cutoff = 10
-
-n = 0
-
-for slice_ix, slice_oi in enumerate(slices_oi.to_dict(orient="records")):
-    n_captured = peak_position_chosen[
-        slice_oi["gene_ix"], slice_oi["cluster_ix"], slice_oi["start"] : slice_oi["end"]
-    ].mean()
-    if n_captured > 0.1:
-        continue
-
-    if n >= 10:
-        break
-
-    n += 1
-
-    grid = chd.grid.Grid(
-        margin_height=0, margin_width=0, padding_height=0, padding_width=0
-    )
-    main.add(grid)
-
-    slice_oi = dict(slice_oi)
-
-    expanded_slice_oi = slice_oi.copy()
-    expanded_slice_oi["start"] = np.clip(
-        slice_oi["start"] - 1000, *(window - window[0])
-    )
-    expanded_slice_oi["end"] = np.clip(slice_oi["end"] + 1000, *(window - window[0]))
-
-    window_oi = (
-        np.array([expanded_slice_oi["start"], expanded_slice_oi["end"]]) + window[0]
-    )
-
-    gene_oi = expanded_slice_oi["gene_ix"]
-    cluster_ix = expanded_slice_oi["cluster_ix"]
-    cluster_info_oi = cluster_info.iloc[[cluster_ix]]
-
-    plotdata_atac = (
-        design.query("gene_ix == @gene_oi")
-        .copy()
-        .rename(columns={"active_latent": "cluster"})
-        .set_index(["coord", "cluster"])
-        .drop(columns=["batch", "gene_ix"])
-    )
-    plotdata_atac["prob"] = probs[gene_oi].flatten()
-    plotdata_atac["prob_diff"] = probs_diff[gene_oi].flatten()
-
-    plotdata_atac["prob"] = (
-        plotdata_atac["prob"]
-        - np.log(
-            plotdata_atac.reset_index()
-            .groupby(["cluster"])
-            .apply(
-                lambda x: np.trapz(
-                    np.exp(x["prob"]),
-                    x["coord"].astype(float) / (window[1] - window[0]),
-                )
-            )
-        ).mean()
-    )
-    plotdata_atac_mean = plotdata_atac[["prob"]].groupby("coord").mean()
-
-    resolution = 0.0005
-    panel_width = (window_oi[1] - window_oi[0]) * resolution
-
-    # differential atac
-    wrap_differential = chd.differential.plot.Differential(
-        plotdata_atac,
-        plotdata_atac_mean,
-        cluster_info_oi,
-        window_oi,
-        panel_width,
-        panel_height,
-        # padding_height=padding_height,
-        title=False,
-    )
-    grid[0, 0] = wrap_differential
-
-    ax = wrap_differential.elements[0].ax
-
-    # add labels
-    gene_label = transcriptome.var.iloc[gene_oi]["symbol"]
-    cluster_label = cluster_info.query("dimension == @cluster_ix")["label"][0]
-    position_label = str(int(slice_oi["start"] + slice_oi["length"] / 2) + window[0])
-
-    chd.differential.plot.LabelSlice(ax, gene_label, cluster_label, slice_oi, window)
-
-    # peaks
-    promoter = promoters.iloc[expanded_slice_oi["gene_ix"]]
-
-    grid[1, 0] = chdm.plotting.Peaks(
-        promoter,
-        peaks_folder,
-        window=window_oi,
-        width=panel_width,
-        row_height=0.4,
-        label_methods=slice_ix == len(slices_oi) - 1,
-        label_rows=slice_ix == 0,
-    )
-
-    # add common/unique annotation
-    region_position_chosen_oi = region_position_chosen[
-        gene_oi, cluster_ix, expanded_slice_oi["start"] : expanded_slice_oi["end"]
-    ]
-    peak_position_chosen_oi = peak_position_chosen[
-        gene_oi, cluster_ix, expanded_slice_oi["start"] : expanded_slice_oi["end"]
-    ]
-
-    chd.differential.plot.CommonUnique(
-        ax,
-        peak_position_chosen_oi,
-        region_position_chosen_oi,
-        expanded_slice_oi,
-        window,
-        methods_info,
-    )
-fig.plot()
-
-if peakcaller == "macs2_leiden_0.1_merged":
-    manuscript.save_figure(fig, "4", "background_examples")
-
-# %% [markdown]
-# ### Enrichment
-
-# %% [markdown]
-# TODO
-
-# %%
-motifscan_name = "cutoff_0001"
-# motifscan_name = "onek1k_0.2"
-# motifscan_name = "gwas_immune"
-# motifscan_name = "gwas_lymphoma"
-# motifscan_name = "gwas_cns"
-# motifscan_name = "gtex"
-
-# %%
-motifscan_folder = (
-    chd.get_output() / "motifscans" / dataset_name / promoter_name / motifscan_name
-)
-motifscan = chd.data.Motifscan(motifscan_folder)
-motifscan.n_motifs = len(motifscan.motifs)
-
-# %%
-# position_indices = np.repeat(np.arange(fragments.n_genes * (window[1] - window[0])), np.diff(motifscan.indptr))[(motifscan.indices == motif_ix_oi)]
-# position_chosen = np.zeros(fragments.n_genes * (window[1] - window[0]), dtype = bool)
-# position_chosen[position_indices] = True
-
-# %%
-# nuc = torch.where(onehot_promoters[:-1])[1]
-
-# %%
-# plt.plot(torch.bincount(nuc[1:] + (nuc[:-1]*4)))
-
-# %%
-peakscores_oi = peakscores
-
-# cluster_oi = "leiden_0"
-# cluster_oi = "Monocytes"
-# cluster_oi = "B"
-cluster_ixs = [cluster_info.loc[cluster_oi, "dimension"]]
-
-cluster_ixs = cluster_info["dimension"]
-
-# %%
-peakscores_oi = peakscores_oi.assign(
-    differential_positions_group=lambda x: (x["differential_positions"] * 5) // 1
-)
-
-# %%
-groupenrichments = []
-for differential_positions_group, peakscores_group in peakscores_oi.groupby(
-    "differential_positions_group"
-):
-    print(differential_positions_group, peakscores_group.shape)
-    motifscores_region = chd.differential.enrichment.enrich_windows(
-        motifscan,
-        peakscores_oi[["start", "end"]].values,
-        peakscores_oi["gene_ix"].values,
-        oi_slices=(
-            peakscores_oi["cluster_ix"].isin(cluster_ixs)
-            & (
-                peakscores_oi["differential_positions_group"]
-                == differential_positions_group
-            )
-        ).values,
-        background_slices=(~peakscores_oi["cluster_ix"].isin([cluster_ix])).values,
-        n_genes=fragments.n_genes,
-        window=window,
-        n_background=1,
-    )
-    motifscores_region["differential_positions_group"] = differential_positions_group
-
-    groupenrichments.append(motifscores_region)
-groupenrichments = pd.concat(groupenrichments).reset_index()
-groupenrichments = groupenrichments.reset_index().set_index(
-    ["differential_positions_group", "motif"]
-)
-
-# %%
-groupenrichments["perc_gene_mean"] = [x.mean() for x in groupenrichments["perc_gene"]]
-# typeenrichments["perc_gene_mean"] = [x[transcriptome.var["chr"] == "chr6"].mean() for x in typeenrichments["perc_gene"]]
-
-# %%
-groupenrichments.sort_values("logodds", ascending=False).head(15)
-
-# %%
-groupenrichments["significant"] = groupenrichments["qval"] < 0.05
-
-# %%
-# motif_id = motifscan.motifs.index[motifscan.motifs.index.str.contains("SPI1")][0]
-# motif_id = motifscan.motifs.index[motifscan.motifs.index.str.contains("HXA13")][0]
-motif_id = motifscan.motifs.index[motifscan.motifs.index.str.contains("monoc")][0]
-# motif_id = motifscan.motifs.index[motifscan.motifs.index.str.contains("Rheumatoid arthritis")][0]
-# motif_id = motifscan.motifs.index[motifscan.motifs.index.str.contains("Whole Blood")][0]
-
-# %%
-fig, ax = plt.subplots(figsize=(3, 3))
-plotdata = groupenrichments.xs(motif_id, level="motif")
-ax.bar(np.arange(len(plotdata)), plotdata["logodds"])
-# ax.set_xticks(np.arange(len(plotdata)))
-# ax.set_xticklabels(plotdata.index)
-# chd.slicetypes.label_axis(ax, ax.xaxis)
-
-# %%
-sns.histplot(data=groupenrichments, x="logodds", hue="differential_positions_group")
-
-# %% [markdown]
-# ## Characteristics
-
-# %% [markdown]
-# ### Size
-
-# %%
-logbins = np.logspace(np.log10(1), np.log10(10000), 50)
-sns.histplot(
-    peakresult.get_slicescores()["length"],
-    bins=logbins,
-    color=methods_info["color"]["peak"],
-)
-sns.histplot(
-    pureregionresult.get_slicescores()["length"],
-    bins=logbins,
-    color=methods_info["color"]["region"],
-)
-plt.xscale("log")
-
-# %%
-fig, ax = plt.subplots(figsize=(2, 2))
-sns.ecdfplot(
-    peakresult.get_slicescores()["length"], ax=ax, color=methods_info["color"]["peak"]
-)
-sns.ecdfplot(
-    regionresult.get_slicescores()["length"],
-    ax=ax,
-    color=methods_info["color"]["region"],
-)
-sns.ecdfplot(
-    pureregionresult.get_slicescores()["length"],
-    ax=ax,
-    color=methods_info["color"]["region"],
-)
-ax.set_xscale("log")
-ax.set_xticks([10, 100, 1000, 10000])
-ax.set_xlim(10, 10000)
-
-# %%
-pureregionresult.get_slicescores()[
-    "length"
-].median(), pureregionresult.get_slicescores()["length"].mean()
-
-# %%
-pureregionresult.get_slicescores()["length"].quantile([0.25, 0.75])
-
-# %%
-mid_bins = np.linspace(*window, 11)[:-1]
-
-# %%
-slicescores_region = pureregionresult.get_slicescores()
-slicescores_region["mid_bin"] = np.digitize(slicescores_region["mid"], mid_bins)
-
-# %%
-logbins = np.logspace(np.log10(20), np.log10(1000), 50)
-
-# %%
-fig, axes = plt.subplots(
-    len(mid_bins),
-    1,
-    figsize=(5, len(mid_bins) / 3),
-    sharex=True,
-    sharey=True,
-    gridspec_kw={"hspace": 0},
-)
-for i, (mid_bin, plotdata) in enumerate(slicescores_region.groupby("mid_bin")):
-    ax = axes[i]
-    ax.hist(plotdata["length"], density=True, bins=logbins, lw=0)
-    ax.axvline(plotdata["length"].median(), color="red")
-    ax.set_xscale("log")
-
-# %%
-fig, ax = plt.subplots(figsize=(3, 3))
-sns.ecdfplot(data=slicescores_region, y="length", hue="mid_bin")
-ax.set_yscale("log")
-ax.set_ylim(1, 10000)
-ax.legend([])
-
-# %%
-slicescores_region["loglength"] = np.log1p(slicescores_region["length"])
-
-# %%
-midbinscores_region = pd.DataFrame(
-    {
-        "position": mid_bins,
-        "length": np.exp(slicescores_region.groupby("mid_bin")["loglength"].mean()),
-        "length_std": np.exp(slicescores_region.groupby("mid_bin")["loglength"].std()),
-    }
-).set_index("position")
-
-# %%
-fig, ax = plt.subplots(figsize=(2, 2))
-midbinscores_region["length"].plot(ax=ax)
-fig, ax = plt.subplots(figsize=(2, 2))
-midbinscores_region["length_std"].plot(ax=ax)
-
-# %%
-sns.histplot(
-    plotdata["length"], binrange=(0, 500), bins=50
-)  # .plot(kind = "hist", bins = 100)
-
-# %% [markdown]
-# ### Height
-
-# %%
-peakaverages = peakresult.get_sliceaverages(probs_interpolated).join(
-    peakresult.get_slicescores().reset_index()
-)
-regionaverages = regionresult.get_sliceaverages(probs_interpolated).join(
-    regionresult.get_slicescores().reset_index()
-)
-pureregionaverages = pureregionresult.get_sliceaverages(probs_interpolated).join(
-    pureregionresult.get_slicescores().reset_index()
-)
-
-# %%
-fig, axes = plt.subplots(
-    1, 2, figsize=(2.5, 1.5), sharey=True, gridspec_kw={"wspace": 0.1}
-)
-
-ax = axes[0]
-sns.ecdfplot(
-    np.exp(peakaverages["max_baseline"]), ax=ax, color=methods_info.loc["peak", "color"]
-)
-sns.ecdfplot(
-    np.exp(regionaverages["max_baseline"]),
-    ax=ax,
-    color=methods_info.loc["region", "color"],
-)
-ax.set_xlabel("Maximum\naccessibility")
-ax.set_xscale("log")
-ax.yaxis.set_major_formatter(mpl.ticker.PercentFormatter(xmax=1))
-ax.set_xlim(np.exp(regionaverages["max_baseline"]).quantile([0.01, 0.99]))
-
-ax = axes[1]
-sns.ecdfplot(
-    np.exp(peakaverages["average_baseline"]),
-    ax=ax,
-    color=methods_info.loc["peak", "color"],
-)
-sns.ecdfplot(
-    np.exp(regionaverages["average_baseline"]),
-    ax=ax,
-    color=methods_info.loc["region", "color"],
-)
-ax.set_xscale("log")
-ax.set_xlabel("Average\naccessibility")
-ax.set_xlim(np.exp(regionaverages["average_baseline"]).quantile([0.01, 0.99]))
-
-if peakcaller == "macs2_leiden_0.1_merged":
-    manuscript.save_figure(fig, "4", "peak_vs_chd_height")
-
-# %%
-upstream_cutoff = -1000 - window[0]
-downstream_cutoff = +1000 - window[0]
-
-
-def classify_position_group(x, upstream_cutoff, downstream_cutoff):
-    return np.array(["upstream", "downstream", "promoter"])[
-        np.argmax(
-            np.vstack(
-                [
-                    x.end < upstream_cutoff,
-                    x.start > downstream_cutoff,
-                    np.repeat(True, len(x)),
-                ]
-            ),
-            0,
-        )
-    ]
-
-
-position_group_info = pd.DataFrame(
-    [
-        ["upstream", "Upstream -10kb→-1kb"],
-        ["promoter", "-1kb→+1kb"],
-        ["downstream", "Downstream +1kb→+10kb"],
-    ],
-    columns=["position_group", "label"],
-).set_index("position_group")
-
-# %%
-peakaverages["position_group"] = classify_position_group(
-    peakaverages, upstream_cutoff, downstream_cutoff
-)
-regionaverages["position_group"] = classify_position_group(
-    regionaverages, upstream_cutoff, downstream_cutoff
-)
-
-# %%
-import textwrap
-
-# %%
-fig, axes = plt.subplots(1, 3, figsize=(1.5 * 3, 1.5), sharey=True, sharex=True)
-
-score = "max_baseline"
-xlim = (0.1, 100)
-xlabel = "Maximum accessibility"
-# score = "average";xlim = (0.1, 100); xlabel = "Average accessibility"
-# score = "average_lfc";xlim = (1., 10); xlabel = "Average fold-change"
-# score = "max_lfc";xlim = (1., 10); xlabel = "Max fold-change"
-plotdata_all = {
-    "peak": np.exp(peakaverages[score]),
-    "region": np.exp(regionaverages[score]),
-}
-for ax, position_group in zip(axes, position_group_info.index):
-    plotdata = {
-        "peak": np.exp(
-            peakaverages.loc[peakaverages["position_group"] == position_group][score]
-        ),
-        "region": np.exp(
-            regionaverages.loc[regionaverages["position_group"] == position_group][
-                score
-            ]
-        ),
-    }
-    plotdata_mean = {
-        method: np.exp(np.log(values).median()) for method, values in plotdata.items()
-    }
-    print(plotdata_mean)
-    sns.ecdfplot(plotdata["peak"], ax=ax, color=methods_info.loc["peak", "color"])
-    sns.ecdfplot(plotdata["region"], ax=ax, color=methods_info.loc["region", "color"])
-
-    sns.ecdfplot(
-        plotdata_all["peak"],
-        ax=ax,
-        color=methods_info.loc["peak", "color"],
-        zorder=-1,
-        alpha=0.1,
-    )
-    sns.ecdfplot(
-        plotdata_all["region"],
-        ax=ax,
-        color=methods_info.loc["region", "color"],
-        zorder=-1,
-        alpha=0.1,
-    )
-
-    ax.set_xscale("log")
-    ax.set_xlabel("")
-    ax.set_xlim(*xlim)
-    ax.set_title(
-        "\n".join(
-            textwrap.wrap(position_group_info.loc[position_group]["label"], width=10)
-        )
-    )
-    ax.annotate(
-        None,
-        (plotdata_mean["peak"], 0.5),
-        (plotdata_mean["region"], 0.5),
-        xycoords="data",
-        textcoords="data",
-        ha="center",
-        va="center",
-        arrowprops=dict(arrowstyle="->", ec="black", shrinkA=0, shrinkB=0),
-    )
-    ax.annotate(
-        f'$\\times${plotdata_mean["peak"] / plotdata_mean["region"]:.2f}',
-        (max(plotdata_mean["peak"], plotdata_mean["region"]), 0.5),
-        va="center",
-        ha="left",
-    )
-ax = axes[0]
-ax.set_xlabel(xlabel)
-ax.set_yticks([0, 0.5, 1])
-ax.yaxis.set_major_formatter(mpl.ticker.PercentFormatter(1))
-
-if peakcaller == "macs2_leiden_0.1_merged":
-    manuscript.save_figure(fig, "4", "peak_vs_chd_height_positiongroups")
-elif peakcaller == "rolling_50":
-    manuscript.save_figure(fig, "4", "peak_vs_chd_height_positiongroups_rolling_50")
-
-# %% [markdown]
-# ## Gene-wise overlap
-
-# %%
-plotdata = pd.DataFrame(
-    {
-        "n_region": regionresult.get_slicescores().groupby("gene_ix")["length"].sum(),
-        "n_peak": peakresult.get_slicescores().groupby("gene_ix")["length"].sum(),
-    }
-).fillna(0)
-plotdata = plotdata.reindex(np.arange(transcriptome.var.shape[0]), fill_value=0)
-plotdata.index = transcriptome.var.index[plotdata.index]
-
-# %%
-fig, ax = plt.subplots()
-ax.scatter(plotdata["n_region"], plotdata["n_peak"])
-ax.set_xscale("symlog", linthresh=100)
-ax.set_yscale("symlog", linthresh=100)
-
-# %%
-plotdata["diff"] = plotdata["n_region"] - plotdata["n_peak"]
-
-# %%
-plotdata.sort_values("diff").assign(
-    symbol=lambda x: transcriptome.symbol(x.index).values
-)
-
 # %% [markdown]
 # ## Classification
 
@@ -1544,11 +206,6 @@ chromatinhd.slicetypes.types_info
 # ### Classify
 
 # %%
-# slicetopologies = pd.concat([
-#     regionresult.get_slicetopologies(probs_interpolated),
-#     regionresult.get_sliceaverages(probs_interpolated),
-#     regionresult.get_slicescores()
-# ], axis = 1)
 slicetopologies = pd.concat(
     [
         pureregionresult.get_slicetopologies(probs_interpolated),
@@ -1557,33 +214,32 @@ slicetopologies = pd.concat(
     ],
     axis=1,
 )
-# slicetopologies = pd.concat([
-#     peakresult.get_slicetopologies(probs_interpolated),
-#     peakresult.get_sliceaverages(probs_interpolated),
-#     peakresult.get_slicescores().reset_index()
-# ], axis = 1)
 
 # %%
-promoters
-
-# %%
-sns.histplot(slicetopologies["prominence"], label="prominence")
-sns.histplot(slicetopologies["dominance"], label="dominance")
-sns.histplot(slicetopologies["shadow"], label="shadow")
+sns.histplot(slicetopologies["balances_raw"], label="balances_raw")
+# sns.histplot(slicetopologies["prominence"], label="prominence")
+# sns.histplot(slicetopologies["dominance"], label="dominance")
+# sns.histplot(slicetopologies["shadow"], label="shadow")
 
 # %%
 slicetopologies["flank"] = slicetopologies["prominence"] <= 0.5
+slicetopologies["flank_rank"] = slicetopologies["prominence"].rank()
 slicetopologies["hill"] = slicetopologies["dominance"] <= 0.5
+slicetopologies["hill_rank"] = slicetopologies["dominance"].rank()
 slicetopologies["chain"] = (slicetopologies["length"] > 800) & (
-    slicetopologies["n_subpeaks"] >= 2
+    slicetopologies["std"] > np.log(1.5)
 )
-slicetopologies["canyon"] = (slicetopologies["balance"] >= 0.2) | (
-    slicetopologies["balances_raw"] < np.log(2)
-)
+slicetopologies["chain_rank"] = (-slicetopologies["n_subpeaks"]).rank()
+slicetopologies["canyon"] = slicetopologies["balances_raw"] < 2 / 3
+slicetopologies["canyon_rank"] = (-slicetopologies["balances_raw"]).rank()
 slicetopologies["ridge"] = (slicetopologies["length"] > 800) & (
-    slicetopologies["shadow"] > 0.5
+    slicetopologies["std"] < np.log(1.5)
 )
-slicetopologies["volcano"] = slicetopologies["max"] < np.log(1.0)
+slicetopologies["ridge_rank"] = slicetopologies["shadow"].rank()
+slicetopologies["volcano"] = slicetopologies["max_baseline"] < np.log(1.0)
+slicetopologies["volcano_rank"] = slicetopologies["max_baseline"].rank()
+
+slicetopologies["peak_rank"] = 1.0
 
 # %%
 slicetopologies["type"] = "peak"
@@ -1591,11 +247,14 @@ slicetopologies.loc[slicetopologies["volcano"], "type"] = "volcano"
 slicetopologies.loc[slicetopologies["hill"], "type"] = "hill"
 slicetopologies.loc[slicetopologies["canyon"], "type"] = "canyon"
 slicetopologies.loc[slicetopologies["flank"], "type"] = "flank"
-slicetopologies.loc[slicetopologies["chain"], "type"] = "chain"
 slicetopologies.loc[slicetopologies["ridge"], "type"] = "ridge"
+slicetopologies.loc[slicetopologies["chain"], "type"] = "chain"
 slicetopologies["type"] = pd.Categorical(
     slicetopologies["type"], categories=chd.slicetypes.types_info.index
 )
+
+# %%
+slicetopologies["type"].value_counts()
 
 # %%
 slicetopologies["loglength"] = np.log(slicetopologies["length"])
@@ -1649,7 +308,22 @@ slicetopologies_mapped[["chr", "start", "end", "cluster", "type"]]
 # ### 2D visualization of slices
 
 # %%
-features = ["prominence", "dominance", "loglength", "n_subpeaks", "shadow"]
+features = [
+    "prominence",
+    "dominance",
+    "max",
+    "std",
+    "loglength",
+    "average",
+    "max_lfc",
+    "average_lfc",
+    "max_baseline",
+    "average_baseline",
+    "log1p_n_subpeaks",
+    "shadow",
+    "balances_raw",
+    "balance",
+]
 
 # %%
 X = slicetopologies[features].values
@@ -1658,7 +332,7 @@ X = (X - X.mean(0, keepdims=True)) / (X.std(0, keepdims=True))
 # %%
 import sklearn.decomposition
 
-pca = sklearn.decomposition.PCA(2)
+pca = sklearn.decomposition.PCA(5)
 X_pca = pca.fit_transform(X)
 
 # %%
@@ -1671,12 +345,23 @@ ax.scatter(
 )
 
 # %%
-import umap
+wrap = chd.grid.Wrap()
+fig = chd.grid.Figure(wrap)
 
-umap = umap.UMAP()
+for feature in features:
+    ax = wrap.add(chd.grid.Ax((3, 3)))
+    ax = ax.ax
+    ax.scatter(X_pca[:, 0], X_pca[:, 1], c=slicetopologies[feature], s=1)
+    ax.set_title(feature)
+fig.plot()
 
 # %%
-X_umap = umap.fit_transform(X)
+import umap
+
+umap = umap.UMAP(n_neighbors=30)
+
+# %%
+X_umap = umap.fit_transform(X_pca)
 
 # %%
 wrap = chd.grid.Wrap()
@@ -1685,7 +370,7 @@ fig = chd.grid.Figure(wrap)
 for feature in features:
     ax = wrap.add(chd.grid.Ax((3, 3)))
     ax = ax.ax
-    ax.scatter(X_pca[:, 0], X_pca[:, 1], c=slicetopologies[feature], s=1)
+    ax.scatter(X_umap[:, 0], X_umap[:, 1], c=slicetopologies[feature], s=1)
     ax.set_title(feature)
 fig.plot()
 
@@ -1740,10 +425,13 @@ for slicetype, slicetype_info in types_info.iterrows():
 
     width_so_far = 0
 
+    slices_oi_ranked = slicetopologies.query(
+        "(type == @slicetype) & (length > 100)"
+    ).sort_values(slicetype + "_rank")
+    slices_oi_ranked = slicetopologies.query("(type == @slicetype) & (length > 100)")
+
     for i in range(10):
-        slice_oi = slicetopologies.query("(type == @slicetype) & (length > 100)").iloc[
-            i
-        ]
+        slice_oi = slices_oi_ranked.iloc[i]
 
         expanded_slice_oi = slice_oi.copy()
         expanded_slice_oi["start"] = np.clip(
@@ -2308,125 +996,6 @@ for ax, (group_index, plotdata_cluster) in zip(axes, plotdata_grouped):
     ax.yaxis.set_major_formatter(mpl.ticker.PercentFormatter(xmax=1))
 
 # %% [markdown]
-# ------------
-
-# %% [markdown]
-# EQTL
-
-# %%
-slicetopologies["gene"] = promoters.iloc[slicetopologies["gene_ix"]].index
-
-# %%
-scores = pickle.load((chd.get_git_root() / "code" / "6-eqtl" / "scores.pkl").open("rb"))
-
-# %%
-scores["significant"] = scores["bf"] > np.log(10)
-
-# %%
-cluster_oi = "B"
-cluster_ix = cluster_info.loc[cluster_oi, "dimension"]
-
-# %%
-
-# %%
-significant = scores["significant"].unstack().groupby("variant").any()
-slicetypes = (
-    slicetopologies_oi.groupby(["gene", "type"])
-    .size()
-    .unstack()
-    .reindex(significant.index, fill_value=0.0)
-    > 1
-)
-
-# %%
-contingencies = [
-    (~significant[cluster_oi].values[:, None] & ~slicetypes.values).sum(0),
-    (~significant[cluster_oi].values[:, None] & slicetypes.values).sum(0),
-    (significant[cluster_oi].values[:, None] & ~slicetypes.values).sum(0),
-    (significant[cluster_oi].values[:, None] & slicetypes.values).sum(0),
-]
-contingencies = np.stack(contingencies)
-
-# %%
-import fisher
-
-# %%
-slicetype_enrichments = []
-for cluster_oi in cluster_info.index:
-    cluster_ix = cluster_info.loc[cluster_oi, "dimension"]
-    slicetopologies_oi = slicetopologies.query("cluster_ix == @cluster_ix")
-    significant = scores["significant"].unstack().groupby("variant").any()
-    slicetypes = (
-        slicetopologies_oi.groupby(["gene", "type"])
-        .size()
-        .unstack()
-        .reindex(significant.index, fill_value=0.0)
-        > 1
-    )
-    contingencies = [
-        (~significant[cluster_oi].values[:, None] & ~slicetypes.values).sum(0),
-        (~significant[cluster_oi].values[:, None] & slicetypes.values).sum(0),
-        (significant[cluster_oi].values[:, None] & ~slicetypes.values).sum(0),
-        (significant[cluster_oi].values[:, None] & slicetypes.values).sum(0),
-    ]
-    contingencies = np.stack(contingencies)
-    for slicetype, cont in zip(slicetypes.columns, contingencies.T):
-        slicetype_enrichments.append(
-            {
-                "cont": cont,
-                # "odds":(cont[0] * cont[3])/(cont[1] * cont[2]),
-                "odds": scipy.stats.contingency.odds_ratio(
-                    cont.reshape((2, 2))
-                ).statistic,
-                "p": fisher.pvalue(*cont).right_tail,
-                "cluster": cluster_oi,
-                "type": slicetype,
-            }
-        )
-
-# %%
-slicetype_enrichments = pd.DataFrame(slicetype_enrichments)
-
-# %%
-slicetype_enrichments.groupby("type")["odds"].median()
-
-# %%
-slicetype_enrichments = []
-for cluster_oi in cluster_info.index:
-    cluster_ix = cluster_info.loc[cluster_oi, "dimension"]
-    slicetopologies_oi = slicetopologies.query("cluster_ix == @cluster_ix")
-    significant = scores["significant"].unstack().groupby("variant").any()
-    slicetypes = (
-        slicetopologies_oi.groupby(["gene", "type"])
-        .size()
-        .unstack()
-        .reindex(significant.index, fill_value=0.0)
-        > 1
-    )
-    contingencies = [
-        (~significant[cluster_oi].values[:, None] & ~slicetypes.values).sum(0),
-        (~significant[cluster_oi].values[:, None] & slicetypes.values).sum(0),
-        (significant[cluster_oi].values[:, None] & ~slicetypes.values).sum(0),
-        (significant[cluster_oi].values[:, None] & slicetypes.values).sum(0),
-    ]
-    contingencies = np.stack(contingencies)
-    for slicetype, cont in zip(slicetypes.columns, contingencies.T):
-        slicetype_enrichments.append(
-            {
-                "cont": cont,
-                "odds": scipy.stats.contingency.odds_ratio(
-                    cont.reshape((2, 2))
-                ).statistic,
-                "p": fisher.pvalue(*cont).right_tail,
-                "cluster": cluster_oi,
-                "type": slicetype,
-            }
-        )
-
-# %% [markdown]
-# -----
-
-# %% [markdown]
 # ### Accessibility summary
 
 # %%
@@ -2542,6 +1111,198 @@ ax.set_ylim(0)
 # plt.plot(np.exp(probs_mean[slice_oi["gene_ix"], slice_oi["start"]:slice_oi["end"]]))
 
 # %% [markdown]
+# ## Overlap with binding sites
+
+# %% [markdown]
+# ### Gather ChIP-seq sites
+# %%
+sites_file = chd.get_output() / "bed/gm1282_tf_chipseq_filtered" / "sites.csv"
+
+sites_file.parent.mkdir(exist_ok = True, parents = True)
+if not sites_file.exists():
+    !rsync -a --progress wsaelens@updeplasrv6.epfl.ch:{sites_file} {sites_file.parent} -v
+
+# %%
+sites = pd.read_csv(sites_file, index_col = 0)
+sites["gene"] = pd.Categorical(sites["gene"], categories = transcriptome.var.index)
+sites["mid"] = (sites["start"] + sites["end"]) / 2
+
+sites_genes = dict(list(sites.groupby("gene")))
+
+# %%
+slicetopologies["gene"] = pd.Categorical(transcriptome.var.iloc[slicetopologies["gene_ix"]].index)
+slicetopologies["cluster"] = pd.Categorical(cluster_info.iloc[slicetopologies["cluster_ix"]]["label"])
+
+# %%
+import tqdm.auto as tqdm
+slicetopologies["end2"] = slicetopologies["end"] + window[0]
+slicetopologies["start2"] = slicetopologies["start"] + window[0]
+n_sites = []
+for _, slice_oi in tqdm.tqdm(slicetopologies.iterrows(), total = len(slicetopologies)):
+    end = slice_oi["end2"]
+    start = slice_oi["start2"]
+    n = len(sites_genes[slice_oi["gene"]].query("mid <= @end & mid >= @start"))
+    n_sites.append(n)
+slicetopologies["n_sites"] = n_sites
+
+# %%
+slicetopologies["perc_sites"] = slicetopologies["n_sites"] / slicetopologies["length"]
+
+# %%
+fig, ax = plt.subplots(figsize=(3, 3))
+
+plotdata = (
+    slicetopologies.groupby("type")["n_sites"].sum()
+    / (slicetopologies.groupby("type")["length"].sum() / 100)
+)
+ax.bar(
+    np.arange(len(plotdata)),
+    plotdata,
+    color=chd.slicetypes.types_info.loc[plotdata.index, "color"],
+)
+
+# %%
+slicetopologies_oi = slicetopologies.query("cluster == 'B'")
+slicetopologies_ref = slicetopologies.query("cluster !=  'B'")
+# slicetopologies_ref = slicetopologies.query("cluster == 'NK'")
+
+typescores = pd.DataFrame({
+    "perc_sites_oi":    (slicetopologies_oi.groupby("type")["n_sites"].sum()
+    / (slicetopologies_oi.groupby("type")["length"].sum() / 100)),
+    "perc_sites_ref":    (slicetopologies_ref.groupby("type")["n_sites"].sum()
+    / (slicetopologies_ref.groupby("type")["length"].sum() / 100)),
+})
+typescores["perc_sites_ratio"] = typescores["perc_sites_oi"] / typescores["perc_sites_ref"]
+
+# %%
+fig, ax = plt.subplots(figsize=(3, 3))
+
+plotdata = typescores
+ax.bar(
+    np.arange(len(plotdata)),
+    plotdata["perc_sites_ratio"],
+    color=chd.slicetypes.types_info.loc[plotdata.index, "color"],
+)
+ax.set_xticks(np.arange(len(plotdata)))
+ax.set_xticklabels(plotdata.index)
+ax.set_yscale("log")
+
+# %%
+fig, ax = plt.subplots(figsize=(3, 3))
+
+plotdata = typescores
+ax.bar(
+    np.arange(len(plotdata)),
+    plotdata["perc_sites_oi"],
+    color=chd.slicetypes.types_info.loc[plotdata.index, "color"],
+)
+ax.set_xticks(np.arange(len(plotdata)))
+ax.set_xticklabels(plotdata.index)
+ax.set_yscale("log")
+
+# %% [markdown]
+# ## Overlap with predictivity
+
+# %%
+prediction = chd.flow.Flow(
+    chd.get_output()
+    / "prediction_positional"
+    / dataset_name
+    / promoter_name
+    / "permutations_5fold5repeat"
+    / "v20"
+)
+
+# %%
+# %%
+if not (prediction.path / "scoring" / "window_gene" / "chdscores_genes.pkl").exists():
+    # chromatinhd scores
+    chdscores_genes = {}
+    genes_oi = transcriptome.var.index
+    for gene in tqdm.tqdm(genes_oi):
+        try:
+            scores_folder = prediction.path / "scoring" / "window_gene" / gene
+            window_scoring = chd.scoring.prediction.Scoring.load(scores_folder) 
+        except FileNotFoundError:
+            continue
+
+        promoter = promoters.loc[gene]
+
+        windowscores = window_scoring.genescores.sel(gene=gene).sel(phase = ["test", "validation"]).mean("phase").mean("model").to_pandas()
+
+        chdscores_genes[gene] = windowscores
+    chdscores_genes = pd.concat(chdscores_genes, names = ["gene"])
+else:
+    chdscores_genes = pd.read_pickle(prediction.path / "scoring" / "window_gene" / "chdscores_genes.pkl")
+
+# %%
+deltacors_interpolated = {}
+effect_interpolated = {}
+lost_interpolated = {}
+for gene, chdscores_gene in chdscores_genes.drop(columns = ["gene"]).groupby("gene"):
+    x_desired = np.arange(*window)
+    x = chdscores_gene.index.get_level_values("window").values
+    y = chdscores_gene["deltacor"].values
+    y_interpolated = np.interp(x_desired, x, y)
+    deltacors_interpolated[gene] = y_interpolated
+
+    y = chdscores_gene["effect"].values
+    y_interpolated = np.interp(x_desired, x, y)
+    effect_interpolated[gene] = y_interpolated
+
+    y = chdscores_gene["lost"].values
+    y_interpolated = np.interp(x_desired, x, y)
+    lost_interpolated[gene] = y_interpolated
+
+# %%
+import tqdm.auto as tqdm
+slicetopologies["end2"] = slicetopologies["end"] + window[0]
+slicetopologies["start2"] = slicetopologies["start"] + window[0]
+
+deltacor = []
+effect = []
+lost = []
+for _, slice_oi in tqdm.tqdm(slicetopologies.iterrows(), total = len(slicetopologies)):
+    end = slice_oi["end"]
+    start = slice_oi["start"]
+    deltacor.append(deltacors_interpolated[slice_oi["gene"]][start:end].mean())
+    effect.append(effect_interpolated[slice_oi["gene"]][start:end].mean())
+    lost.append(lost_interpolated[slice_oi["gene"]][start:end].mean())
+slicetopologies["deltacor"] = deltacor
+slicetopologies["effect"] = effect
+slicetopologies["lost"] = lost
+
+# %%
+slicetopologies["deltacor_norm"] = slicetopologies["deltacor"] / slicetopologies["lost"]
+slicetopologies["effect_norm"] = slicetopologies["effect"] / slicetopologies["lost"]
+# slicetopologies["deltacor_norm"] = slicetopologies["deltacor"] / np.exp(slicetopologies["average"])
+# slicetopologies["effect_norm"] = slicetopologies["effect"] / np.exp(slicetopologies["average"])
+
+# %%
+fig, ax = plt.subplots(figsize=(3, 3))
+plotdata = (
+    slicetopologies.groupby("type")["deltacor_norm"].mean()
+)
+ax.bar(
+    np.arange(len(plotdata)),
+    plotdata,
+    color=chd.slicetypes.types_info.loc[plotdata.index, "color"],
+)
+ax.set_xticks(np.arange(len(plotdata)))
+ax.set_xticklabels(plotdata.index)
+ax.invert_yaxis()
+ax.set_title("Deltacor per fragment")
+chd.slicetypes.label_axis(ax, ax.xaxis)
+
+# %%
+fig, ax = plt.subplots(figsize=(3, 3))
+for type, slicetopologies_type in slicetopologies.groupby("type"):
+    sns.ecdfplot(
+        slicetopologies_type["effect_norm"],
+        color=chd.slicetypes.types_info.loc[type, "color"],
+    )
+
+# %% [markdown]
 # ### Overlap with peak/window
 
 # %%
@@ -2596,7 +1357,7 @@ ax.axhline(
     dashes=(2, 2),
     color="#333",
 )
-ax.set_title(f"Overlap between {peakcaller_label} differential peaks\n and ChromatinHD")
+ax.set_title(f"Overlap between {peakcaller} differential peaks\n and ChromatinHD")
 ax.set_ylim(0, 1)
 ax.set_xticklabels(plotdata.index)
 chd.slicetypes.label_axis(ax, ax.xaxis)
@@ -2616,9 +1377,9 @@ ax.yaxis.set_major_formatter(mpl.ticker.PercentFormatter(xmax=1))
 # ### Enrichment
 
 # %%
-# motifscan_name = "cutoff_0001"
+motifscan_name = "cutoff_0001"
 # motifscan_name = "onek1k_0.2"
-motifscan_name = "gwas_immune"
+# motifscan_name = "gwas_immune"
 # motifscan_name = "gwas_lymphoma"
 # motifscan_name = "gwas_cns"
 # motifscan_name = "gtex"
@@ -2629,11 +1390,6 @@ motifscan_folder = (
 )
 motifscan = chd.data.Motifscan(motifscan_folder)
 motifscan.n_motifs = len(motifscan.motifs)
-
-# %%
-slicetopologies.query("cluster == 'B'").query(
-    "gene_ix == @transcriptome.gene_ix('POU2AF1')"
-)[["start", "end"]]
 
 
 # %%
@@ -2688,40 +1444,7 @@ typeenrichments["perc_gene_mean"] = [x.mean() for x in typeenrichments["perc_gen
 # typeenrichments["perc_gene_mean"] = [x[transcriptome.var["chr"] == "chr6"].mean() for x in typeenrichments["perc_gene"]]
 
 # %%
-typeenrichments.xs("canyon", level="type").query("`in` > 0").sort_values("odds")
-
-# %%
-typeenrichments.loc["CD4 T"].loc["canyon"].loc["Hodgkin's lymphoma"]
-
-# %%
-typeenrichments.loc["B"].loc["volcano"].sort_values("odds", ascending=False)
-
-# %%
-typeenrichments.loc["B"].loc["volcano"].sort_values("odds", ascending=False)
-
-# %%
-typeenrichments.query("qval < 0.05").sort_values("logodds", ascending=False)
-
-# %%
-typeenrichments.loc["CD4 T"].loc["canyon"].sort_values("logodds", ascending=False)
-
-# %%
 typeenrichments["significant"] = typeenrichments["qval"] < 0.05
-
-# %%
-celltype = "pDCs"
-
-scores_flank = (
-    typeenrichments.loc[celltype]
-    .loc["canyon"]
-    .query("qval < 0.05")
-    .query("odds > 1")
-    .sort_values("odds", ascending=False)
-)
-scores_flank["odds_peak"] = (
-    typeenrichments.loc[celltype].loc[["chain", "peak"]].groupby("motif").mean()["odds"]
-)
-(scores_flank["odds"] / scores_flank["odds_peak"]).sort_values()
 
 # %%
 fig, ax = plt.subplots(figsize=(2, 2))
@@ -2754,9 +1477,9 @@ chd.slicetypes.label_axis(ax, ax.yaxis)
 # motif_id = motifscan.motifs.index[motifscan.motifs.index.str.contains("monoc")][0]
 # motif_id = motifscan.motifs.index[motifscan.motifs.index.str.contains("ZBT14")][0]
 # motif_id = motifscan.motifs.index[motifscan.motifs.index.str.contains("INSM1")][0]
-motif_id = motifscan.motifs.index[
-    motifscan.motifs.index.str.contains("Rheumatoid arthritis")
-][0]
+# motif_id = motifscan.motifs.index[
+#     motifscan.motifs.index.str.contains("Rheumatoid arthritis")
+# ][0]
 
 # %%
 motifs = motifscan.motifs
@@ -2779,28 +1502,47 @@ motifs = motifscan.motifs
 # ], columns = ["motif", "clusters"]).set_index("motif")
 # motifclustermapping = motifclustermapping.explode("clusters").rename(columns = {"clusters":"cluster"}).reset_index()[["cluster", "motif"]]
 
-# motifclustermapping = pd.DataFrame([
-#     [motifs.loc[motifs.index.str.contains("TCF7")].index[0], ["CD4 T", "CD8 T"]],
-#     [motifs.loc[motifs.index.str.contains("IRF8")].index[0], ["cDCs"]],
-#     [motifs.loc[motifs.index.str.contains("IRF4")].index[0], ["cDCs"]],
-#     [motifs.loc[motifs.index.str.contains("CEBPB")].index[0], ["Monocytes", "cDCs"]],
-#     [motifs.loc[motifs.index.str.contains("GATA4")].index[0], ["CD4 T"]],
-#     [motifs.loc[motifs.index.str.contains("HNF6_HUMAN.H11MO.0.B")].index[0], ["CD4 T"]],
-#     [motifs.loc[motifs.index.str.contains("RARA")].index[0], ["MAIT"]],
-#     [motifs.loc[motifs.index.str.contains("PEBB")].index[0], ["NK"]],
-#     [motifs.loc[motifs.index.str.contains("RUNX2")].index[0], ["NK"]],
-#     [motifs.loc[motifs.index.str.contains("RUNX1")].index[0], ["CD8 T"]],
-#     [motifs.loc[motifs.index.str.contains("RUNX3")].index[0], ["CD8 T"]],
-#     [motifs.loc[motifs.index.str.contains("TBX21_HUMAN.H11MO.0.A")].index[0], ["NK"]],
-#     [motifs.loc[motifs.index.str.contains("SPI1")].index[0], ["Monocytes", "B", 'cDCs']],
-#     [motifs.loc[motifs.index.str.contains("PO2F2")].index[0], ["B"]],
-#     [motifs.loc[motifs.index.str.contains("NFKB2")].index[0], ["B"]],
-#     [motifs.loc[motifs.index.str.contains("TFE2")].index[0], ["B", "pDCs"]], # TCF3
-#     [motifs.loc[motifs.index.str.contains("BHA15")].index[0], ["pDCs"]],
-#     [motifs.loc[motifs.index.str.contains("FOS")].index[0], ["cDCs"]],
-#     [motifs.loc[motifs.index.str.contains("RORA")].index[0], ["MAIT"]],
-# ], columns = ["motif", "clusters"]).set_index("motif")
-# motifclustermapping = motifclustermapping.explode("clusters").rename(columns = {"clusters":"cluster"}).reset_index()[["cluster", "motif"]]
+motifclustermapping = pd.DataFrame(
+    [
+        [motifs.loc[motifs.index.str.contains("TCF7")].index[0], ["CD4 T", "CD8 T"]],
+        [motifs.loc[motifs.index.str.contains("IRF8")].index[0], ["cDCs"]],
+        [motifs.loc[motifs.index.str.contains("IRF4")].index[0], ["cDCs"]],
+        [
+            motifs.loc[motifs.index.str.contains("CEBPB")].index[0],
+            ["Monocytes", "cDCs"],
+        ],
+        [motifs.loc[motifs.index.str.contains("GATA4")].index[0], ["CD4 T"]],
+        [
+            motifs.loc[motifs.index.str.contains("HNF6_HUMAN.H11MO.0.B")].index[0],
+            ["CD4 T"],
+        ],
+        [motifs.loc[motifs.index.str.contains("RARA")].index[0], ["MAIT"]],
+        [motifs.loc[motifs.index.str.contains("PEBB")].index[0], ["NK"]],
+        [motifs.loc[motifs.index.str.contains("RUNX2")].index[0], ["NK"]],
+        [motifs.loc[motifs.index.str.contains("RUNX1")].index[0], ["CD8 T"]],
+        [motifs.loc[motifs.index.str.contains("RUNX3")].index[0], ["CD8 T"]],
+        [
+            motifs.loc[motifs.index.str.contains("TBX21_HUMAN.H11MO.0.A")].index[0],
+            ["NK"],
+        ],
+        [
+            motifs.loc[motifs.index.str.contains("SPI1")].index[0],
+            ["Monocytes", "B", "cDCs"],
+        ],
+        [motifs.loc[motifs.index.str.contains("PO2F2")].index[0], ["B"]],
+        [motifs.loc[motifs.index.str.contains("NFKB2")].index[0], ["B"]],
+        [motifs.loc[motifs.index.str.contains("TFE2")].index[0], ["B", "pDCs"]],  # TCF3
+        [motifs.loc[motifs.index.str.contains("BHA15")].index[0], ["pDCs"]],
+        [motifs.loc[motifs.index.str.contains("FOS")].index[0], ["cDCs"]],
+        [motifs.loc[motifs.index.str.contains("RORA")].index[0], ["MAIT"]],
+    ],
+    columns=["motif", "clusters"],
+).set_index("motif")
+motifclustermapping = (
+    motifclustermapping.explode("clusters")
+    .rename(columns={"clusters": "cluster"})
+    .reset_index()[["cluster", "motif"]]
+)
 
 # %%
 typeenrichments.query("qval < 0.1").sort_values("odds", ascending=False)["perc_gene"]
@@ -3202,6 +1944,10 @@ cluster_diffexp = cluster_diffexp.reset_index().set_index(["cluster", "gene"])
 lfc_clusters = (
     cluster_diffexp.set_index(["cluster_ix", "gene_ix"])["lfc"].unstack().values
 )
+minmax_clusters = lfc_clusters.copy()
+minmax_clusters = (minmax_clusters - minmax_clusters.min(0, keepdims=True)) / (
+    minmax_clusters.max(0, keepdims=True) - minmax_clusters.min(0, keepdims=True)
+)
 
 # %% [markdown]
 # ### Correlation with differential expression and slice type
@@ -3378,13 +2124,12 @@ for slicetype, slicetopologies_type in slicetopologies.groupby("type"):
 # ### Correlation with presence of slice type and expression effect
 
 # %%
-# slicetopologies["expression_lfc"] = y_clusters[slicetopologies["cluster_ix"], slicetopologies["gene_ix"]] - y_clusters.mean(0)[slicetopologies["gene_ix"]]
-# slicetopologies["expression_lfc"] = (lfc_clusters)[slicetopologies["cluster_ix"], slicetopologies["gene_ix"]]
 slicetopologies["expression_lfc"] = (lfc_clusters)[
     slicetopologies["cluster_ix"], slicetopologies["gene_ix"]
 ]
-# slicetopologies["expression_lfc"] = (lfc_clusters - lfc_clusters.mean(0, keepdims = True))[slicetopologies["cluster_ix"], slicetopologies["gene_ix"]]
-# slicetopologies["expression_lfc"] = cluster_diffexp.loc[cluster_info.index[slicetopologies["cluster_ix"]], transcriptome.var.index[slicetopologies["gene_ix"]], :]["lfc"].values
+slicetopologies["expression_minmax"] = (minmax_clusters)[
+    slicetopologies["cluster_ix"], slicetopologies["gene_ix"]
+]
 
 # %%
 slicetype_scores = pd.DataFrame(
@@ -3392,11 +2137,16 @@ slicetype_scores = pd.DataFrame(
         "mean_expression_lfc": np.exp(
             slicetopologies.groupby("type")["expression_lfc"].mean()
         ),
+        "mean_expression_minmax": slicetopologies.groupby("type")["expression_minmax"].mean(),
         "median_expression_lfc": np.exp(
             slicetopologies.groupby("type")["expression_lfc"].median()
         ),
     }
 )
+
+# %%
+sns.histplot(slicetopologies.query("type == 'hill'")["expression_minmax"], stat = "density", bins = 20)
+sns.histplot(slicetopologies.query("type == 'peak'")["expression_minmax"], color="red", alpha=0.5, bins=20, stat="density")
 
 # %%
 fig, ax = plt.subplots(figsize=(3, 3))
@@ -3513,6 +2263,9 @@ ax.set_ylabel("Average fold-change")
 ax.set_ylim([np.log(1 / 8), np.log(8)])
 ax.set_xticklabels(plotdata.index)
 chd.slicetypes.label_axis(ax, ax.xaxis)
+
+# %%
+
 
 # %%
 plotdata = slicetopologies.query("type == 'canyon'")

@@ -121,6 +121,7 @@ scores.query("mine > 1").head(10)
 # gene_id = transcriptome.gene_id("LYN")
 # gene_id = transcriptome.gene_id("BCL2")
 gene_id = transcriptome.gene_id("CD74")
+gene_id = transcriptome.gene_id("IL1B")
 # gene_id = transcriptome.gene_id("RPS14")
 # gene_id = transcriptome.gene_id("CCL4")
 

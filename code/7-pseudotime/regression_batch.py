@@ -6,7 +6,6 @@ import torch.nn as nn
 import torch.optim as optim
 import matplotlib.pyplot as plt
 import chromatinhd as chd
-import torch.utils.benchmark as benchmark
 
 # Set device to GPU if available, otherwise use CPU
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -27,7 +26,7 @@ for x in files[:1]:
     probsx_all.append(probsx)
 
 probsx_all = torch.stack(probsx_all, dim=2).float().to(device)
-probsx_all = probsx_all[:, :100, :]
+probsx_all = probsx_all[:, :200, :]
 
 #%%
 n_latent, n_cutsites, n_genes = probsx_all.shape

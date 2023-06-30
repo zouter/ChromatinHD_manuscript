@@ -27,20 +27,24 @@ sns.set_style('ticks')
 
 #%%
 folder_root = chd.get_output()
-folder_data_preproc = folder_root / "data" / "hspc"
+folder_data_preproc = folder_root / "data" / "hspc_backup"
+dataset_name = "myeloid"
+dataset_name = "simulated"
+fragment_dir = folder_data_preproc / f"fragments_{dataset_name}"
+df_latent_file = folder_data_preproc / f"MV2_latent_time_{dataset_name}.csv"
 
 #%%
 promoter_name, window = "10k10k", np.array([-10000, 10000])
 promoters = pd.read_csv(folder_data_preproc / ("promoters_" + promoter_name + ".csv"), index_col = 0)
 
-fragments = chd.data.Fragments(folder_data_preproc / "fragments_myeloid" / promoter_name)
+fragments = chd.data.Fragments(fragment_dir / promoter_name)
 fragments.window = window
 fragments.create_cut_data()
 
-folds = pd.read_pickle(folder_data_preproc / "fragments_myeloid" / promoter_name / "folds.pkl")
+folds = pd.read_pickle(fragment_dir / promoter_name / "folds.pkl")
 
 # torch works by default in float32
-df_latent = pd.read_csv(folder_data_preproc / "MV2_latent_time_myeloid.csv", index_col = 0)
+df_latent = pd.read_csv(df_latent_file, index_col = 0)
 latent = torch.tensor(df_latent['latent_time'].values.astype(np.float32))
 
 #%%
@@ -49,6 +53,7 @@ n_genes_step = 5000
 
 #%%
 for index, fold in enumerate(folds):
+    print(f"Training fold {index}")
 
     loaders_train = chromatinhd.loaders.pool.LoaderPool(
         chromatinhd.loaders.fragments.Fragments,
@@ -57,7 +62,7 @@ for index, fold in enumerate(folds):
         shuffle_on_iter = True
     )
     minibatches_train = chd.loaders.minibatching.create_bins_random(
-        fold['cells_train'], #TODO: change this
+        fold['cells_train'],
         np.arange(fragments.n_genes),
         fragments.n_genes,
         n_genes_step = n_genes_step,
@@ -73,7 +78,7 @@ for index, fold in enumerate(folds):
         n_workers = 5
     )
     minibatches_validation = chd.loaders.minibatching.create_bins_random(
-        fold['cells_validation'], #TODO: change this
+        fold['cells_validation'],
         np.arange(fragments.n_genes),
         fragments.n_genes,
         n_genes_step = n_genes_step,
@@ -83,7 +88,6 @@ for index, fold in enumerate(folds):
     )
     loaders_validation.initialize(minibatches_validation)
 
-    #%%
     data = loaders_train.pull()
     # print(data.cut_coordinates)
     # print(data.cut_coordinates.shape)
@@ -100,22 +104,18 @@ for index, fold in enumerate(folds):
     # print(torch.bincount(data.cut_local_cellxgene_ix))
     # print(data.cut_local_cell_ix.unique().shape)
 
-    #%%
-    nbins = (256, )
-    nbins = (128, 64, 32, )
     nbins = (128, )
-    model_name = f"{'_'.join(str(n) for n in nbins)}_fold_{index}" #TODO: include fold number
+    nbins = (128, 64, 32, )
+    nbins = (1024, )
+    nbins = (32, )
+    model_name = f"{dataset_name}_{'_'.join(str(n) for n in nbins)}_fold_{index}"
 
-    #%%
     model = likelihood_model.Model(fragments, latent, nbins = nbins)
     
-    # %%
     model.forward(data)
 
-    #%%
     optimizer = chd.optim.SparseDenseAdam(model.parameters_sparse(), model.parameters_dense(autoextend=True), lr = 1e-2)
 
-    #%%
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model = model.to(device).train()
     loaders_train.restart()
@@ -125,7 +125,6 @@ for index, fold in enumerate(folds):
 
     pickle.dump(model.to("cpu"), open(f"./3-lt_continuous_{model_name}.pkl", "wb"))
 
-    #%%
     likelihood_per_gene = torch.zeros(fragments.n_genes)
     for data in loaders_validation:
         with torch.no_grad():

@@ -223,8 +223,6 @@ for ax1 in [ax_gex, ax_fragments]:
     ax2.set_xticks(ax1.get_xticks())
     ax2.set_xticklabels(ax1.get_xticklabels())
 
-# %%
-fig.savefig("fragments.png", transparent=False, dpi=300)
 
 # %%
 # fig, (ax_fragments, ax_gex) = plt.subplots(1, 2, figsize = (15, n_cells/10), sharey = True, width_ratios = [2, 0.5])

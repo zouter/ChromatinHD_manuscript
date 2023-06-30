@@ -14,7 +14,8 @@
 # ---
 
 # %% [markdown]
-# # Visualize a gene fragments
+# # Visualize the fragments around a gene
+
 
 # %%
 from IPython import get_ipython
@@ -22,6 +23,7 @@ from IPython import get_ipython
 if get_ipython():
     get_ipython().run_line_magic("load_ext", "autoreload")
     get_ipython().run_line_magic("autoreload", "2")
+    get_ipython().run_line_magic("config", "InlineBackend.figure_format='retina'")
 
 import numpy as np
 import pandas as pd
@@ -32,13 +34,10 @@ import matplotlib as mpl
 import seaborn as sns
 
 sns.set_style("ticks")
-# %config InlineBackend.figure_format='retina'
 
 import scanpy as sc
 
 import tqdm.auto as tqdm
-
-device = "cuda:0"
 
 # %%
 import chromatinhd as chd
@@ -72,14 +71,6 @@ promoters = pd.read_csv(
 transcriptome = chd.data.Transcriptome(folder_data_preproc / "transcriptome")
 fragments = chd.data.Fragments(folder_data_preproc / "fragments" / promoter_name)
 
-# %% [markdown]
-# Interesting examples:
-# - *ITK* and *HLA-B* in the lymphoma dataset: one of the many non-monotonic
-# - *IL1B* in pmbc10k: a clear "mononucleotide" peak
-
-# %%
-# transcriptome.var.query("means > 1").sort_values("dispersions_norm", ascending = False).head(20).index
-
 # %%
 settings = {
     "local_QKI_-1300": {
@@ -110,8 +101,6 @@ settings = {
 setting = settings["local_QKI_-1300"]
 setting = settings["mid_IL1B_-5kb"]
 setting = settings["long_ZEB1_TSS"]
-# setting = settings["long_AAK1_TSS"]
-# setting = None
 
 # %%
 # gene_id = transcriptome.gene_id("IL1B")
@@ -327,7 +316,6 @@ if adjust:
 # %%
 if setting is not None:
     manuscript.save_figure(fig, "1", "fragments_" + setting["name"], dpi=300)
-fig.savefig("fragments.png", transparent=False, dpi=300)
 
 # %%
 fig_colorbar = plt.figure(figsize=(3.0, 0.1))

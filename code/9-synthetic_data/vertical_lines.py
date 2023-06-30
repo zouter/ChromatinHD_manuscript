@@ -147,6 +147,12 @@ gene_parameters_list = [
     # combinatorially generate data for many genes
 ]
 
+# create promoter file
+promoters = pd.DataFrame(index=np.arange(len(gene_parameters_list)))
+promoters.index = promoters.index.map(lambda x: f'gene{x}')
+promoters.index.name = 'gene'
+promoters.to_csv(folder_data_preproc / ("promoters_10k10k_simulated.csv"))
+
 # Generate the data
 genes_data_list = generate_genes(gene_parameters_list)
 

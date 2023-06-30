@@ -190,7 +190,7 @@ matchings_file = scores_folder / f"matching_{cool_name}.pkl"
 pickle.dump(matchings, open(matchings_file, "wb"))
 
 # %%
-! ls -lh {matchings_file}
+# ! ls -lh {matchings_file}
 
 
 # %% [markdown]
@@ -535,7 +535,7 @@ if (cool_name == "rao_2014_1kb") and (matcher_name == "EE20kb-25kb"):
 
 # %% [markdown]
 # ### Predictivity magnitude
-
+#
 # Look at the difference in contact frequency between high and lowly predictive pairs
 
 # %%
@@ -567,7 +567,7 @@ fig.plot()
 
 manuscript.save_figure(fig, "6", "hic_ee_pileup_magnitude_" + matcher_name, dpi=300)
 
-  # %% [markdown]
+# %% [markdown]
 # -----------------------------------------------
 
 # %% [markdown]

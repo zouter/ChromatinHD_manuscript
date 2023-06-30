@@ -130,6 +130,7 @@ if cool_name == "rao_2014_1kb":
     c = cooler.Cooler(
         str(chd.get_output() / "4DNFIXP4QG5B.mcool") + "::/resolutions/1000"
     )
+elif cool_name == "gu_2021_500bp":
 
 hic, bins_hic = chdm.hic.extract_hic(promoter, c=c)
 import itertools

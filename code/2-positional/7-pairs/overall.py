@@ -101,44 +101,44 @@ genes_oi = diffexp.query("pvals_adj < 0.05").query("logfoldchanges > 0.5").index
 
 # %% [markdown]
 # ## Pairwindow
-
-genes_all = transcriptome.var.index
+#
+# genes_all = transcriptome.var.index
 # genes_all = transcriptome.var.query("symbol in ['BCL2']").index
-
-scorer_folder = prediction.path / "scoring" / "nothing"
-nothing_scoring = chd.scoring.prediction.Scoring.load(scorer_folder)
-genes_all = (
-    nothing_scoring.genescores.mean("model")
-    .sel(phase=["test", "validation"])
-    .mean("phase")
-    .sel(i=0)
-    .to_pandas()
-    .query("cor > 0.1")
-    .sort_values("cor", ascending=False)
-    .index
-)
-
-scores = []
-for gene in tqdm.tqdm(genes_all):
-    scores_folder = prediction.path / "scoring" / "pairwindow_gene" / gene
-    interaction_file = scores_folder / "interaction.pkl"
-
-    if interaction_file.exists():
-        scores_gene = pd.read_pickle(interaction_file).reset_index()
-        # scores_gene = scores_gene.loc[
-        #     (scores_gene["lost1"] > 2) & (scores_gene["lost2"] > 2)
-        # ]
-        scores_gene2 = scores_gene[["cor", "window1", "window2"]].copy()
-        scores_gene2["window1"] = scores_gene2["window1"].astype("category")
-        scores_gene2["window2"] = scores_gene2["window2"].astype("category")
-        scores_gene["gene"] = gene
-        scores_gene["gene"] = pd.Categorical(scores_gene["gene"], categories=genes_all)
-        scores.append(scores_gene)
-
-    # if len(scores) > 500:
-    #     break
-scores = pd.concat(scores)
-print(len(scores["gene"].unique()))
+#
+# scorer_folder = prediction.path / "scoring" / "nothing"
+# nothing_scoring = chd.scoring.prediction.Scoring.load(scorer_folder)
+# genes_all = (
+#     nothing_scoring.genescores.mean("model")
+#     .sel(phase=["test", "validation"])
+#     .mean("phase")
+#     .sel(i=0)
+#     .to_pandas()
+#     .query("cor > 0.1")
+#     .sort_values("cor", ascending=False)
+#     .index
+# )
+#
+# scores = []
+# for gene in tqdm.tqdm(genes_all):
+#     scores_folder = prediction.path / "scoring" / "pairwindow_gene" / gene
+#     interaction_file = scores_folder / "interaction.pkl"
+#
+#     if interaction_file.exists():
+#         scores_gene = pd.read_pickle(interaction_file).reset_index()
+#         # scores_gene = scores_gene.loc[
+#         #     (scores_gene["lost1"] > 2) & (scores_gene["lost2"] > 2)
+#         # ]
+#         scores_gene2 = scores_gene[["cor", "window1", "window2"]].copy()
+#         scores_gene2["window1"] = scores_gene2["window1"].astype("category")
+#         scores_gene2["window2"] = scores_gene2["window2"].astype("category")
+#         scores_gene["gene"] = gene
+#         scores_gene["gene"] = pd.Categorical(scores_gene["gene"], categories=genes_all)
+#         scores.append(scores_gene)
+#
+#     # if len(scores) > 500:
+#     #     break
+# scores = pd.concat(scores)
+# print(len(scores["gene"].unique()))
 
 # %%
 scores["distance"] = np.abs(scores["window1"] - scores["window2"])
@@ -277,9 +277,9 @@ manuscript.save_figure(fig, "5", "synergism_position")
 
 # %% [markdown]
 # ## Plot promoter co-predictivity
-additive_vs_nonadditive_gene_scores = pd.read_pickle(
-    chd.get_output() / "additive_vs_nonadditive_gene_scores.pkl"
-)
+# additive_vs_nonadditive_gene_scores = pd.read_pickle(
+#     chd.get_output() / "additive_vs_nonadditive_gene_scores.pkl"
+# )
 
 # %%
 genescores = pd.DataFrame(

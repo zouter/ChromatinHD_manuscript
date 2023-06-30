@@ -20,6 +20,13 @@ p_min, p_max = -10000, 10000
 # number of cells
 n_cells = len(df_latent)
 
+# create latent time
+latent_time = np.arange(n_cells) / (n_cells-1)
+latent_time = pd.DataFrame(latent_time, columns=['latent_time'])
+latent_time.index = 'c' + latent_time.index.astype(str)
+latent_time.index.name = 'cell'
+latent_time.to_csv(folder_data_preproc / "MV2_latent_time_simulated.csv")
+
 def plot_cutsites(df, gene, n_fragments):
     fig, ax = plt.subplots(figsize=(15, 15))
     ax.scatter(df['x'], df['y'], s=1, marker='s', color='black')
@@ -158,12 +165,20 @@ for x in [dataframe[dataframe['gene_ix'] == i] for i in dataframe['gene_ix'].uni
 
 #%%
 # convert lt to cell_ix
-dataframe['cell_ix'] = dataframe['lt'] * (n_cells-1)
+dataframe['cell_ix'] = (dataframe['lt'] * (n_cells-1)).astype(int)
 
 # convert NF range to genomic range
 dataframe['cut_start'] = dataframe['cut_start'] * (p_max - p_min) + p_min
 dataframe['cut_end'] = dataframe['cut_end'] * (p_max - p_min) + p_min
 
+#%%
+missing_cell_ix = np.array(list(set(np.arange(n_cells)) - set(dataframe['cell_ix'])))
+
+df_missing_cell_ix = dataframe[:len(missing_cell_ix)]
+df_missing_cell_ix['cell_ix'] = missing_cell_ix
+dataframe = pd.concat([dataframe, df_missing_cell_ix])
+
+#%%
 # convert to tensor for fragments dir
 coordinates = torch.tensor(dataframe[['cut_start', 'cut_end']].values, dtype = torch.int64)
 mapping = torch.tensor(dataframe[['cell_ix', 'gene_ix']].values, dtype = torch.int64)
@@ -175,9 +190,6 @@ n_genes = len(dataframe['gene_ix'].unique())
 sorted_idx = torch.argsort((mapping[:, 0] * n_genes + mapping[:, 1]))
 mapping = mapping[sorted_idx]
 coordinates = coordinates[sorted_idx]
-
-# check this
-latent_time = dataframe['lt']
 
 #%%
 # create fragments dir
@@ -215,14 +227,13 @@ fragments.create_cellxgene_indptr()
 # copy the folds.pkl file from file_path_old to file_path
 shutil.copy2(file_path_old / 'folds.pkl', file_path / 'folds.pkl')
 
-# done: coordinates, mapping, folds
-# TODO: latent_time, cellxgene_indptr, obs, var
+# %%
+# var2 = pd.read_csv(file_path_old / 'var.tsv', sep='\t', index_col=0)
+# obs2 = pd.read_csv(file_path_old / 'obs.tsv', sep='\t', index_col=0)
+# mapping2 = pickle.load(open(file_path_old / 'mapping.pkl', 'rb')) # cell x gene
+# coordinates2 = pickle.load(open(file_path_old / 'coordinates.pkl', 'rb')) # start x end
+# cellxgene_indptr2 = pickle.load(open(file_path_old / 'cellxgene_indptr.pkl', 'rb'))
+# folds2 = pickle.load(open(file_path_old / 'folds.pkl', 'rb'))
+# bin_counts = np.bincount(mapping2[:, 0])
 
 # %%
-var2 = pd.read_csv(file_path_old / 'var.tsv', sep='\t', index_col=0)
-obs2 = pd.read_csv(file_path_old / 'obs.tsv', sep='\t', index_col=0)
-mapping2 = pickle.load(open(file_path_old / 'mapping.pkl', 'rb')) # cell x gene
-coordinates2 = pickle.load(open(file_path_old / 'coordinates.pkl', 'rb')) # start x end
-cellxgene_indptr2 = pickle.load(open(file_path_old / 'cellxgene_indptr.pkl', 'rb'))
-folds2 = pickle.load(open(file_path_old / 'folds.pkl', 'rb'))
-

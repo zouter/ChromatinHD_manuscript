@@ -14,7 +14,11 @@
 
 # %% [markdown]
 # # Get Hi-C data, but using hicstraw starting from a .hic file
-# Note that this a much faster solution than using cooler
+# This script preprocesses mapped Hi-C data from a hic file into a pkl file containing a dictionary with the Hi-C data for each gene.
+
+# %% [markdown]
+# Note that this a much-much faster solution than using cooler, thanks to the amazing hicstraw package.
+# So we may want to consider using this package for other datasets as well, assuming we can get the hic files.
 
 # %%
 import IPython
@@ -64,17 +68,8 @@ promoters = pd.read_csv(
     folder_data_preproc / ("promoters_" + promoter_name + ".csv"), index_col=0
 )
 
-# cool_name = "rao_2014_1kb"
-# step = 1000
-
-# cool_name = "gu_2021_500bp"
-# step = 500
-
 cool_name = "harris_2023_500bp"
 step = 500
-
-# cool_name = "matrix_1kb"
-# step = 1000
 
 if cool_name == "harris_2023_500bp":
     c = hicstraw.HiCFile(str(chd.get_output() / "ENCFF555ISR.hic"))

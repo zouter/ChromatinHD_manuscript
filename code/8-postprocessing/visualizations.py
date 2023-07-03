@@ -11,25 +11,32 @@ import plotly.express as px
 import plotly.graph_objects as go
 import matplotlib.pyplot as plt
 
+
 # %%
 # set folder paths
 folder_root = chd.get_output()
-folder_data = folder_root / "data"
-dataset_name = "hspc"
-folder_data_preproc = folder_data / dataset_name
-promoter_name, window = "10k10k", np.array([-10000, 10000])
+folder_data_preproc = folder_root / "data" / "hspc_backup"
+dataset_name = "myeloid"
+dataset_name = "simulated"
+fragment_dir = folder_data_preproc / f"fragments_{dataset_name}"
+df_latent_file = folder_data_preproc / f"MV2_latent_time_{dataset_name}.csv"
 
 # load data
-promoters = pd.read_csv(folder_data_preproc / ("promoters_" + promoter_name + ".csv"), index_col = 0)
-fragments = chd.data.Fragments(folder_data_preproc / "fragments_myeloid" / promoter_name)
-fragments.window = window
-fragments.create_cut_data()
+promoter_name, window = "10k10k", np.array([-10000, 10000])
+promoter_file = promoter_name + "_simulated" if dataset_name == "simulated" else promoter_name
+promoters = pd.read_csv(folder_data_preproc / ("promoters_" + promoter_file + ".csv"), index_col = 0)
 
 genes = pd.read_csv(folder_data_preproc / "genes.csv", index_col = 0)
 info_genes_cells = pd.read_csv(folder_data_preproc / "info_genes_cells.csv")
 s_genes = info_genes_cells['s_genes'].dropna().tolist()
 g2m_genes = info_genes_cells['g2m_genes'].dropna().tolist()
 hspc_marker_genes = info_genes_cells['hspc_marker_genes'].dropna().tolist()
+
+# fragments and latent time are for 2-lt_discrete
+fragments = chd.data.Fragments(fragment_dir / promoter_name)
+fragments.window = window
+fragments.create_cut_data()
+
 latent_time = pd.read_csv(folder_data_preproc / 'MV2_latent_time_myeloid.csv')
 latent_time['rank_raw'] = latent_time['latent_time'].rank()
 latent_time['rank'] = latent_time['rank_raw'] / latent_time.shape[0]
@@ -72,15 +79,15 @@ mapping_cutsites = torch.bincount(mapping[:, 1]) * 2
 #%%
 dir_csv = folder_data_preproc / "likelihood_continuous_128"
 dir_plot_quantile = folder_data_preproc / "plots/likelihood_quantile"
-dir_plot_continuous = folder_data_preproc / "plots/likelihood_continuous"
-dir_plot_continuous_128 = folder_data_preproc / "plots/likelihood_continuous_128"
-dir_plot_combined = folder_data_preproc / "plots/cutsites_likelihood_continuous"
+# dir_plot_continuous = folder_data_preproc / "plots/likelihood_continuous"
+# dir_plot_continuous_128 = folder_data_preproc / "plots/likelihood_continuous_128"
+# dir_plot_combined = folder_data_preproc / "plots/cutsites_likelihood_continuous"
 
-global_vars = globals()
-dirs = {key: value for key, value in global_vars.items() if key.startswith('dir_')}
-[os.makedirs(value, exist_ok=True) for value in dirs.values()]
+# global_vars = globals()
+# dirs = {key: value for key, value in global_vars.items() if key.startswith('dir_')}
+# [os.makedirs(value, exist_ok=True) for value in dirs.values()]
 
-def plot_cutsites(df, gene, n_fragments):
+def plot_cutsites(df, gene, n_fragments, directory):
     fig, ax = plt.subplots(figsize=(15, 15))
 
     ax.scatter(df['x'], df['y'], s=1, marker='s', color='black')
@@ -91,7 +98,10 @@ def plot_cutsites(df, gene, n_fragments):
     ax.set_ylim([0, 1])
     ax.set_facecolor('white')
 
-    plt.savefig(folder_data_preproc / f'plots/cutsites/{gene}.png')
+    directory = folder_data_preproc / 'plots' / f"cutsites_{directory}"
+    os.makedirs(directory, exist_ok=True)
+
+    plt.savefig(directory / f'{gene}.png')
 
 def plot_cutsites_histo(df, df_long, gene, n_fragments):
     fig, axs = plt.subplots(figsize=(15, 10), ncols=2, gridspec_kw={'width_ratios': [1, 3]})
@@ -115,7 +125,7 @@ def plot_cutsites_histo(df, df_long, gene, n_fragments):
 
     plt.savefig(folder_data_preproc / f'plots/cutsites_histo/{gene}.png')
 
-def plot_model_continuous(gene, dir_data, dir_plot):
+def plot_model_continuous(gene, dir_data):
     file_name = folder_data_preproc / dir_data / f"{gene}.csv"
     probsx = np.loadtxt(file_name, delimiter=',')
 
@@ -127,7 +137,7 @@ def plot_model_continuous(gene, dir_data, dir_plot):
     ax.set_xlabel('Position')
     ax.set_ylabel('Latent Time')
 
-    dir_plot_full = folder_data_preproc / "plots" / dir_plot
+    dir_plot_full = folder_data_preproc / "plots" / dir_data
     os.makedirs(dir_plot_full, exist_ok=True)
     file_name = dir_plot_full / f"{gene}.png"
     plt.savefig(file_name, dpi=200)
@@ -199,6 +209,16 @@ def plot_model_quantile(latent_torch, gene_oi, fragments):
     plt.close()
 
 #%%
+# find dirs of interest
+nbins = (32, )
+nbins = (1024, )
+nbins = (128, )
+nbins = (128, 64, 32, )
+data_source = "_simulated" if dataset_name == "simulated" else ""
+pattern = f"likelihood_continuous{data_source}_{'_'.join(str(n) for n in nbins)}_fold_"
+dirs = sorted([file for file in os.listdir(folder_data_preproc) if pattern in file])
+
+#%%
 for x in range(promoters.shape[0]):
     print(x)
     gene = promoters.index[x]
@@ -217,15 +237,14 @@ for x in range(promoters.shape[0]):
     df_long = pd.melt(df, id_vars=['cell_ix', 'gene_ix', 'cell', 'latent_time', 'rank', 'height'], value_vars=['cut_start', 'cut_end'], var_name='cut_type', value_name='position')
     df_long = df_long.rename(columns={'position': 'x', 'rank': 'y'})
     
-    # plot_cutsites(df_long, gene, n_fragments)
-    # plot_cutsites_histo(df, df_long, gene, n_fragments)
-    plot_model_continuous(gene, 'evaluate_pseudo_continuous_tensors_256', 'likelihood_continuous_256')
-    # plot_model_continuous(gene, 'evaluate_pseudo_continuous_tensors', 'likelihood_continuous')
-    # plot_model_continuous(gene, 'evaluate_pseudo_continuous_tensors_128', 'likelihood_continuous_128')
-    # plot_cutsites_model_continuous(df_long, gene, n_fragments)
-    # plot_model_quantile(latent_torch, x, fragments)
+    plot_cutsites(df_long, gene, n_fragments, dataset_name)
 
-print(f"Done! Plots saved")
+    # for directory in dirs:
+    #     plot_model_continuous(gene, directory)
+
+        # plot_cutsites_histo(df, df_long, gene, n_fragments)
+        # plot_cutsites_model_continuous(df_long, gene, n_fragments)
+        # plot_model_quantile(latent_torch, x, fragments)
 
 #%%
 # TODO

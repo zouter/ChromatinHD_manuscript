@@ -132,21 +132,9 @@ def generate_genes(gene_parameters):
     return genes_data
  
 #%%
-# Define the list of gene parameters for generating multiple genes
 # n_values, shift_y_density, noise, shift_slope, p, fragment_length
-gene_parameters_list = [
-    [
-        [1000, 0, 20, 0, 0, 150], 
-        [1000, -2, 20, 0, 5000, 150],
-        [1000, 2, 20, 0, -5000, 150] 
-    ],
-    [
-        [1000, 0, 15, 0, 3000, 150], 
-        [1000, 0, 15, 0, -3000, 150], 
-    ],
-    # ...
-    # combinatorially generate data for many genes
-]
+
+gene_parameters_list = pickle.load(open('gene_parameters_list.pickle', 'rb'))
 
 # create promoter file
 promoters = pd.DataFrame(index=np.arange(len(gene_parameters_list)))

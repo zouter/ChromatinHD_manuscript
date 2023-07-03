@@ -11,11 +11,13 @@ import matplotlib.patches as patches
 # %%
 # set folder paths
 folder_root = chd.get_output()
-folder_data = folder_root / "data"
-dataset_name = "hspc_backup"
-folder_data_preproc = folder_data / dataset_name
+folder_data_preproc = folder_root / "data" / "hspc_backup"
+dataset_name = "myeloid"
+dataset_name = "simulated"
+
 promoter_name, window = "10k10k", np.array([-10000, 10000])
-promoters = pd.read_csv(folder_data_preproc / ("promoters_" + promoter_name + ".csv"), index_col = 0)
+promoter_file = promoter_name + "_simulated" if dataset_name == "simulated" else promoter_name
+promoters = pd.read_csv(folder_data_preproc / ("promoters_" + promoter_file + ".csv"), index_col = 0)
 
 # %%
 def find_local_minima_maxima(tensor):
@@ -29,57 +31,81 @@ def find_local_minima_maxima(tensor):
         for j in range(1, cols - 1):
             neighbors = tensor[i-1:i+2, j-1:j+2].flatten()
             center = tensor[i, j]
-            if np.all(center < neighbors):
+            if np.all(center <= neighbors):
                 local_minima.append((i, j))
                 minis.append(tensor[i, j].item())
-            elif np.all(center > neighbors):
+            elif np.all(center >= neighbors):
                 local_maxima.append((i, j))
                 maxis.append(tensor[i, j].item())
 
     return local_minima, local_maxima, minis, maxis
 
 def plot_minmax(tensor, minima, maxima, minis, maxis, gene, plot_dir):
-    minima_y, minima_x = zip(*minima)
-    maxima_y, maxima_x = zip(*maxima)
+    try:
+        minima_y, minima_x = zip(*minima)
+        minima_y = np.array(minima_y) / tensor.shape[0]
+        minima_x = np.array(minima_x) / tensor.shape[1]
+        # minis = np.array(minis)
+        # minis = (minis - minis.min()) / (minis.max() - minis.min())
+    except ValueError:
+        minima_y, minima_x = [], []
+        # minis = []
 
-    minis = np.array(minis)
-    maxis = np.array(maxis)
-    minis = (minis - minis.min()) / (minis.max() - minis.min())
-    maxis = (maxis - maxis.min()) / (maxis.max() - maxis.min())
+    try:
+        maxima_y, maxima_x = zip(*maxima)
+        maxima_y = np.array(maxima_y) / tensor.shape[0]
+        maxima_x = np.array(maxima_x) / tensor.shape[1]
+        # maxis = np.array(maxis)
+        # maxis = (maxis - maxis.min()) / (maxis.max() - maxis.min())
+    except ValueError:
+        maxima_y, maxima_x = [], []
+        # maxis = []
+
+    file_name = plot_dir / f"{gene}.png"
 
     plt.figure(figsize=(5, 5))
     plt.scatter(minima_x, minima_y, c='red', s=1, linewidths=0.5, label='Minima')
     plt.scatter(maxima_x, maxima_y, c='blue', s=1, linewidths=0.5, label='Maxima')
-
     plt.title(str(plot_dir).split('/')[-1])
     plt.xlabel('Positions')
     plt.ylabel('Latent Time')
-    plt.show()
-
-    file_name = plot_dir / f"{gene}.png"
+    plt.xlim([0, 1])
+    plt.ylim([0, 1])
     plt.savefig(file_name, dpi=200)
 
-csv_dir = folder_data_preproc / "likelihood_continuous_128_64_32_fold_0"
-plot_dir = folder_data_preproc / "plots/likelihood_continuous_128_64_32_fold_0_>_not_>="
-os.makedirs(plot_dir, exist_ok=True)
+#%%
+# find all dir that have suffix '_minmax' in dir 'plots'
+dirs_out = sorted([file for file in os.listdir(folder_data_preproc / 'plots') if '_minmax' in file])
+# remove suffix '_minmax'
+dirs_out = [file.replace('_minmax', '') for file in dirs_out]
+
+# find all dir that have prefix 'likelihood_continuous'
+dirs_in = sorted([file for file in os.listdir(folder_data_preproc) if 'likelihood_continuous' in file and '_vs_' not in file])
+# remove all items in dirs_out from dirs_in
+dirs_in = [file for file in dirs_in if file not in dirs_out]
 
 #%%
-for x in range(promoters.shape[0]):
-    print(f"{x=}")
-    gene = promoters.index[x]
-    tensor = np.loadtxt(csv_dir / f"{gene}.csv", delimiter=',')
-    minima, maxima, minis, maxis = find_local_minima_maxima(tensor)
-    print(f"{minima=}")
-    print(f"{maxima=}")
-    try:
+for data_dir in dirs_in:
+    print(f"{data_dir=}")
+    # data_dir = 'likelihood_continuous_simulated_128_64_32_fold_0'
+    csv_dir = folder_data_preproc / data_dir
+    plot_dir = folder_data_preproc / "plots" / f"{data_dir}_minmax"
+    os.makedirs(plot_dir, exist_ok=True)
+
+    # list all files in csv_dir
+    files = sorted([file for file in os.listdir(csv_dir) if '.csv' in file])
+
+    for file in files:
+        print(f"{file=}")
+        gene = file.replace('.csv', '')
+        tensor = np.loadtxt(csv_dir / file, delimiter=',')
+        minima, maxima, minis, maxis = find_local_minima_maxima(tensor)
+        # print(f"{minima=}")
+        # print(f"{maxima=}")
         plot_minmax(tensor, minima, maxima, minis, maxis, gene, plot_dir)
-    except ValueError:
-        continue
 
+print('End of script')
 # %%
-
-
-
 # def plot_minmax(tensor, minima, maxima, gene, plot_dir):
 #     # Create the plot
 #     fig, ax = plt.subplots(figsize=(5, 5))

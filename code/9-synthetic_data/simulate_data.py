@@ -133,15 +133,16 @@ def generate_genes(gene_parameters):
  
 #%%
 # Define the list of gene parameters for generating multiple genes
+# n_values, shift_y_density, noise, shift_slope, p, fragment_length
 gene_parameters_list = [
     [
-        [1000, 0.5, 20, 0.001, 0, 150],  # n_values, shift_density, noise, shift_slope, p, fragment_length
-        [500, 0.7, 30, 0.002, 4000, 150], 
-        [2000, 0.3, 15, 0.003, -5000, 150] 
+        [1000, 0, 20, 0, 0, 150], 
+        [1000, -2, 20, 0, 5000, 150],
+        [1000, 2, 20, 0, -5000, 150] 
     ],
     [
-        [800, 0.6, 12, 0.0015, 100, 150], 
-        [1200, 0.8, 18, 0.0025, -2000, 150], 
+        [1000, 0, 15, 0, 3000, 150], 
+        [1000, 0, 15, 0, -3000, 150], 
     ],
     # ...
     # combinatorially generate data for many genes
@@ -211,12 +212,14 @@ fragments = chd.data.Fragments(file_path)
 
 # create var
 var = pd.DataFrame(index = np.arange(n_genes))
+var.index = var.index.map(lambda x: f'gene{x}')
 var["ix"] = np.arange(n_genes)
 var.index.name = 'gene'
 fragments.var = var
 
 # create obs
 obs = pd.DataFrame(index = np.arange(n_cells))
+obs.index = obs.index.map(lambda x: f'cell{x}')
 obs["ix"] = np.arange(n_cells)
 obs.index.name = 'cell'
 fragments.obs = obs
@@ -230,10 +233,31 @@ fragments.coordinates = coordinates
 # create cellxgene_indptr
 fragments.create_cellxgene_indptr()
 
-# copy the folds.pkl file from file_path_old to file_path
-shutil.copy2(file_path_old / 'folds.pkl', file_path / 'folds.pkl')
+folds = []
+for i in range(5):
+    # randomly select 20% of cells
+    cells_validation = np.random.choice(np.arange(n_cells), size=int(n_cells * 0.2), replace=False)
+    # get the remaining cells
+    cells_train = np.setdiff1d(np.arange(n_cells), cells_validation)
+    # append to folds
+    folds.append({'cells_train': cells_train, 'cells_validation': cells_validation})
+
+# create folds.pkl
+pickle.dump(folds, open(file_path / 'folds.pkl', 'wb'))
+
+# plot histogram for each item in folds
+for index, fold in enumerate(folds):
+    plt.figure(figsize=(5, 5))
+    plt.hist(latent_time.iloc[fold['cells_train']], bins=100, alpha=0.5, label='train')
+    plt.hist(latent_time.iloc[fold['cells_validation']], bins=100, alpha=0.5, label='validation')
+    plt.title(f'Fold {index}')
+    plt.legend()
+    plt.show()
+
+print('End of script')
 
 # %%
+# check other dir for comparison
 # var2 = pd.read_csv(file_path_old / 'var.tsv', sep='\t', index_col=0)
 # obs2 = pd.read_csv(file_path_old / 'obs.tsv', sep='\t', index_col=0)
 # mapping2 = pickle.load(open(file_path_old / 'mapping.pkl', 'rb')) # cell x gene
@@ -241,5 +265,3 @@ shutil.copy2(file_path_old / 'folds.pkl', file_path / 'folds.pkl')
 # cellxgene_indptr2 = pickle.load(open(file_path_old / 'cellxgene_indptr.pkl', 'rb'))
 # folds2 = pickle.load(open(file_path_old / 'folds.pkl', 'rb'))
 # bin_counts = np.bincount(mapping2[:, 0])
-
-# %%

@@ -11,7 +11,6 @@ import plotly.express as px
 import plotly.graph_objects as go
 import matplotlib.pyplot as plt
 
-
 # %%
 # set folder paths
 folder_root = chd.get_output()
@@ -37,7 +36,7 @@ fragments = chd.data.Fragments(fragment_dir / promoter_name)
 fragments.window = window
 fragments.create_cut_data()
 
-latent_time = pd.read_csv(folder_data_preproc / 'MV2_latent_time_myeloid.csv')
+latent_time = pd.read_csv(folder_data_preproc / f'MV2_latent_time_{dataset_name}.csv')
 latent_time['rank_raw'] = latent_time['latent_time'].rank()
 latent_time['rank'] = latent_time['rank_raw'] / latent_time.shape[0]
 latent_time['quantile'] = pd.qcut(latent_time['latent_time'], q=10, labels=False)
@@ -89,7 +88,6 @@ dir_plot_quantile = folder_data_preproc / "plots/likelihood_quantile"
 
 def plot_cutsites(df, gene, n_fragments, directory):
     fig, ax = plt.subplots(figsize=(15, 15))
-
     ax.scatter(df['x'], df['y'], s=1, marker='s', color='black')
     ax.set_title(f"{gene} (cut sites = {2 * n_fragments})", fontsize=14)
     ax.set_xlabel('Position', fontsize=12)
@@ -102,6 +100,8 @@ def plot_cutsites(df, gene, n_fragments, directory):
     os.makedirs(directory, exist_ok=True)
 
     plt.savefig(directory / f'{gene}.png')
+
+    fig.show()
 
 def plot_cutsites_histo(df, df_long, gene, n_fragments):
     fig, axs = plt.subplots(figsize=(15, 10), ncols=2, gridspec_kw={'width_ratios': [1, 3]})

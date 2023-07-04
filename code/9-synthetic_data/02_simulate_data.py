@@ -27,17 +27,6 @@ latent_time.index = 'c' + latent_time.index.astype(str)
 latent_time.index.name = 'cell'
 latent_time.to_csv(folder_data_preproc / "MV2_latent_time_simulated.csv")
 
-def plot_cutsites(df, gene, n_fragments):
-    fig, ax = plt.subplots(figsize=(15, 15))
-    ax.scatter(df['x'], df['y'], s=1, marker='s', color='black')
-    ax.set_title(f"{gene} (cut sites = {2 * n_fragments})", fontsize=14)
-    ax.set_xlabel('Position', fontsize=12)
-    ax.set_ylabel('Latent Time', fontsize=12)
-    ax.set_xlim([0, 1])
-    ax.set_ylim([0, 1])
-    ax.set_facecolor('white')
-    fig.show()
-
 def generate_lt(n_cells, n_cells_x, power):
     # create cell ids
     cell_ids = np.arange(n_cells)
@@ -132,10 +121,10 @@ def generate_genes(gene_parameters):
     return genes_data
  
 #%%
-# n_values, shift_y_density, noise, shift_slope, p, fragment_length
-
+# order of parameters: n_values, shift_y_density, noise, shift_slope, p, fragment_length
 gene_parameters_list = pickle.load(open('gene_parameters_list.pickle', 'rb'))
 
+#%%
 # create promoter file
 promoters = pd.DataFrame(index=np.arange(len(gene_parameters_list)))
 promoters.index = promoters.index.map(lambda x: f'gene{x}')
@@ -145,39 +134,87 @@ promoters.to_csv(folder_data_preproc / ("promoters_10k10k_simulated.csv"))
 # Generate the data
 genes_data_list = generate_genes(gene_parameters_list)
 
+#%%
 # Convert to dataframe
 dataframe = pd.DataFrame(genes_data_list, columns=['gene_ix', 'gene_element', 'cut_start', 'cut_end', 'lt'])
 
-#%%
-# split dataframe into sub dataframes by columns 'gene_ix'
-for x in [dataframe[dataframe['gene_ix'] == i] for i in dataframe['gene_ix'].unique()]:
+def plot_cutsites(df, gene, n_fragments):
+    fig, ax = plt.subplots(figsize=(15, 15))
+    ax.scatter(df['x'], df['y'], s=1, marker='s', color='black')
+    ax.set_title(f"{gene} (cut sites = {2 * n_fragments})", fontsize=14)
+    ax.set_xlabel('Position', fontsize=12)
+    ax.set_ylabel('Latent Time', fontsize=12)
+    ax.set_xlim([0, 1])
+    ax.set_ylim([0, 1])
+    ax.set_facecolor('white')
+    fig.show()
+
+for gene_id in dataframe['gene_ix'].unique():
+    print(gene_id)
+    dataframe_sub = dataframe[dataframe['gene_ix'] == gene_id]
+    print(len(dataframe_sub))
     # melt dataframe
-    df = pd.melt(x, id_vars=['gene_ix', 'gene_element', 'lt'], value_name='x')
+    df_melt = pd.melt(dataframe_sub, id_vars=['gene_ix', 'gene_element', 'lt'], value_name='x')
+    print(len(df_melt))
     # rename columns x and lt
-    df = df.rename(columns={'lt': 'y'})
+    df_melt = df_melt.rename(columns={'lt': 'y'})
     # plot
-    plot_cutsites(df, str(int(df['gene_ix'][0])), len(df))
+    plot_cutsites(df_melt, str(int(df_melt['gene_ix'][0])), len(df_melt))
+
+    if gene_id == 2:
+        break
 
 #%%
-# convert lt to cell_ix
-dataframe['cell_ix'] = (dataframe['lt'] * (n_cells-1)).astype(int)
-
 # convert NF range to genomic range
 dataframe['cut_start'] = dataframe['cut_start'] * (p_max - p_min) + p_min
 dataframe['cut_end'] = dataframe['cut_end'] * (p_max - p_min) + p_min
 
+# def plot_cutsites(df, gene, n_fragments):
+#     fig, ax = plt.subplots(figsize=(15, 15))
+#     ax.scatter(df['x'], df['y'], s=1, marker='s', color='black')
+#     ax.set_title(f"{gene} (cut sites = {2 * n_fragments})", fontsize=14)
+#     ax.set_xlabel('Position', fontsize=12)
+#     ax.set_ylabel('Latent Time', fontsize=12)
+#     ax.set_xlim([-10000, 10000])
+#     ax.set_ylim([0, 1])
+#     ax.set_facecolor('white')
+#     fig.show()
+
+# for gene_id in dataframe['gene_ix'].unique():
+#     print(gene_id)
+#     dataframe_sub = dataframe[dataframe['gene_ix'] == gene_id]
+#     print(len(dataframe_sub))
+#     # melt dataframe
+#     df_melt = pd.melt(dataframe_sub, id_vars=['gene_ix', 'gene_element', 'lt'], value_name='x')
+#     print(len(df_melt))
+#     # rename columns x and lt
+#     df_melt = df_melt.rename(columns={'lt': 'y'})
+#     # plot
+#     plot_cutsites(df_melt, str(int(df_melt['gene_ix'][0])), len(df_melt))
+
+#     if gene_id == 2:
+#         break
+
+del genes_data_list
+
 #%%
-missing_cell_ix = np.array(list(set(np.arange(n_cells)) - set(dataframe['cell_ix'])))
+dataframe['cell_ix'] = dataframe['lt'] * (n_cells-1)
+
+id_exist = set(np.round(sorted(set(dataframe['cell_ix']))).astype(int))
+missing_cell_ix = np.array(list(set(np.arange(n_cells)) - id_exist))
 
 df_missing_cell_ix = dataframe[:len(missing_cell_ix)]
 df_missing_cell_ix['cell_ix'] = missing_cell_ix
-dataframe = pd.concat([dataframe, df_missing_cell_ix])
+
+#%%
+dataframe = pd.concat([df_missing_cell_ix, dataframe])
 
 #%%
 # convert to tensor for fragments dir
 coordinates = torch.tensor(dataframe[['cut_start', 'cut_end']].values, dtype = torch.int64)
 mapping = torch.tensor(dataframe[['cell_ix', 'gene_ix']].values, dtype = torch.int64)
 
+#%%
 # dataframe length unique column gene_ix
 n_genes = len(dataframe['gene_ix'].unique())
 

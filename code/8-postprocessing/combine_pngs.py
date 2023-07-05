@@ -1,97 +1,34 @@
 #%%
-import os
-import sys
-import chromatinhd as chd
-from PIL import Image
+import IPython
+if IPython.get_ipython() is not None:
+    IPython.get_ipython().magic('load_ext autoreload')
+    IPython.get_ipython().magic('autoreload 2')
 
+import os
+import pickle
+import numpy as np
+import pandas as pd
+import chromatinhd as chd
+import chromatinhd_manuscript.plot_functions as pf
+
+# %%
 # set folder paths
 folder_root = chd.get_output()
-folder_data_preproc = folder_root / "data" / "hspc"
+folder_data_preproc = folder_root / "data" / "hspc_backup"
+specs = pickle.load(open(folder_root.parent / "code/8-postprocessing/specs.pkl", "rb"))
 
-def combine_pngs(dir1, dir2, dir3, dir4, dir5, dir6, output_dir):
-    # Get the list of PNG files in the directories
-    files1 = [f for f in os.listdir(dir1) if f.endswith(".png")]
-    files2 = [f for f in os.listdir(dir2) if f.endswith(".png")]
-    files3 = [f for f in os.listdir(dir3) if f.endswith(".png")]
-    files4 = [f for f in os.listdir(dir4) if f.endswith(".png")]
-    files5 = [f for f in os.listdir(dir5) if f.endswith(".png")]
-    files6 = [f for f in os.listdir(dir6) if f.endswith(".png")]
+dataset_name = specs['dataset_name']
+nbins = specs['nbins']
 
-    for i, (file1, file2, file3, file4, file5, file6) in enumerate(zip(files1, files2, files3, files4, files5, files6)):
-        # Open images from each directory
-        img1 = Image.open(os.path.join(dir1, file1))
-        img2 = Image.open(os.path.join(dir2, file2))
-        img3 = Image.open(os.path.join(dir3, file3))
-        img4 = Image.open(os.path.join(dir4, file4))
-        img5 = Image.open(os.path.join(dir5, file5))
-        img6 = Image.open(os.path.join(dir6, file6))
+# dirs, only do it for fold 0
+dir1 = folder_data_preproc / f'plots/cutsites_{dataset_name}'
+dir2 = folder_data_preproc / f'plots/likelihood_continuous_{dataset_name}_{"_".join(str(n) for n in nbins)}_fold_0'
+dir3 = folder_data_preproc / f'plots/likelihood_continuous_{dataset_name}_{"_".join(str(n) for n in nbins)}_fold_0_minmax'
+dir_out = folder_data_preproc / f'plots/likelihood_continuous_{dataset_name}_{"_".join(str(n) for n in nbins)}_fold_0_combined'
 
-        # Create a blank canvas for the combined image grid
-        nrows = 2
-        ncols = 3
-        grid_width = max(img1.width, img2.width, img3.width, img4.width, img5.width)
-        grid_height = max(img1.height, img2.height, img3.height, img4.height, img5.height)
-        combined_img = Image.new("RGB", (grid_width * ncols, grid_height * nrows))
+dirs = [dir1, dir2, dir3]
 
-        # Paste images into the combined image grid
-        combined_img.paste(img1, (0, 0))
-        combined_img.paste(img2, (0, grid_height))
-        combined_img.paste(img3, (grid_width, 0))
-        combined_img.paste(img4, (grid_width, grid_height))
-        combined_img.paste(img5, (grid_width * 2, 0))
-        combined_img.paste(img6, (grid_width * 2, grid_height))
+# %%
+pf.combine_1rows_3cols(dirs, dir_out)
 
-        # Save the combined image
-        output_file = os.path.join(output_dir, file1)
-        combined_img.save(output_file, "PNG")
-
-        print(f"Combined images saved to {output_file}")
-
-# Set the directories for the five image sets
-dir_1 = folder_data_preproc / 'plots' / sys.argv[1]
-dir_2 = folder_data_preproc / 'plots' / sys.argv[2]
-dir_3 = folder_data_preproc / 'plots' / sys.argv[3]
-dir_4 = folder_data_preproc / 'plots' / sys.argv[4]
-dir_5 = folder_data_preproc / 'plots' / sys.argv[5]
-dir_6 = folder_data_preproc / 'plots' / sys.argv[6]
-
-# Set the output directory for the combined image grid
-dir_out = folder_data_preproc / 'plots' / sys.argv[7]
-os.makedirs(dir_out, exist_ok=True)
-
-# Call the function to combine the images into a grid
-combine_pngs(dir_1, dir_2, dir_3, dir_4, dir_5, dir_6, dir_out)
-
-# Get the arguments from the terminal
-# dir_1 = folder_data_preproc / "plots/likelihood_continuous"
-# dir_2 = folder_data_preproc / "plots/likelihood_continuous_128"
-# dir_out = folder_data_preproc / "plots/test"
-# dir_1 = folder_data_preproc / 'plots' / sys.argv[1]
-# dir_2 = folder_data_preproc / 'plots' / sys.argv[2]
-# dir_out = folder_data_preproc / 'plots' / sys.argv[3]
-# os.makedirs(dir_out, exist_ok=True)
-
-# def combine_pngs(dir1, dir2, output_dir):
-#     # Get the list of PNG files in the first directory
-#     files1 = [f for f in os.listdir(dir1) if f.endswith(".png")]
-
-#     for file1 in files1:
-#         # Check if the corresponding file exists in the second directory
-#         file2 = os.path.join(dir2, file1)
-#         if os.path.isfile(file2):
-#             # Open both images
-#             img1 = Image.open(os.path.join(dir1, file1))
-#             img2 = Image.open(file2)
-
-#             # Combine the images vertically
-#             combined_img = Image.new("RGB", (max(img1.width, img2.width), img1.height + img2.height))
-#             combined_img.paste(img1, (0, 0))
-#             combined_img.paste(img2, (0, img1.height))
-
-#             # Save the combined image
-#             output_file = os.path.join(output_dir, file1)
-#             combined_img.save(output_file, "PNG")
-
-#             print(f"Combined {file1} and {file2} into {output_file}")
-
-# combine_pngs(dir_1, dir_2, dir_out)
+# %%

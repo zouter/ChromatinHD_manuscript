@@ -140,101 +140,40 @@ def model_quantile(gene_oi, latent_torch, fragments, directory, show=False):
         plt.close(fig)
 
 def combine_1rows_3cols(dirs, output_dir):
-    # Initialize a list to hold the files from each directory
-    files = []
 
-    # Iterate over the directories
+    files = []
     for directory in dirs:
-        # Get the list of PNG files in the directory
         files_in_dir = sorted([f for f in os.listdir(directory) if f.endswith(".png")])
         files.append(files_in_dir)
+    
+    # check if all files have the same length
+    if not all(len(file) == len(files[0]) for file in files):
+        raise ValueError("All files must have the same length.")
 
     # Determine the number of rows and columns
     nrows = 1
-    ncols = len(files[0]) if files else 0
+    ncols = 3
 
-    # Calculate the dimensions of the combined image grid
-    grid_width = max(image.width for image in images)
-    grid_height = max(image.height for image in images)
-    images = []
+    for i, (file1, file2, file3) in enumerate(zip(*files)):
+        # Open images from each directory
+        img1 = Image.open(os.path.join(dirs[0], file1))
+        img2 = Image.open(os.path.join(dirs[1], file2))
+        img3 = Image.open(os.path.join(dirs[2], file3))
 
-    for i in range(ncols):
-        for j in range(nrows):
-            file_path = os.path.join(dirs[j], files[j][i])
-            image = Image.open(file_path)
-            images.append(image)
-
-            # Update the grid width and height
-            grid_width += image.width
-            grid_height = max(grid_height, image.height)
-
-    combined_img = Image.new("RGB", (grid_width, grid_height))
-
-    # Paste images into the combined image grid
-    x_offset = 0
-
-    for image in images:
-        combined_img.paste(image, (x_offset, 0))
-        x_offset += image.width
-
-    # Save the combined image
-    output_file = os.path.join(output_dir, files[0][0])
-    combined_img.save(output_file, "PNG")
-
-def combine_2rows_3cols(dirs, output_dir):
-    # Initialize a list to hold the files from each directory
-    files = []
-
-    # Iterate over the directories
-    for directory in dirs:
-        # Get the list of PNG files in the directory
-        files_in_dir = sorted([f for f in os.listdir(directory) if f.endswith(".png")])
-        files.append(files_in_dir)
-
-    # Determine the number of rows and columns
-    nrows = len(dirs)
-    ncols = len(files[0]) if files else 0
-
-    # Iterate over the files and create the combined image grid
-    for i in range(ncols):
-        images = []
-        for j in range(nrows):
-            file_path = os.path.join(dirs[j], files[j][i])
-            image = Image.open(file_path)
-            images.append(image)
-
-        # Calculate the dimensions of the combined image grid
-        grid_width = max(image.width for image in images)
-        grid_height = max(image.height for image in images)
+        # Create a blank canvas for the combined image grid
+        grid_width = max(img1.width, img2.width, img3.width)
+        grid_height = max(img1.height, img2.height, img3.height)
         combined_img = Image.new("RGB", (grid_width * ncols, grid_height * nrows))
 
         # Paste images into the combined image grid
-        for j, image in enumerate(images):
-            x = (j % 3) * grid_width
-            y = (j // 3) * grid_height
-            combined_img.paste(image, (x, y))
+        combined_img.paste(img1, (grid_width * 0, grid_height * 0))
+        combined_img.paste(img2, (grid_width * 1, grid_height * 0))
+        combined_img.paste(img3, (grid_width * 2, grid_height * 0))
 
         # Save the combined image
-        output_file = os.path.join(output_dir, files[0][i])
+        os.makedirs(output_dir, exist_ok=True)
+        output_file = os.path.join(output_dir, file1)
         combined_img.save(output_file, "PNG")
 
-def combine_2rows_1cols(dir1, dir2, output_dir):
-    # Get the list of PNG files in the first directory
-    files1 = [f for f in os.listdir(dir1) if f.endswith(".png")]
+        print(output_file)
 
-    for file1 in files1:
-        # Check if the corresponding file exists in the second directory
-        file2 = os.path.join(dir2, file1)
-        if os.path.isfile(file2):
-            # Open both images
-            with Image.open(os.path.join(dir1, file1)) as img1, Image.open(file2) as img2:
-                # Combine the images vertically
-                combined_img = Image.new("RGB", (max(img1.width, img2.width), img1.height + img2.height))
-                combined_img.paste(img1, (0, 0))
-                combined_img.paste(img2, (0, img1.height))
-
-                # Save the combined image
-                output_file = os.path.join(output_dir, file1)
-                combined_img.save(output_file, "PNG")
-
-                print(f"Combined {file1} and {file2} into {output_file}")

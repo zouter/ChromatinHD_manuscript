@@ -1,5 +1,6 @@
 #%%
 import os
+import pickle
 import numpy as np
 import pandas as pd
 import chromatinhd as chd
@@ -9,24 +10,21 @@ import chromatinhd_manuscript.plot_functions as pf
 # set folder paths
 folder_root = chd.get_output()
 folder_data_preproc = folder_root / "data" / "hspc_backup"
+specs = pickle.load(open(folder_root.parent / "code/8-postprocessing/specs.pkl", "rb"))
+
 dataset_name = "myeloid"
 dataset_name = "simulated"
+dataset_name = specs['dataset_name']
 
 promoter_name, window = "10k10k", np.array([-10000, 10000])
 promoter_file = promoter_name + "_simulated" if dataset_name == "simulated" else promoter_name
 promoters = pd.read_csv(folder_data_preproc / ("promoters_" + promoter_file + ".csv"), index_col = 0)
 
+nbins = specs['nbins']
+pattern = f"likelihood_continuous_{dataset_name}_{'_'.join(str(n) for n in nbins)}_fold_"
+directories = sorted([file for file in os.listdir(folder_data_preproc) if pattern in file])
+
 #%%
-# find all dir that have suffix '_minmax' in dir 'plots'
-dirs_out = sorted([file for file in os.listdir(folder_data_preproc / 'plots') if '_minmax' in file])
-# remove suffix '_minmax'
-dirs_out = [file.replace('_minmax', '') for file in dirs_out]
-
-# find all dir that have prefix 'likelihood_continuous'
-dirs_in = sorted([file for file in os.listdir(folder_data_preproc) if 'likelihood_continuous' in file and '_vs_' not in file])
-# remove all items in dirs_out from dirs_in
-dirs_in = [file for file in dirs_in if file not in dirs_out]
-
 def find_minmax(file):
     tensor = np.loadtxt(file, delimiter=',')
 
@@ -56,20 +54,22 @@ def find_minmax(file):
     return result_df
 
 #%%
-dirs_in = ['likelihood_continuous_128_fold_0']
-
-for dir_sub in dirs_in:
+for dir_sub in directories:
     dir_csv = folder_data_preproc / dir_sub
-    dir_plot = folder_data_preproc / "plots" / f"{dir_sub}_minmax"
-    os.makedirs(dir_plot, exist_ok=True)
+    dir_minmax = folder_data_preproc / "plots" / f"{dir_sub}_minmax"
+    # dir_likelihood = folder_data_preproc / "plots" / f"{dir_sub}"
 
     files = sorted([file for file in os.listdir(dir_csv) if '.csv' in file])
     for file in files:
         gene = file.replace('.csv', '')
         filename = dir_csv / file
+
+        pf.model_continuous(gene, dir_csv, show=False)
         df_minmax = find_minmax(filename)
-        pf.minmax(gene, df_minmax, dir_plot, show=False)
+        pf.minmax(gene, df_minmax, dir_minmax, show=False)
 
         print(dir_sub, gene)
 
 print('End of script')
+
+# %%

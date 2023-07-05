@@ -4,32 +4,24 @@ if IPython.get_ipython() is not None:
     IPython.get_ipython().magic('load_ext autoreload')
     IPython.get_ipython().magic('autoreload 2')
 
-import os
 import torch
 import torch_scatter
 import pickle
-import pathlib
-import tempfile
 import numpy as np
 import pandas as pd
-import scanpy as sc
 import tqdm.auto as tqdm
 
 import chromatinhd as chd
 import chromatinhd.loaders.fragments
 import chromatinhd.models.likelihood_pseudotime.v1 as likelihood_model
 
-import matplotlib as mpl
-import matplotlib.pyplot as plt
-import matplotlib.colors as colors
-import seaborn as sns
-sns.set_style('ticks')
-
 #%%
 folder_root = chd.get_output()
 folder_data_preproc = folder_root / "data" / "hspc_backup"
+specs = pickle.load(open(folder_root.parent / "code/8-postprocessing/specs.pkl", "rb"))
 dataset_name = "myeloid"
 dataset_name = "simulated"
+dataset_name = specs['dataset_name']
 fragment_dir = folder_data_preproc / f"fragments_{dataset_name}"
 df_latent_file = folder_data_preproc / f"MV2_latent_time_{dataset_name}.csv"
 
@@ -89,25 +81,9 @@ for index, fold in enumerate(folds):
     loaders_validation.initialize(minibatches_validation)
 
     data = loaders_train.pull()
-    # print(data.cut_coordinates)
-    # print(data.cut_coordinates.shape)
-    # print(data.cut_local_cell_ix)
-    # print(data.cut_local_cell_ix.shape)
-    # print(data.cut_local_gene_ix)
-    # print(data.cut_local_gene_ix.shape)
-    # print(data.cut_local_cellxgene_ix)
-    # print(data.cut_local_cellxgene_ix.shape)
-    # print(data.cut_local_cellxgene_ix.unique())
-    # print(data.cut_local_cellxgene_ix.unique().shape)
-    # print(torch.bincount(data.cut_local_cell_ix))
-    # print(torch.bincount(data.cut_local_gene_ix))
-    # print(torch.bincount(data.cut_local_cellxgene_ix))
-    # print(data.cut_local_cell_ix.unique().shape)
 
-    nbins = (128, )
     nbins = (128, 64, 32, )
-    nbins = (1024, )
-    nbins = (32, )
+    nbins = specs['nbins']
     model_name = f"{dataset_name}_{'_'.join(str(n) for n in nbins)}_fold_{index}"
 
     model = likelihood_model.Model(fragments, latent, nbins = nbins)
@@ -123,7 +99,8 @@ for index, fold in enumerate(folds):
     trainer = chd.train.Trainer(model, loaders_train, loaders_validation, optimizer, n_epochs = 50, checkpoint_every_epoch=1, optimize_every_step = 1)
     trainer.train()
 
-    pickle.dump(model.to("cpu"), open(f"./3-lt_continuous_{model_name}.pkl", "wb"))
+    model_name_pickle = folder_root.parent / f"code/7-pseudotime/models/3-lt_continuous_{model_name}.pkl"
+    pickle.dump(model.to("cpu"), open(model_name_pickle, "wb"))
 
     likelihood_per_gene = torch.zeros(fragments.n_genes)
     for data in loaders_validation:
@@ -139,3 +116,4 @@ for index, fold in enumerate(folds):
 print("Training complete, models saved")
 
 #%%
+trainer.trace.plot()

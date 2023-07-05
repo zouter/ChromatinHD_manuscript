@@ -6,41 +6,36 @@ if IPython.get_ipython() is not None:
 
 import os
 import torch
-import torch_scatter
 import pickle
-import pathlib
-import tempfile
 import numpy as np
 import pandas as pd
-import scanpy as sc
 import tqdm.auto as tqdm
-
 import chromatinhd as chd
-import chromatinhd.loaders.fragments
-import chromatinhd.models.likelihood_pseudotime.v1 as likelihood_model
-
-import matplotlib as mpl
-import matplotlib.pyplot as plt
-import matplotlib.colors as colors
-import seaborn as sns
-sns.set_style('ticks')
+import chromatinhd_manuscript.plot_functions as pf
 
 #%%
 folder_root = chd.get_output()
-folder_data_preproc = folder_root / "data" / "hspc"
+folder_data_preproc = folder_root / "data" / "hspc_backup"
+specs = pickle.load(open(folder_root.parent / "code/8-postprocessing/specs.pkl", "rb"))
+dataset_name = "myeloid"
+dataset_name = "simulated"
+dataset_name = specs['dataset_name']
+fragment_dir = folder_data_preproc / f"fragments_{dataset_name}"
+df_latent_file = folder_data_preproc / f"MV2_latent_time_{dataset_name}.csv"
 
 #%%
 promoter_name, window = "10k10k", np.array([-10000, 10000])
-promoters = pd.read_csv(folder_data_preproc / ("promoters_" + promoter_name + ".csv"), index_col = 0)
+promoter_file = promoter_name + "_simulated" if dataset_name == "simulated" else promoter_name
+promoters = pd.read_csv(folder_data_preproc / ("promoters_" + promoter_file + ".csv"), index_col = 0)
 
-fragments = chd.data.Fragments(folder_data_preproc / "fragments_myeloid" / promoter_name)
+fragments = chd.data.Fragments(fragment_dir / promoter_name)
 fragments.window = window
 fragments.create_cut_data()
 
-folds = pd.read_pickle(folder_data_preproc / "fragments_myeloid" / promoter_name / "folds.pkl")
+folds = pd.read_pickle(fragment_dir / promoter_name / "folds.pkl")
 
 # torch works by default in float32
-df_latent = pd.read_csv(folder_data_preproc / "MV2_latent_time_myeloid.csv", index_col = 0)
+df_latent = pd.read_csv(df_latent_file, index_col = 0)
 latent = torch.tensor(df_latent['latent_time'].values.astype(np.float32))
 
 #%%
@@ -48,19 +43,20 @@ pseudocoordinates = torch.linspace(0, 1, 1000)
 latent_times = torch.linspace(0, 1, 101)
 latent_times = torch.flip(latent_times, [0])
 
-# #%%
-nbins = (256, )
+#%%
 nbins = (128, 64, 32, )
-nbins = (128, )
-model_pattern = f"3-lt_continuous_{'_'.join(str(n) for n in nbins)}_fold_"
-models = sorted([file for file in os.listdir('.') if model_pattern in file])
+nbins = specs['nbins']
+data_source = "_simulated" if dataset_name == "simulated" else ""
+dir_models = folder_root.parent / f"code/7-pseudotime/models"
+model_pattern = f"3-lt_continuous{data_source}_{'_'.join(str(n) for n in nbins)}_fold_"
+models = sorted([file for file in os.listdir(dir_models) if model_pattern in file])
 models_name = [x.replace('3-lt_continuous_', '').replace('.pkl', '') for x in models]
 
 #%%
 for index in range(len(models)):
     print(index)
 
-    model = pickle.load(open(f"./{models[index]}", "rb"))
+    model = pickle.load(open(dir_models / models[index], "rb"))
 
     csv_dir = folder_data_preproc / f"likelihood_continuous_{models_name[index]}"
     print(csv_dir)
@@ -69,29 +65,23 @@ for index in range(len(models)):
     for gene_oi in range(promoters.shape[0]):
         print(gene_oi)
         gene_name = promoters.index[gene_oi]
-        probs = model.evaluate_pseudo(pseudocoordinates, latent_times, gene_oi)
-        probsx = torch.exp(probs)
-        probsx = torch.reshape(probsx, (101, 1000))
-        np.savetxt(f"{csv_dir}/{gene_name}.csv", probsx, delimiter=',')
+        likelihoods = model.evaluate_pseudo(pseudocoordinates, latent_times, gene_oi)
+
+        # overall = likelihoods.overall
+        # overall = torch.exp(overall)
+        # overall = torch.reshape(overall, (101, 1000))
+
+        # height = likelihoods.height
+        # height = torch.exp(height)
+        # height = torch.reshape(height, (101, 1000))
+
+        probs = likelihoods.total
+        probs = torch.exp(probs)
+        probs = torch.reshape(probs, (101, 1000))
+
+        np.savetxt(f"{csv_dir}/{gene_name}.csv", probs, delimiter=',')
 
 print('Inference complete, csv files saved')
-# potentially change this to a 3D tensor (cut_site x latent_time x gene) and save the tensor directly
-
-#%%
-# latent_oi = torch.tensor([0.0])
-# probs0 = model.evaluate_pseudo(pseudocoordinates, latent_oi, gene_oi)
-
-# latent_oi = torch.tensor([0.1])
-# probs1 = model.evaluate_pseudo(pseudocoordinates, latent_oi, gene_oi)
-
-# latent_oi = torch.tensor([0.2])
-# probs2 = model.evaluate_pseudo(pseudocoordinates, latent_oi, gene_oi)
-
-# latent_oi = torch.tensor([0.0, 0.1, 0.2])
-# probs3 = model.evaluate_pseudo(pseudocoordinates, latent_oi, gene_oi)
-
-# probs_all = torch.cat((probs0, probs1, probs2), dim=0)
-# sum(probs_all != probs3) # should sum to 0
 
 # #%%
 # transcriptome = chd.data.Transcriptome(folder_data_preproc / "transcriptome")

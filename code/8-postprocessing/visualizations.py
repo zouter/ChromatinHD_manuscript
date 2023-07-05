@@ -1,10 +1,16 @@
 #%%
+import IPython
+if IPython.get_ipython() is not None:
+    IPython.get_ipython().magic('load_ext autoreload')
+    IPython.get_ipython().magic('autoreload 2')
+
 import os
 import torch
 import imageio
 import numpy as np
 import pandas as pd
 import chromatinhd as chd
+import chromatinhd_manuscript.plot_functions as pf
 
 import seaborn as sns
 import plotly.express as px
@@ -53,94 +59,7 @@ mapping = fragments.mapping
 mapping_cutsites = torch.bincount(mapping[:, 1]) * 2
 
 #%%
-# calculate the range that contains 90% of the data
-# sorted_tensor, _ = torch.sort(mapping_cutsites)
-# ten_percent = mapping_cutsites.numel() // 10
-# min_val, max_val = sorted_tensor[ten_percent], sorted_tensor[-ten_percent]
-
-# values, bins, _ = plt.hist(mapping_cutsites.numpy(), bins=50, color="blue", alpha=0.75)
-# percentages = values / np.sum(values) * 100
-
-# sns.set_style("white")
-# sns.set_context("paper", font_scale=1.4)
-# fig, ax = plt.subplots(dpi=300)
-# ax.bar(bins[:-1], percentages, width=np.diff(bins), color="blue", alpha=0.75)
-# ax.set_title("Percentage of values per bin")
-# ax.set_xlabel("Number of cut sites")
-# ax.set_ylabel("%")
-# ax.axvline(min_val, color='r', linestyle='--')
-# ax.axvline(max_val, color='r', linestyle='--')
-
-# sns.despine()
-
-# fig.savefig(folder_data_preproc / f'plots/n_cutsites.png')
-
-#%%
 dir_csv = folder_data_preproc / "likelihood_continuous_128"
-dir_plot_quantile = folder_data_preproc / "plots/likelihood_quantile"
-# dir_plot_continuous = folder_data_preproc / "plots/likelihood_continuous"
-# dir_plot_continuous_128 = folder_data_preproc / "plots/likelihood_continuous_128"
-# dir_plot_combined = folder_data_preproc / "plots/cutsites_likelihood_continuous"
-
-# global_vars = globals()
-# dirs = {key: value for key, value in global_vars.items() if key.startswith('dir_')}
-# [os.makedirs(value, exist_ok=True) for value in dirs.values()]
-
-def plot_cutsites(df, gene, n_fragments, directory):
-    fig, ax = plt.subplots(figsize=(15, 15))
-    ax.scatter(df['x'], df['y'], s=1, marker='s', color='black')
-    ax.set_title(f"{gene} (cut sites = {2 * n_fragments})", fontsize=14)
-    ax.set_xlabel('Position', fontsize=12)
-    ax.set_ylabel('Latent Time', fontsize=12)
-    ax.set_xlim([0, 1])
-    ax.set_ylim([0, 1])
-    ax.set_facecolor('white')
-
-    directory = folder_data_preproc / 'plots' / f"cutsites_{directory}"
-    os.makedirs(directory, exist_ok=True)
-
-    plt.savefig(directory / f'{gene}.png')
-
-    fig.show()
-
-def plot_cutsites_histo(df, df_long, gene, n_fragments):
-    fig, axs = plt.subplots(figsize=(15, 10), ncols=2, gridspec_kw={'width_ratios': [1, 3]})
-
-    ax_hist = axs[0]
-    ax_hist.hist(df['rank'], bins=100, orientation='horizontal')
-    ax_hist.set_xlabel('n cells')
-    ax_hist.set_ylabel('Rank')
-    ax_hist.set_ylim([0, 1])
-    ax_hist.invert_xaxis()
-
-    ax_scatter = axs[1]
-    ax_scatter.scatter(df_long['x'], df_long['y'], s=1, marker='s', color='black')
-    ax_scatter.set_xlabel('Position')
-    ax_scatter.set_ylabel('Latent Time')
-    ax_scatter.set_xlim([0, 1])
-    ax_scatter.set_ylim([0, 1])
-    ax_scatter.set_facecolor('white')
-
-    fig.suptitle(f"{gene} (cut sites = {2 * n_fragments})", fontsize=14)
-
-    plt.savefig(folder_data_preproc / f'plots/cutsites_histo/{gene}.png')
-
-def plot_model_continuous(gene, dir_data):
-    file_name = folder_data_preproc / dir_data / f"{gene}.csv"
-    probsx = np.loadtxt(file_name, delimiter=',')
-
-    fig, ax = plt.subplots(figsize=(5, 5))
-    heatmap = ax.imshow(probsx, cmap='RdBu_r', aspect='auto')
-    cbar = plt.colorbar(heatmap)
-
-    ax.set_title(f'Probs for gene_oi = {gene}')
-    ax.set_xlabel('Position')
-    ax.set_ylabel('Latent Time')
-
-    dir_plot_full = folder_data_preproc / "plots" / dir_data
-    os.makedirs(dir_plot_full, exist_ok=True)
-    file_name = dir_plot_full / f"{gene}.png"
-    plt.savefig(file_name, dpi=200)
 
 def plot_cutsites_model_continuous(df, gene, n_fragments, directory):
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(15, 20), gridspec_kw={'height_ratios': [1, 1]})
@@ -183,31 +102,6 @@ def plot_cutsites_model_continuous(df, gene, n_fragments, directory):
     file_name = directory / f"{gene}.png"
     plt.savefig(file_name, dpi=300)
 
-def plot_model_quantile(latent_torch, gene_oi, fragments):
-    gene_id = fragments.var.index[gene_oi]
-    probs = pd.read_csv(folder_data_preproc / f"likelihood_quantile/{gene_id}.csv")
-
-    bins = np.linspace(0, 1, 500)
-    binmids = (bins[1:] + bins[:-1])/2
-    binsize = binmids[1] - binmids[0]
-    pseudocoordinates = torch.linspace(0, 1, 1000)
-
-    fig, axes = plt.subplots(probs.shape[0], 1, figsize=(20, 1*probs.shape[0]), sharex = True, sharey = True)
-    for i, ax in zip(reversed(range(probs.shape[0])), axes):
-        n_cells = latent_torch[:, i].sum()
-
-        fragments_oi = (latent_torch[fragments.cut_local_cell_ix, i] != 0) & (fragments.cut_local_gene_ix == gene_oi)
-        bincounts, _ = np.histogram(fragments.cut_coordinates[fragments_oi].cpu().numpy(), bins = bins)
-        freq = round((fragments_oi.sum()/n_cells).item(), 3)
-
-        ax.bar(binmids, bincounts / n_cells * len(bins), width = binsize, color = "#888888", lw = 0)
-        ax.plot(pseudocoordinates.numpy(), probs.iloc[i, 1:], label = i, color = "#0000FF", lw = 2, zorder = 20)
-        ax.plot(pseudocoordinates.numpy(), probs.iloc[i, 1:], label = i, color = "#FFFFFF", lw = 3, zorder = 10)
-        ax.set_ylabel(f"{probs.iloc[i]['cluster']}\n freq={freq}", rotation = 0, ha = "right", va = "center")
-
-    plt.savefig(dir_plot_quantile / (gene_id + ".png"))
-    plt.close()
-
 #%%
 # find dirs of interest
 nbins = (32, )
@@ -237,14 +131,44 @@ for x in range(promoters.shape[0]):
     df_long = pd.melt(df, id_vars=['cell_ix', 'gene_ix', 'cell', 'latent_time', 'rank', 'height'], value_vars=['cut_start', 'cut_end'], var_name='cut_type', value_name='position')
     df_long = df_long.rename(columns={'position': 'x', 'rank': 'y'})
     
-    plot_cutsites(df_long, gene, n_fragments, dataset_name)
+    # directory = folder_data_preproc / 'plots' / f"cutsites_{dataset_name}"
+    # pf.cutsites(gene, df_long, directory, show=False)
+    # directory = folder_data_preproc / 'plots' / f"cutsites_histo_{dataset_name}"
+    # pf.cutsites_histo(gene, df, df_long, n_fragments, directory, show=False)
 
-    # for directory in dirs:
-    #     plot_model_continuous(gene, directory)
+    directory = folder_data_preproc / f"likelihood_quantile_{dataset_name}"
+    pf.model_quantile(x, latent_torch, fragments, directory, show=False)
+
+    # for dir_x in dirs:
+    #     directory = folder_data_preproc / dir_x
+    #     pf.model_continuous(gene, directory, show=False)
 
         # plot_cutsites_histo(df, df_long, gene, n_fragments)
         # plot_cutsites_model_continuous(df_long, gene, n_fragments)
         # plot_model_quantile(latent_torch, x, fragments)
+
+#%%
+# calculate the range that contains 90% of the data
+# sorted_tensor, _ = torch.sort(mapping_cutsites)
+# ten_percent = mapping_cutsites.numel() // 10
+# min_val, max_val = sorted_tensor[ten_percent], sorted_tensor[-ten_percent]
+
+# values, bins, _ = plt.hist(mapping_cutsites.numpy(), bins=50, color="blue", alpha=0.75)
+# percentages = values / np.sum(values) * 100
+
+# sns.set_style("white")
+# sns.set_context("paper", font_scale=1.4)
+# fig, ax = plt.subplots(dpi=300)
+# ax.bar(bins[:-1], percentages, width=np.diff(bins), color="blue", alpha=0.75)
+# ax.set_title("Percentage of values per bin")
+# ax.set_xlabel("Number of cut sites")
+# ax.set_ylabel("%")
+# ax.axvline(min_val, color='r', linestyle='--')
+# ax.axvline(max_val, color='r', linestyle='--')
+
+# sns.despine()
+
+# fig.savefig(folder_data_preproc / f'plots/n_cutsites.png')
 
 #%%
 # TODO

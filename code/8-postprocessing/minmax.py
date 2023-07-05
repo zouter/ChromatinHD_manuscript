@@ -1,13 +1,9 @@
 #%%
 import os
-import torch
 import numpy as np
 import pandas as pd
 import chromatinhd as chd
 import chromatinhd_manuscript.plot_functions as pf
-
-import matplotlib.pyplot as plt
-import matplotlib.patches as patches
 
 # %%
 # set folder paths
@@ -77,101 +73,3 @@ for dir_sub in dirs_in:
         print(dir_sub, gene)
 
 print('End of script')
-
-# def minmax(file):
-#     tensor = np.loadtxt(file, delimiter=',')
-
-#     rows, cols = tensor.shape
-#     minima = []
-#     maxima = []
-#     minis = []
-#     maxis = []
-
-#     for i in range(1, rows - 1):
-#         for j in range(1, cols - 1):
-#             neighbors = tensor[i-1:i+2, j-1:j+2].flatten()
-#             center = tensor[i, j]
-#             if np.all(center <= neighbors):
-#                 minima.append((i, j))
-#                 minis.append(tensor[i, j].item())
-#             elif np.all(center >= neighbors):
-#                 maxima.append((i, j))
-#                 maxis.append(tensor[i, j].item())
-
-#     try:
-#         minima_y, minima_x = zip(*minima)
-#         minima_y = np.array(minima_y) / rows
-#         minima_x = np.array(minima_x) / cols
-#     except ValueError:
-#         minima_y, minima_x = [], []
-
-#     try:
-#         maxima_y, maxima_x = zip(*maxima)
-#         maxima_y = np.array(maxima_y) / rows
-#         maxima_x = np.array(maxima_x) / cols
-#     except ValueError:
-#         maxima_y, maxima_x = [], []
-
-#     # Ensure arrays have the same length
-#     max_length = max(len(minima_y), len(minima_x), len(maxima_y), len(maxima_x))
-#     minima_y = np.pad(minima_y, (0, max_length - len(minima_y)))
-#     minima_x = np.pad(minima_x, (0, max_length - len(minima_x)))
-#     maxima_y = np.pad(maxima_y, (0, max_length - len(maxima_y)))
-#     maxima_x = np.pad(maxima_x, (0, max_length - len(maxima_x)))
-    
-#     data = {
-#         'minima_y': minima_y,
-#         'minima_x': minima_x,
-#         'maxima_y': maxima_y,
-#         'maxima_x': maxima_x
-#     }
-
-#     return pd.DataFrame(data)
-
-# %%
-# def find_local_minima_maxima(tensor):
-#     rows, cols = tensor.shape
-#     local_minima = []
-#     local_maxima = []
-#     minis = []
-#     maxis = []
-
-#     for i in range(1, rows - 1):
-#         for j in range(1, cols - 1):
-#             neighbors = tensor[i-1:i+2, j-1:j+2].flatten()
-#             center = tensor[i, j]
-#             if np.all(center <= neighbors):
-#                 local_minima.append((i, j))
-#                 minis.append(tensor[i, j].item())
-#             elif np.all(center >= neighbors):
-#                 local_maxima.append((i, j))
-#                 maxis.append(tensor[i, j].item())
-
-#     return local_minima, local_maxima, minis, maxis
-
-# def minmax(tensor, minima, maxima, gene, plot_dir):
-#     try:
-#         minima_y, minima_x = zip(*minima)
-#         minima_y = np.array(minima_y) / tensor.shape[0]
-#         minima_x = np.array(minima_x) / tensor.shape[1]
-#     except ValueError:
-#         minima_y, minima_x = [], []
-
-#     try:
-#         maxima_y, maxima_x = zip(*maxima)
-#         maxima_y = np.array(maxima_y) / tensor.shape[0]
-#         maxima_x = np.array(maxima_x) / tensor.shape[1]
-#     except ValueError:
-#         maxima_y, maxima_x = [], []
-
-#     file_name = plot_dir / f"{gene}.png"
-
-#     plt.figure(figsize=(5, 5))
-#     plt.scatter(minima_x, minima_y, c='red', s=1, linewidths=0.5, label='Minima')
-#     plt.scatter(maxima_x, maxima_y, c='blue', s=1, linewidths=0.5, label='Maxima')
-#     plt.title(str(plot_dir).split('/')[-1])
-#     plt.xlabel('Positions')
-#     plt.ylabel('Latent Time')
-#     plt.xlim([0, 1])
-#     plt.ylim([0, 1])
-#     plt.savefig(file_name, dpi=200)

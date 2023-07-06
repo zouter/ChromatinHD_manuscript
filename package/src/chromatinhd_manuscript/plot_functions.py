@@ -1,5 +1,7 @@
 import os
+import re
 import torch
+import itertools
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -10,15 +12,26 @@ default_figsize = (15, 15)
 default_dpi = 100
 default_titlesize = 20
 default_labelsize = 18
+default_xlabel = 'Normalized Genomic Position (0.5 = TSS)'
+default_ylabel = 'Normalized Pseudotemporal Ordering'
+NF_range = [0, 1]
 
+def extract_model_fold(input_string):
+    pattern = r"(\d+(?:_\d+)*_fold_\d+)"
+    result = re.search(pattern, input_string)
+    if result:
+        return result.group(0)
+    else:
+        return None
+    
 def cutsites(gene, df, directory, show=False):
     fig, ax = plt.subplots(figsize=default_figsize)
     ax.scatter(df['x'], df['y'], s=1, marker='s', color='black')
     ax.set_title(f"{gene} (cut sites = {len(df)})", fontsize=default_titlesize) #check if len(df) is correct
-    ax.set_xlabel('Position', fontsize=default_labelsize)
-    ax.set_ylabel('Latent Time', fontsize=default_labelsize)
-    ax.set_xlim([0, 1])
-    ax.set_ylim([0, 1])
+    ax.set_xlabel(default_xlabel, fontsize=default_labelsize)
+    ax.set_ylabel(default_ylabel, fontsize=default_labelsize)
+    ax.set_xlim(NF_range)
+    ax.set_ylim(NF_range)
     ax.set_facecolor('white')
 
     os.makedirs(directory, exist_ok=True)
@@ -36,15 +49,15 @@ def cutsites_histo(gene, df, df_long, n_fragments, directory, show=False):
     ax_hist.hist(df['rank'], bins=100, orientation='horizontal')
     ax_hist.set_xlabel('n cells')
     ax_hist.set_ylabel('Rank')
-    ax_hist.set_ylim([0, 1])
+    ax_hist.set_ylim(NF_range)
     ax_hist.invert_xaxis()
 
     ax_scatter = axs[1]
     ax_scatter.scatter(df_long['x'], df_long['y'], s=1, marker='s', color='black')
-    ax_scatter.set_xlabel('Position')
-    ax_scatter.set_ylabel('Latent Time')
-    ax_scatter.set_xlim([0, 1])
-    ax_scatter.set_ylim([0, 1])
+    ax_scatter.set_xlabel(default_xlabel)
+    ax_scatter.set_ylabel(default_ylabel)
+    ax_scatter.set_xlim(NF_range)
+    ax_scatter.set_ylim(NF_range)
     ax_scatter.set_facecolor('white')
 
     fig.suptitle(f"{gene} (cut sites = {2 * n_fragments})", fontsize=20)
@@ -67,9 +80,9 @@ def model_continuous(gene, directory, show=False):
     fig, ax = plt.subplots(figsize=default_figsize)
     heatmap = ax.imshow(probsx, cmap='RdBu_r', aspect='auto')
     cbar = plt.colorbar(heatmap)
-    ax.set_title(f'Probs for gene_oi = {gene}', fontsize=default_titlesize)
-    ax.set_xlabel('Position', fontsize=default_labelsize)
-    ax.set_ylabel('Latent Time', fontsize=default_labelsize)
+    ax.set_title(f"{gene} (likelihood = {extract_model_fold(directory.name)})", fontsize=default_titlesize)
+    ax.set_xlabel(default_xlabel, fontsize=default_labelsize)
+    ax.set_ylabel(default_ylabel, fontsize=default_labelsize)
 
     os.makedirs(dir_plot_full, exist_ok=True)
     plt.savefig(file_name, dpi=default_dpi)
@@ -86,11 +99,11 @@ def minmax(gene, df, directory, show=False):
     plt.figure(figsize=default_figsize)
     plt.scatter(minima['x'], minima['y'], c='red', s=1, linewidths=0.5, label='Minima')
     plt.scatter(maxima['x'], maxima['y'], c='blue', s=1, linewidths=0.5, label='Maxima')
-    plt.title(str(directory).split('/')[-1], fontsize=default_titlesize)
-    plt.xlabel('Positions', fontsize=default_labelsize)
-    plt.ylabel('Latent Time', fontsize=default_labelsize)
-    plt.xlim([0, 1])
-    plt.ylim([0, 1])
+    plt.title(f"{gene} (minmax: {extract_model_fold(directory.name)})", fontsize=default_titlesize)
+    plt.xlabel(default_xlabel, fontsize=default_labelsize)
+    plt.ylabel(default_ylabel, fontsize=default_labelsize)
+    plt.xlim(NF_range)
+    plt.ylim(NF_range)
 
     os.makedirs(directory, exist_ok=True)
     plt.savefig(directory / f"{gene}.png", dpi=default_dpi)
@@ -128,7 +141,7 @@ def model_quantile(gene_oi, latent_torch, fragments, directory, show=False):
         ax.set_ylabel(f"{probs.iloc[i]['cluster']}\n freq={freq}", rotation = 0, ha = "right", va = "center")
 
     fig.suptitle(f'Probs for gene_oi = {gene_id}', y=0.92, fontsize=default_titlesize)
-    fig.text(0.5, 0.03, "Position", ha="center", fontsize=default_labelsize)
+    fig.text(0.5, 0.03, default_xlabel, ha="center", fontsize=default_labelsize)
     fig.text(0.04, 0.5, "Likelihood", va="center", rotation="vertical", fontsize=default_labelsize)
 
     os.makedirs(dir_plot_full, exist_ok=True)
@@ -139,40 +152,58 @@ def model_quantile(gene_oi, latent_torch, fragments, directory, show=False):
     else:
         plt.close(fig)
 
-def combine_1rows_3cols(dirs, output_dir):
+def combine_1rows_3cols(dirs, output_dir, nrows, ncols):
+    """
+    fixed: height per image in row
+    fixed: width per image in column
+    flexible: width per image in row
+    flexible: height per image in column
+    """
 
-    files = []
-    for directory in dirs:
-        files_in_dir = sorted([f for f in os.listdir(directory) if f.endswith(".png")])
-        files.append(files_in_dir)
-    
-    # check if all files have the same length
+    # Get all files in the directories
+    files = [sorted([f for f in os.listdir(directory) if f.endswith(".png")]) for directory in dirs]
+
+    # Check if all file lists have the same length
     if not all(len(file) == len(files[0]) for file in files):
-        raise ValueError("All files must have the same length.")
+        raise ValueError("All file lists must have the same length.")
 
-    # Determine the number of rows and columns
-    nrows = 1
-    ncols = 3
+    # Create grid positions
+    combinations = list(itertools.product(range(1, nrows+1), range(1, ncols+1)))
 
-    for i, (file1, file2, file3) in enumerate(zip(*files)):
+    for i, files_in_row in enumerate(zip(*files)):
+        # Check if all files in the row have the same name
+        if not all(file == files_in_row[0] for file in files_in_row):
+            raise ValueError("All files in the row must have the same name.")
+
         # Open images from each directory
-        img1 = Image.open(os.path.join(dirs[0], file1))
-        img2 = Image.open(os.path.join(dirs[1], file2))
-        img3 = Image.open(os.path.join(dirs[2], file3))
+        images = [Image.open(os.path.join(dirs[j], file)) for j, file in enumerate(files_in_row)]
+
+        # Get image dimensions
+        widths = [img.width for img in images]
+        heights = [img.height for img in images]
+
+        # Create dataframe with grid positions and image dimensions
+        row_positions, col_positions = zip(*combinations)
+        df = pd.DataFrame({'Row': row_positions, 'Col': col_positions, 'Widths': widths, 'Heights': heights})
+
+        # Calculate the combined image grid positions
+        df['x'] = df.groupby('Row')['Widths'].cumsum() - df['Widths']
+        df['y'] = df.groupby('Col')['Heights'].cumsum() - df['Heights']
+
+        # Calculate the combined image grid dimensions
+        width_sum = df.loc[df['Row'] == 1, 'Widths'].sum()
+        height_sum = df.loc[df['Col'] == 1, 'Heights'].sum()
 
         # Create a blank canvas for the combined image grid
-        grid_width = max(img1.width, img2.width, img3.width)
-        grid_height = max(img1.height, img2.height, img3.height)
-        combined_img = Image.new("RGB", (grid_width * ncols, grid_height * nrows))
+        combined_img = Image.new("RGB", (width_sum, height_sum))
 
         # Paste images into the combined image grid
-        combined_img.paste(img1, (grid_width * 0, grid_height * 0))
-        combined_img.paste(img2, (grid_width * 1, grid_height * 0))
-        combined_img.paste(img3, (grid_width * 2, grid_height * 0))
+        for j, img in enumerate(images):
+            combined_img.paste(img, (df.loc[j, 'x'], df.loc[j, 'y']))
 
         # Save the combined image
         os.makedirs(output_dir, exist_ok=True)
-        output_file = os.path.join(output_dir, file1)
+        output_file = os.path.join(output_dir, files_in_row[0])
         combined_img.save(output_file, "PNG")
 
         print(output_file)

@@ -29,6 +29,8 @@ dir_out = folder_data_preproc / f'plots/likelihood_continuous_{dataset_name}_{"_
 dirs = [dir1, dir2, dir3]
 
 # %%
-pf.combine_1rows_3cols(dirs, dir_out)
+pf.combine_1rows_3cols(dirs, dir_out, 1, 3)
+
+print('End of script')
 
 # %%

@@ -5,6 +5,9 @@ import itertools
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import matplotlib.patches as patches
+import matplotlib.gridspec as gridspec
+import seaborn as sns
 
 from PIL import Image
 
@@ -27,7 +30,7 @@ def extract_model_fold(input_string):
 def cutsites(gene, df, directory, show=False):
     fig, ax = plt.subplots(figsize=default_figsize)
     ax.scatter(df['x'], df['y'], s=1, marker='s', color='black')
-    ax.set_title(f"{gene} (cut sites = {len(df)})", fontsize=default_titlesize) #check if len(df) is correct
+    ax.set_title(f"{gene} (cut sites: {len(df)})", fontsize=default_titlesize)
     ax.set_xlabel(default_xlabel, fontsize=default_labelsize)
     ax.set_ylabel(default_ylabel, fontsize=default_labelsize)
     ax.set_xlim(NF_range)
@@ -79,10 +82,16 @@ def model_continuous(gene, directory, show=False):
 
     fig, ax = plt.subplots(figsize=default_figsize)
     heatmap = ax.imshow(probsx, cmap='RdBu_r', aspect='auto')
-    cbar = plt.colorbar(heatmap)
-    ax.set_title(f"{gene} (likelihood = {extract_model_fold(directory.name)})", fontsize=default_titlesize)
+    cbar = plt.colorbar(heatmap, cax=fig.add_axes([0.94, 0.15, 0.03, 0.7]))
+    ax.set_title(f"{gene} (likelihood: {extract_model_fold(directory.name)})", fontsize=default_titlesize)
     ax.set_xlabel(default_xlabel, fontsize=default_labelsize)
     ax.set_ylabel(default_ylabel, fontsize=default_labelsize)
+
+    ticks = [0, 0.2, 0.4, 0.6, 0.8, 1.0]
+    ax.set_xticks(np.linspace(0, probsx.shape[1] - 1, 6))
+    ax.set_yticks(np.linspace(0, probsx.shape[0] - 1, 6))
+    ax.set_xticklabels(ticks)
+    ax.set_yticklabels(ticks[::-1])
 
     os.makedirs(dir_plot_full, exist_ok=True)
     plt.savefig(file_name, dpi=default_dpi)
@@ -146,6 +155,51 @@ def model_quantile(gene_oi, latent_torch, fragments, directory, show=False):
 
     os.makedirs(dir_plot_full, exist_ok=True)
     plt.savefig(file_name)
+
+    if show:
+        plt.show()
+    else:
+        plt.close(fig)
+
+def celltypes_by_lt(df, directory, show=False):
+    # Sort dataframe by values
+    df = df.sort_values('values')
+
+    # Define the colormap
+    unique_labels = sorted(df['labels'].unique())
+    color_palette = sns.color_palette("coolwarm", len(unique_labels))
+    color_mapping = dict(zip(unique_labels, color_palette))
+
+    # Create the figure and GridSpec
+    fig = plt.figure(figsize=(3, 15))
+    gs = gridspec.GridSpec(1, 3, width_ratios=[3, 1, 1])
+
+    # Create subplots in the left column
+    ax_legend = plt.subplot(gs[:, 0])
+    legend_handles = []
+    for label, color in color_mapping.items():
+        legend_handles.append(patches.Patch(color=color, label=label))
+    ax_legend.legend(handles=legend_handles)
+    ax_legend.axis('off')
+
+    # Create subplots in the middle column
+    ax_empty = plt.subplot(gs[:, 1])  # Empty subplot
+    ax_empty.axis('off')
+
+    # Create subplots in the right column
+    ax_plot = plt.subplot(gs[:, 2:])
+    rect_height = 1 / len(df)
+    for i, row in df.iterrows():
+        rect = patches.Rectangle((0, i * rect_height), 1, rect_height, facecolor=color_mapping[row['labels']])
+        ax_plot.add_patch(rect)
+
+    ax_plot.set_yticks([0.0, 0.2, 0.4, 0.6, 0.8, 1.0])
+    ax_plot.set_xticks([])
+    ax_plot.set_ylabel('')
+    ax_plot.set_xlabel('')
+
+    os.makedirs(directory, exist_ok=True)
+    plt.savefig(directory / "celltypes_by_lt.png", dpi=default_dpi)
 
     if show:
         plt.show()

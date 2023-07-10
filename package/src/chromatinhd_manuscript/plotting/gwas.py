@@ -4,6 +4,60 @@ import adjustText
 import seaborn as sns
 
 
+class SNPs(Panel):
+    def __init__(self, plotdata, width, window, *args, height=0.1, **kwargs):
+        super().__init__(
+            (width, height),
+            *args,
+            **kwargs,
+        )
+        ax = self.ax
+
+        snpmain_colors = {
+            snpmain: color
+            for snpmain, color in zip(
+                plotdata["snp_main"].unique(), sns.color_palette("tab10")
+            )
+        }
+
+        ax.scatter(
+            plotdata["position"],
+            [0.3] * len(plotdata),
+            marker="v",
+            s=5,
+            c=plotdata["snp_main"].map(snpmain_colors),
+        )
+
+        texts = []
+        for i, (index, row) in enumerate(plotdata.iterrows()):
+            texts.append(
+                ax.text(
+                    row["position"],
+                    0.8,
+                    row["rsid"],
+                    fontsize=5,
+                    ha="center",
+                    va="bottom",
+                    color=snpmain_colors[row["snp_main"]],
+                )
+            )
+        self.texts = texts
+        ax.set_ylim(0, 1)
+        ax.annotate(
+            "Immune GWAS",
+            (0, 0.5),
+            xytext=(-2, 0),
+            xycoords="axes fraction",
+            textcoords="offset points",
+            ha="right",
+            va="center",
+            fontsize=10,
+        )
+        ax.set_xlim(*window)
+        ax.axis("off")
+        ax.axis("off")
+
+
 class SNPsBroken(Panel):
     def __init__(
         self, plotdata, regions, width, transform, *args, gap=1, height=0.1, **kwargs

@@ -90,7 +90,7 @@ dataset_splitter_combinations = pd.DataFrame.from_records(
             ["random_5fold", "leiden_0.1"],
         ),
         itertools.product(
-            ["pbmc10k", "pbmc10k_gran", "pbmc3k"],
+            ["pbmc10k", "pbmc10k_gran", "pbmc3k", "lymphoma"],
             ["10k10k"],
             ["permutations_5fold5repeat"],
         ),

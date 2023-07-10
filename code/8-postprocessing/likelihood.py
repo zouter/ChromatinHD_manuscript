@@ -1,4 +1,9 @@
 #%%
+import IPython
+if IPython.get_ipython() is not None:
+    IPython.get_ipython().magic('load_ext autoreload')
+    IPython.get_ipython().magic('autoreload 2')
+
 import os
 import pickle
 import numpy as np
@@ -9,16 +14,16 @@ import chromatinhd_manuscript.plot_functions as pf
 # %%
 # set folder paths
 folder_root = chd.get_output()
-folder_data_preproc = folder_root / "data" / "hspc_backup"
+folder_data_preproc = folder_root / "data" / "hspc"
 specs = pickle.load(open(folder_root.parent / "code/8-postprocessing/specs.pkl", "rb"))
 
 dataset_name = "myeloid"
 dataset_name = "simulated"
 dataset_name = specs['dataset_name']
+dataset_name_sub = "MV2"
 
 promoter_name, window = "10k10k", np.array([-10000, 10000])
-promoter_file = promoter_name + "_simulated" if dataset_name == "simulated" else promoter_name
-promoters = pd.read_csv(folder_data_preproc / ("promoters_" + promoter_file + ".csv"), index_col = 0)
+promoters = pd.read_csv(folder_data_preproc / f"{dataset_name_sub}_promoters_{promoter_name}.csv", index_col = 0)
 
 nbins = specs['nbins']
 pattern = f"likelihood_continuous_{dataset_name}_{'_'.join(str(n) for n in nbins)}_fold_"

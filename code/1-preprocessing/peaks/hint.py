@@ -1,0 +1,2 @@
+# %%
+! ~/miniconda3/envs/chromatinhd/bin/rgt-hint footprinting --atac-seq --paired-end /data/wsaelens/projects/chromatinhd/chromatinhd_manuscript/tmp/rgt2/atac_possorted_bam.bam /data/wsaelens/projects/chromatinhd/chromatinhd_manuscript/tmp/rgt2/peaks.bed --output-location=/data/wsaelens/projects/chromatinhd/chromatinhd_manuscript/tmp/rgt2 --organism hg38

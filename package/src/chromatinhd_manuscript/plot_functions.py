@@ -161,14 +161,17 @@ def model_quantile(gene_oi, latent_torch, fragments, directory, show=False):
     else:
         plt.close(fig)
 
-def celltypes_by_lt(df, directory, show=False):
+def celltypes_by_lt(df, labels, directory, prefix, show=False):
+
+    # Rename columns
+    df = df.rename(columns={column_name: 'values' if column_type == 'float64' else 'labels' for column_name, column_type in zip(df.columns, df.dtypes)})
+
     # Sort dataframe by values
     df = df.sort_values('values')
 
     # Define the colormap
-    unique_labels = sorted(df['labels'].unique())
-    color_palette = sns.color_palette("coolwarm", len(unique_labels))
-    color_mapping = dict(zip(unique_labels, color_palette))
+    color_palette = sns.color_palette("coolwarm", len(labels))
+    color_mapping = dict(zip(labels, color_palette))
 
     # Create the figure and GridSpec
     fig = plt.figure(figsize=(3, 15))
@@ -189,8 +192,9 @@ def celltypes_by_lt(df, directory, show=False):
     # Create subplots in the right column
     ax_plot = plt.subplot(gs[:, 2:])
     rect_height = 1 / len(df)
-    for i, row in df.iterrows():
-        rect = patches.Rectangle((0, i * rect_height), 1, rect_height, facecolor=color_mapping[row['labels']])
+
+    for i, row in enumerate(df.itertuples(), start=0):
+        rect = patches.Rectangle((0, i * rect_height), 1, rect_height, facecolor=color_mapping[row.labels])
         ax_plot.add_patch(rect)
 
     ax_plot.set_yticks([0.0, 0.2, 0.4, 0.6, 0.8, 1.0])
@@ -199,7 +203,7 @@ def celltypes_by_lt(df, directory, show=False):
     ax_plot.set_xlabel('')
 
     os.makedirs(directory, exist_ok=True)
-    plt.savefig(directory / "celltypes_by_lt.png", dpi=default_dpi)
+    plt.savefig(directory / f"{prefix}_celltypes_by_lt.png", dpi=default_dpi)
 
     if show:
         plt.show()

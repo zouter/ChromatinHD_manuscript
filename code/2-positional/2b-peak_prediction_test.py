@@ -7,17 +7,23 @@ from chromatinhd_manuscript.designs import (
     traindataset_testdataset_splitter_peakcaller_predictor_combinations as design,
 )
 
-design["force"] = True
+design["force"] = False
 
 predictors = {
     "linear": chromatinhd.models.positional.peak.prediction_test.PeaksGeneLinear,
+    "lasso": chromatinhd.models.positional.peak.prediction_test.PeaksGeneLasso,
+    "xgboost": chromatinhd.models.positional.peak.prediction_test.PeaksGeneXGBoost,
 }
 
 # design = design.loc[~(design["peakcaller"].str.startswith("rolling"))]
 # design = design.loc[(design["peakcaller"].str.startswith("macs2_leiden_0.1"))]
-design = design.loc[(design["predictor"] == "linear")]
+# design = design.loc[(design["predictor"] == "linear")]
+design = design.loc[(design["predictor"] == "xgboost")]
 # design = design.loc[(design["testdataset"] != "pbmc3k-pbmc10k")]
-design = design.loc[(design["splitter"] == "random_5fold")]
+# design = design.loc[(design["testdataset"] != "pbmc3k-pbmc10k")]
+# design = design.loc[(design["splitter"] == "random_5fold")]
+
+print(design)
 
 
 for _, design_row in design.iterrows():

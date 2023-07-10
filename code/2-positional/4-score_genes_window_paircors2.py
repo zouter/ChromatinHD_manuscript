@@ -175,7 +175,7 @@ genes_all_oi = (
 #     .sort_values("cor", ascending=False)
 #     .index
 # )
-# genes_all_oi = transcriptome.var.query("symbol == 'BCL2'").index
+genes_all_oi = transcriptome.var.query("symbol == 'AXIN2'").index
 print(len(genes_all_oi))
 
 design = pd.DataFrame({"gene": genes_all_oi})
@@ -221,7 +221,8 @@ for gene, subdesign in design.groupby("gene", sort=False):
             losts.append(x.mean("cell").sel(gene=gene))
         losts = np.stack(losts).mean(0)
 
-        windows_oi = window_scoring.genescores.coords["window"][losts > 0.01]
+        # windows_oi = window_scoring.genescores.coords["window"][losts > 0.01]
+        windows_oi = window_scoring.genescores.coords["window"][losts > 0.001]
 
         print(len(windows_oi))
 

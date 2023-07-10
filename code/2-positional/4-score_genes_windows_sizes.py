@@ -20,6 +20,7 @@ import xarray as xr
 import chromatinhd as chd
 
 device = "cuda:0"
+device = "cuda:1"
 # device = "cpu"
 
 folder_root = chd.get_output()
@@ -120,8 +121,8 @@ scorer_folder = prediction.path / "scoring" / "nothing"
 nothing_scoring = chd.scoring.prediction.Scoring.load(scorer_folder)
 
 genes_all = fragments.var.index
-genes_all_oi = transcriptome.var.query("symbol == 'TCF3'").index
-genes_all_oi = transcriptome.var.index
+# genes_all_oi = transcriptome.var.query("symbol == 'CD74'").index
+genes_all_oi = transcriptome.var.index[1500:]  # !!
 # genes_all_oi = transcriptome.var.index[
 #     (nothing_scoring.genescores.sel(phase="test").mean("model").mean("i")["cor"] > 0.1)
 # ]
@@ -141,6 +142,7 @@ sizes = pd.DataFrame(
 )
 
 for gene, subdesign in design.groupby("gene", sort=False):
+    print(transcriptome.symbol(gene))
     genes_oi = genes_all == gene
     scores_folder = prediction.path / "scoring" / "windowsize_gene" / gene
     scores_folder.mkdir(exist_ok=True, parents=True)

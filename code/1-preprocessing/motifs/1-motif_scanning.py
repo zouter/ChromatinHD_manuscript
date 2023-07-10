@@ -51,9 +51,10 @@ import chromatinhd as chd
 folder_root = chd.get_output()
 folder_data = folder_root / "data"
 
-dataset_name = "lymphoma"
+# dataset_name = "lymphoma"
+# organism = "hs"
+dataset_name = "pbmc10k"
 organism = "hs"
-# dataset_name = "pbmc10k"; organism = "hs"
 # dataset_name = "e18brain"; organism = "mm"
 # dataset_name = "alzheimer"; organism = "mm"
 # dataset_name = "brain"; organism = "hs"
@@ -151,6 +152,7 @@ motifs.to_pickle(folder_motifs / "motifs.pkl")
 # ## Process promoter sequences
 
 # %%
+# promoter_name, window = "100k100k", np.array([-100000, 100000])
 promoter_name, window = "10k10k", np.array([-10000, 10000])
 # promoter_name, window = "1k1k", np.array([-1000, 1000])
 promoters = pd.read_csv(
@@ -180,8 +182,28 @@ def get_sequences(promoters, genome):
     for promoter_ix, (gene, promoter) in tqdm.tqdm(
         enumerate(promoters.iterrows()), total=promoters.shape[0]
     ):
+        left_bound = 0
+        right_bound = genome[promoter["chr"]].shape[0]
         # have to add a +1 here because the genome annotation starts from 1 while python starts from 0
-        sequence = genome[promoter["chr"]][promoter["start"] + 1 : promoter["end"] + 1]
+        sequence = genome[promoter["chr"]][
+            np.clip(promoter["start"] + 1, left_bound, right_bound) : np.clip(
+                promoter["end"] + 1, left_bound, right_bound
+            )
+        ]
+
+        # pad sequence if necessary
+        if sequence.shape[0] < window[1] - window[0]:
+            sequence = np.pad(
+                sequence,
+                (
+                    (
+                        max(left_bound - promoter["start"] - 1, 0),
+                        -min(right_bound - promoter["end"] - 1, 0),
+                    )
+                ),
+                "constant",
+                constant_values=4,
+            )
 
         # flip sequence if strand is negative
         if promoter["strand"] == -1:
@@ -215,11 +237,14 @@ motifs = pd.read_pickle(folder_motifs / "motifs.pkl")
 
 # motifs_oi = motifs.loc[motifs["gene_label"].isin(["TCF7", "GATA3", "IRF4"])]
 # motifs_oi = motifs.iloc[:20]
-# motifs_oi = motifs.loc[motifs["gene_label"].isin(["TCF7", ])]
-motifs_oi = motifs
-
-# %%
-motifs.loc[motifs.index.str.startswith("CEBP")]
+motifs_oi = motifs.loc[
+    motifs["gene_label"].isin(
+        [
+            "SPI1",
+        ]
+    )
+]
+# motifs_oi = motifs
 
 # %%
 nucleotides = pd.DataFrame({"nucleotide": np.arange(4), "label": ["A", "C", "G", "T"]})
@@ -280,8 +305,8 @@ str(np.prod(onehot_promoters.shape) * 32 / 8 / 1024 / 1024 / 1024) + " GiB"
 # Running this on GPU generally gives a 10x time improvement (40 minutes to 3 minutes)
 
 # %%
-# cutoff_col = "cutoff_0001"
-cutoff_col = "cutoff_001"
+cutoff_col = "cutoff_0001"
+# cutoff_col = "cutoff_001"
 
 # %% tags=[]
 position_ixs = []
@@ -316,6 +341,16 @@ for motif_ix, motif in enumerate(tqdm.tqdm(motifs_oi.index)):
     scores.extend(score.flatten().cpu().numpy()[position_ix])
 
 onehot_promoters = onehot_promoters.to("cpu")
+
+# %%
+local_position_ixs = np.array(position_ixs) % onehot_promoters.shape[1]
+
+# %%
+position_ixs_oi = local_position_ixs[
+    (local_position_ixs > (onehot_promoters.shape[1] // 2) - 10000)
+    & (local_position_ixs < (onehot_promoters.shape[1] // 2) + 10000)
+]
+plt.hist(position_ixs_oi, bins=20)
 
 # %%
 import scipy.sparse

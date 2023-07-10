@@ -27,7 +27,8 @@ import matplotlib.pyplot as plt
 import matplotlib as mpl
 
 import seaborn as sns
-sns.set_style('ticks')
+
+sns.set_style("ticks")
 
 import torch
 
@@ -59,7 +60,7 @@ dataset_name = "pbmc10k"
 # dataset_name = "morf_20"
 
 folder_data_preproc = folder_data / dataset_name
-folder_data_preproc.mkdir(exist_ok = True, parents = True)
+folder_data_preproc.mkdir(exist_ok=True, parents=True)
 
 # %%
 software_folder = chd.get_git_root() / "software"
@@ -90,8 +91,6 @@ peaks_folder = folder_root / "peaks" / dataset_name / "macs2_improved"
 # %% tags=[]
 genome_folder = chd.get_output() / "data" / "genomes" / genome
 
-# %%
-tmpdir = 
 
 # %% tags=[]
 # !ls /data/genome/homo_sapiens/GRCh38.108/Homo_sapiens.GRCh38.dna.primary_assembly.fa
@@ -115,4 +114,4 @@ n_latent_dimensions = latent.shape[-1]
 
 # %%
 peaks_folder = folder_root / "peaks" / dataset_name / ("macs2_" + latent_name)
-peaks_folder.mkdir(exist_ok = True, parents = True)
+peaks_folder.mkdir(exist_ok=True, parents=True)

@@ -18,15 +18,26 @@ predictors = {
 # design = design.loc[(design["peakcaller"].str.startswith("stack"))]
 # design = design.loc[~(design["peakcaller"].str.startswith("rolling_"))]
 # design = design.loc[(design["peakcaller"] == "cellranger")]
+# design = design.loc[~(design["peakcaller"].isin(["cellranger", "rolling_50"]))]
 # design = design.loc[(design["predictor"] == "xgboost")]
-design = design.loc[(design["predictor"] == "lasso")]
+# design = design.loc[(design["predictor"] == "linear")]
+# design = design.loc[(design["peakcaller"].isin(["rolling_100", "rolling_50"]))]
+# design = design.loc[(design["predictor"] == "lasso")]
 # design = design.loc[(design["dataset"] != "alzheimer")]
-# design = design.loc[(design["dataset"].isin(["brain", "e18brain", "pbmc10k_gran"]))]
-design = design.loc[(design["promoter"] == "10k10k")]
+design = design.loc[
+    (
+        design["dataset"].isin(
+            ["pbmc10k", "brain", "e18brain", "pbmc10k_gran", "lymphoma"]
+        )
+    )
+]
+# design = design.loc[(design["dataset"].isin(["pbmc10k"]))]
+design = design.loc[(design["promoter"] == "20kpromoter")]
+# design = design.loc[(design["promoter"] == "10k10k")]
 # design = design.loc[(design["promoter"] == "100k100k")]
-# design = design.loc[(design["splitter"] == "random_5fold")]
+design = design.loc[(design["splitter"] == "random_5fold")]
 
-design["force"] = True
+design["force"] = False
 print(design)
 
 
@@ -56,9 +67,18 @@ for _, design_row in design.iterrows():
         transcriptome = chd.data.Transcriptome(
             chd.get_output() / "data" / dataset_name / "transcriptome"
         )
-        peakcounts = chd.peakcounts.FullPeak(
-            folder=chd.get_output() / "peakcounts" / dataset_name / peakcaller
-        )
+        if promoter_name == "10k10k":
+            peakcounts = chd.peakcounts.FullPeak(
+                folder=chd.get_output() / "peakcounts" / dataset_name / peakcaller
+            )
+        else:
+            peakcounts = chd.peakcounts.FullPeak(
+                folder=chd.get_output()
+                / "peakcounts"
+                / dataset_name
+                / peakcaller
+                / promoter_name
+            )
 
         try:
             peaks = peakcounts.peaks
@@ -82,6 +102,12 @@ for _, design_row in design.iterrows():
             transcriptome,
             peakcounts,
         )
+
+        try:
+            peakcounts.counts
+        except FileNotFoundError as e:
+            print(e)
+            continue
 
         prediction.score(
             gene_peak_links,

@@ -83,11 +83,11 @@ prediction = chd.flow.Flow(
 )
 
 # %%
-cool_name = "rao_2014_1kb"
-step = 1000
+# cool_name = "rao_2014_1kb"
+# step = 1000
 
-# cool_name = "gu_2021_500bp"
-# step = 500
+cool_name = "harris_2023_500bp"
+step = 500
 
 # %%
 hic_file = folder_data_preproc / "hic" / promoter_name / f"{cool_name}.pkl"
@@ -129,6 +129,8 @@ genes_oi = sorted(list(
 # %%
 sns.heatmap(np.log1p(gene_hics[genes_oi[0]][0]["balanced"].unstack()))
 
+# %% [markdown]
+# ### Create matchings
 
 # %%
 import pickle
@@ -188,7 +190,11 @@ matchings_file = scores_folder / f"matching_{cool_name}.pkl"
 pickle.dump(matchings, open(matchings_file, "wb"))
 
 # %%
-! ls -lh {matchings_file}
+# ! ls -lh {matchings_file}
+
+
+# %% [markdown]
+# ### Stack regions around E-E
 
 # %%
 import pickle
@@ -196,10 +202,6 @@ import pickle
 scores_folder = prediction.path / "scoring" / "pairwindow_gene"
 matchings_file = scores_folder / f"matching_{cool_name}.pkl"
 matchings = pickle.load(open(matchings_file, "rb"))
-
-
-# %% [markdown]
-# ### Stack regions around E-E
 
 # %%
 import random
@@ -253,17 +255,17 @@ def create_matcher(left, right, cor = "positive", ee = True):
 # matcher_name = "EE2kb-5kb"
 # matcher = create_matcher(2000, 5001, cor = "positive", ee = True)
 
-# matcher_name = "EE5kb-10kb"
-# matcher = create_matcher(5000, 10000, cor = "positive", ee = True)
+matcher_name = "EE5kb-10kb"
+matcher = create_matcher(5000, 10000, cor = "positive", ee = True)
 
 # matcher_name = "EE10kb-15kb"
 # matcher = create_matcher(10000, 15000, cor = "positive", ee = True)
 
-# matcher_name = "EE10kb-15kb"
-# matcher = create_matcher(15000, 20000, cor = "positive", ee = True)
+# matcher_name = "EE20kb-25kb"
+# matcher = create_matcher(20000, 25000, cor = "positive", ee = True)
 
-matcher_name = "EE20kb-25kb"
-matcher = create_matcher(20000, 25000, cor = "positive", ee = True)
+# matcher_name = "EE30kb-35kb"
+# matcher = create_matcher(30000, 35000, cor = "positive", ee = True)
 
 # matcher_name = "EE45kb-50kb"
 # matcher = create_matcher(45000, 50000, cor = "positive", ee = True)
@@ -275,6 +277,9 @@ matcher = create_matcher(20000, 25000, cor = "positive", ee = True)
 # matcher = create_matcher(10000, 100000, cor = "positive", ee = True)
 
 # %%
+# calculate the hic around spots
+# do this for the actual spots, randomspots
+# also keep the spot_scores, e.g. the predictivity, for later
 pad = 50
 spots = []
 randomspots = []
@@ -340,6 +345,9 @@ spot_scores["spot_ix"] = np.arange(len(spot_scores))
 # %%
 import functools
 def format_distance(x, _, shift=50, scale=1000, zero = None):
+    """
+    Format a distance in kilobases
+    """
     if zero is not None:
         if x == shift:
             return zero
@@ -348,6 +356,9 @@ def format_distance(x, _, shift=50, scale=1000, zero = None):
     return f"{int((x - shift) * scale / 1000):+.0f}kb"
 
 def center_bullseye(ax, pad=50, focus=None, center_square = True, center_rect = True, center_line = False, ):
+    """
+    Put a "bullseye" on the center of the axis
+    """
     if focus is None:
         focus = pad
     ax.set_xlim(pad - focus - 0.5, pad + focus + 0.5)
@@ -400,16 +411,19 @@ panel, ax = fig.main.add_right(chd.grid.Panel((1.4, 1.4)))
 ax.matshow(np.exp(spots_lr), cmap=cmap, norm=norm)
 center_bullseye(ax, pad = pad, focus=5)
 
-if matcher_name == "EE20kb-25kb":
+if matcher_name in ["EE20kb-25kb", "EE10kb-15kb", "EE30kb-35kb"] and cool_name == "rao_2014_1kb":
     panel, ax = fig.main.add_right(chd.grid.Panel((1.4, 1.4)))
     ax.matshow(np.exp(spots_lr), cmap=cmap, norm=norm)
     center_bullseye(ax, pad = pad, focus=20)
+
+if matcher_name in ["EE10kb-15kb", "EE30kb-35kb"] or (cool_name != "rao_2014_1kb"):
+    ax.set_title(matcher_name)
 
 panel, ax = fig.main.add_right(chd.grid.Panel((1.4, 1.4)))
 ax.matshow(np.exp(spots_lr), cmap=cmap, norm=norm)
 center_bullseye(ax, pad = pad, center_square = False, center_rect = False, center_line = True, focus = 50)
 
-if matcher_name == "EE20kb-25kb":
+if matcher_name in ["EE20kb-25kb"]:
     panel, ax = fig.main.add_right(chd.grid.Panel((0.1, 1.4)), padding = 0.1)
     cax = plt.colorbar(mpl.cm.ScalarMappable(norm, cmap), cax = ax, format = "%.2f")
     cax.minorformatter = mpl.ticker.FormatStrFormatter('%.2f')
@@ -417,7 +431,10 @@ if matcher_name == "EE20kb-25kb":
 
 fig.plot()
 
-manuscript.save_figure(fig, "6", "hic_ee_pileup_" + matcher_name, dpi=300)
+if cool_name == "rao_2014_1kb":
+    manuscript.save_figure(fig, "6", "hic_ee_pileup_" + matcher_name, dpi=300)
+else:
+    manuscript.save_figure(fig, "6/pileups", "hic_ee_pileup_" + matcher_name + "_" + cool_name, dpi=300)
 
 # %%
 spot_ixs = spot_scores.groupby("gene").first().sort_values("cor", ascending = False)["spot_ix"].iloc[0:20]
@@ -451,7 +468,8 @@ for spot_ix in spot_ixs:
 
 fig.plot()
 
-manuscript.save_figure(fig, "6", "hic_ee_pileup_spots_diffexp", dpi=300)
+if (cool_name == "rao_2014_1kb") and (matcher_name == "EE20kb-25kb"):
+    manuscript.save_figure(fig, "6", "hic_ee_pileup_spots_diffexp", dpi=300)
 
 # %% [markdown]
 # ### Diffexp
@@ -512,11 +530,12 @@ else:
 
 fig.plot()
 
-manuscript.save_figure(fig, "6", "hic_ee_pileup_difference_" + matcher_name, dpi=300)
+if (cool_name == "rao_2014_1kb") and (matcher_name == "EE20kb-25kb"):
+    manuscript.save_figure(fig, "6", "hic_ee_pileup_difference_" + matcher_name, dpi=300)
 
 # %% [markdown]
 # ### Predictivity magnitude
-
+#
 # Look at the difference in contact frequency between high and lowly predictive pairs
 
 # %%
@@ -548,7 +567,7 @@ fig.plot()
 
 manuscript.save_figure(fig, "6", "hic_ee_pileup_magnitude_" + matcher_name, dpi=300)
 
-  # %% [markdown]
+# %% [markdown]
 # -----------------------------------------------
 
 # %% [markdown]

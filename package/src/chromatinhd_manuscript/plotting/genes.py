@@ -58,6 +58,9 @@ def get_genes_plotdata(promoter, genome_folder, window):
         </Query>"""
     result = chd.utils.biomart.get(query)
 
+    if len(result) == 0:
+        return pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
+
     # result = result.dropna().copy()
     plotdata_exons = (
         result[["Gene stable ID", "Exon region start (bp)", "Exon region end (bp)"]]

@@ -26,8 +26,7 @@ import matplotlib.pyplot as plt
 import matplotlib as mpl
 
 import seaborn as sns
-
-sns.set_style("ticks")
+sns.set_style('ticks')
 
 import torch
 
@@ -49,9 +48,8 @@ folder_data = folder_root / "data"
 # dataset_name = "brain"
 # dataset_name = "lymphoma"
 # dataset_name = "e18brain"
-# dataset_name = "pbmc10k"
+dataset_name = "pbmc10k"
 # dataset_name = "pbmc10k_gran"
-dataset_name = "pbmc3k"
 # dataset_name = "GSE198467_H3K27ac"
 # dataset_name = "GSE198467_single_modality_H3K27me3"
 # dataset_name = "hspc"
@@ -68,7 +66,7 @@ transcriptome = chd.data.Transcriptome(folder_data_preproc / "transcriptome")
 fragments = chd.data.Fragments(folder_data_preproc / "fragments" / promoter_name)
 
 # %%
-(fragments.path / "folds").mkdir(exist_ok=True)
+(fragments.path / "folds").mkdir(exist_ok = True)
 
 # %% [markdown]
 # ### Random cells with train/validation/test
@@ -81,26 +79,21 @@ n_folds = 20
 # train/test split
 cells_all = np.arange(fragments.n_cells)
 
-cell_bins = np.floor((np.arange(len(cells_all)) / (len(cells_all) / n_folds)))
+cell_bins = np.floor((np.arange(len(cells_all))/(len(cells_all)/n_folds)))
 
 folds = []
 for i in range(n_folds):
     cells_train = cells_all[cell_bins != i]
     cells_validation_test = cells_all[cell_bins == i]
-    cells_validation = cells_validation_test[: (len(cells_validation_test) // 2)]
-    cells_test = cells_validation_test[(len(cells_validation_test) // 2) :]
-
-    folds.append(
-        {
-            "cells_train": cells_train,
-            "cells_validation": cells_validation,
-            "cells_test": cells_test,
-        }
-    )
-pickle.dump(
-    folds,
-    (fragments.path / "folds" / ("random_" + str(n_folds) + "fold.pkl")).open("wb"),
-)
+    cells_validation = cells_validation_test[:(len(cells_validation_test)//2)]
+    cells_test = cells_validation_test[(len(cells_validation_test)//2):]
+    
+    folds.append({
+        "cells_train":cells_train,
+        "cells_validation":cells_validation,
+        "cells_test":cells_test,
+    })
+pickle.dump(folds, (fragments.path / "folds" / ("random_" + str(n_folds) + "fold.pkl")).open("wb"))
 if n_folds == 5:
     pickle.dump(folds, (fragments.path / "folds.pkl").open("wb"))
 
@@ -117,32 +110,23 @@ folds = []
 
 for repeat_ix in range(n_repeats):
     generator = np.random.RandomState(repeat_ix)
-
+    
     cells_all = generator.permutation(fragments.n_cells)
 
-    cell_bins = np.floor((np.arange(len(cells_all)) / (len(cells_all) / n_folds)))
+    cell_bins = np.floor((np.arange(len(cells_all))/(len(cells_all)/n_folds)))
 
     for i in range(n_folds):
         cells_train = cells_all[cell_bins != i]
         cells_validation_test = cells_all[cell_bins == i]
-        cells_validation = cells_validation_test[: (len(cells_validation_test) // 2)]
-        cells_test = cells_validation_test[(len(cells_validation_test) // 2) :]
+        cells_validation = cells_validation_test[:(len(cells_validation_test)//2)]
+        cells_test = cells_validation_test[(len(cells_validation_test)//2):]
 
-        folds.append(
-            {
-                "cells_train": cells_train,
-                "cells_validation": cells_validation,
-                "cells_test": cells_test,
-            }
-        )
-pickle.dump(
-    folds,
-    (
-        fragments.path
-        / "folds"
-        / ("permutations_" + str(n_folds) + "fold" + str(n_repeats) + "repeat.pkl")
-    ).open("wb"),
-)
+        folds.append({
+            "cells_train":cells_train,
+            "cells_validation":cells_validation,
+            "cells_test":cells_test,
+        })
+pickle.dump(folds, (fragments.path / "folds" / ("permutations_" + str(n_folds) + "fold" + str(n_repeats) + "repeat.pkl")).open("wb"))
 print(("permutations_" + str(n_folds) + "fold" + str(n_repeats) + "repeat"))
 
 # %% [markdown]
@@ -160,22 +144,20 @@ latent = pickle.load((latent_folder / (latent_name + ".pkl")).open("rb"))
 folds = []
 perc_validation = 0.2
 for latent_dimension in latent.columns:
-    cells_train_validation = np.where(1 - latent[latent_dimension])[0]
+    cells_train_validation = np.where(1-latent[latent_dimension])[0]
     cells_test = np.where(latent[latent_dimension])[0]
-
+    
     split = int(len(cells_train_validation) * perc_validation)
     cells_validation = cells_train_validation[:split]
     cells_train = cells_train_validation[split:]
-
+    
     print(len(cells_train), len(cells_validation), len(cells_test))
-
-    folds.append(
-        {
-            "cells_train": cells_train,
-            "cells_validation": cells_validation,
-            "cells_test": cells_test,
-        }
-    )
+    
+    folds.append({
+        "cells_train":cells_train,
+        "cells_validation":cells_validation,
+        "cells_test":cells_test,
+    })
 pickle.dump(folds, (fragments.path / "folds" / (latent_name + ".pkl")).open("wb"))
 
 # %% [markdown]
@@ -184,7 +166,7 @@ pickle.dump(folds, (fragments.path / "folds" / (latent_name + ".pkl")).open("wb"
 # %%
 n_bins = 1
 splitter = "all"
-folds = [{"cells_test": np.arange(fragments.n_cells)}]
+folds = [{"cells_test":np.arange(fragments.n_cells)}]
 pickle.dump(folds, (fragments.path / "folds" / (splitter + ".pkl")).open("wb"))
 
 # %% [markdown]
@@ -201,7 +183,7 @@ split = int(len(cells_train_validation) * perc_validation)
 cells_validation = cells_train_validation[:split]
 cells_train = cells_train_validation[split:]
 
-folds = [{"cells_train": cells_train, "cells_validation": cells_validation}]
+folds = [{"cells_train":cells_train, "cells_validation":cells_validation}]
 pickle.dump(folds, (fragments.path / "folds" / (splitter + ".pkl")).open("wb"))
 
 # %%

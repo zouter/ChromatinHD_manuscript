@@ -89,7 +89,6 @@ promoter = promoters.loc[transcriptome.gene_id("BCL2")].copy()
 promoter = promoters.loc[transcriptome.gene_id("CD74")].copy()
 promoter = promoters.loc[transcriptome.gene_id("BANK1")].copy()
 promoter = promoters.loc[transcriptome.gene_id("AFF3")].copy()
-# promoter = promoters.loc["ENSG00000111728"].copy()
 
 hic, bins_hic = chdm.hic.extract_hic(promoter, c=c1, step=step1)
 

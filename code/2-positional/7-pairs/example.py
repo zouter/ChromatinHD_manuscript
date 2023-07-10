@@ -94,22 +94,25 @@ prediction = chd.flow.Flow(
 
 # %% [markdown]
 # ## Subset
-
+#
 # ##
-scorer_folder = prediction.path / "scoring" / "nothing"
-nothing_scoring = chd.scoring.prediction.Scoring.load(scorer_folder)
-genes_all_oi = transcriptome.var.index[
-    (nothing_scoring.genescores.sel(phase="test").mean("model").mean("i")["cor"] > 0.1)
-]
-transcriptome.var.loc[genes_all_oi].head(30)
+# scorer_folder = prediction.path / "scoring" / "nothing"
+# nothing_scoring = chd.scoring.prediction.Scoring.load(scorer_folder)
+# genes_all_oi = transcriptome.var.index[
+#     (nothing_scoring.genescores.sel(phase="test").mean("model").mean("i")["cor"] > 0.1)
+# ]
+# transcriptome.var.loc[genes_all_oi].head(30)
 
 # %%
 folds = pickle.load((fragments.path / "folds" / (splitter + ".pkl")).open("rb"))
 
-# symbol = "BCL2"
-symbol = "TNFAIP2"
-symbol = "KLF12"
-symbol = "CD14"
+symbol = "BCL2"
+# symbol = "TNFAIP2"
+# symbol = "KLF12"
+# symbol = "CD14"
+# symbol = "AXIN2"
+symbol = "FLYWCH1"
+symbol = "PPP2R3C"
 # symbol = transcriptome.symbol("ENSG00000170345")
 print(symbol)
 genes_oi = transcriptome.var["symbol"] == symbol
@@ -171,13 +174,13 @@ ax2.yaxis_inverted()
 
 # %% [markdown]
 # ## Pairwindow
-
-scores_folder = prediction.path / "scoring" / "pairwindow_gene" / gene
-interaction_file = scores_folder / "interaction.pkl"
-
-interaction = pd.read_pickle(interaction_file).assign(gene=gene).reset_index()
-interaction = interaction.rename(columns={0: "cor"})
-assert len(interaction) > 0
+#
+# scores_folder = prediction.path / "scoring" / "pairwindow_gene" / gene
+# interaction_file = scores_folder / "interaction.pkl"
+#
+# interaction = pd.read_pickle(interaction_file).assign(gene=gene).reset_index()
+# interaction = interaction.rename(columns={0: "cor"})
+# assert len(interaction) > 0
 
 # %%
 interaction["effect_prod"] = interaction["effect1"] * interaction["effect2"]
@@ -310,7 +313,7 @@ sns.heatmap(
 
 # %% [markdown]
 # ## Focus on specific regions in a broken axis
-
+#
 # ### Get SNPs
 
 # %%
@@ -517,6 +520,7 @@ main = chd.grid.Grid(padding_height=0.1)
 fig = chd.grid.Figure(main)
 
 resolution = 1 / 4500
+# resolution = 1 / 1000
 gap = 0.025
 panel_width = regions["width"].sum() * resolution + len(regions) * gap
 
@@ -621,7 +625,7 @@ if symbol in ["BCL2"]:
         orientation="vertical",
     )
     panel_interaction_legend.ax.set_ylabel(
-        "Co-predictive\n(cor $\\Delta$cor)",
+        "Co-predictivity\n(cor $\\Delta$cor)",
         rotation=0,
         ha="left",
         va="center",
@@ -682,44 +686,44 @@ sns.heatmap(x, vmin=-0.1, vmax=0.1, cmap="RdBu_r")
 
 # %% [markdown]
 # ## Plot with HiC
-import cooler
-
-cool_name = "rao_2014_1kb"
-step = 1000
-c = cooler.Cooler(str(chd.get_output() / "4DNFIXP4QG5B.mcool") + "::/resolutions/1000")
-
-promoter = promoters.loc[gene].copy()
-promoter["start"] = promoter["start"]  # - 200000
-promoter["end"] = promoter["end"]  # + 200000
-
-hic, bins_hic = chdm.hic.extract_hic(promoter, c=c)
-import itertools
-
-hic = (
-    pd.DataFrame(
-        index=pd.MultiIndex.from_frame(
-            pd.DataFrame(
-                itertools.product(bins_hic.index, bins_hic.index),
-                columns=["window1", "window2"],
-            )
-        )
-    )
-    .join(hic, how="left")
-    .fillna({"balanced": 0.0})
-)
-hic["distance"] = np.abs(
-    hic.index.get_level_values("window1") - hic.index.get_level_values("window2")
-)
+# import cooler
+#
+# cool_name = "rao_2014_1kb"
+# step = 1000
+# c = cooler.Cooler(str(chd.get_output() / "4DNFIXP4QG5B.mcool") + "::/resolutions/1000")
+#
+# promoter = promoters.loc[gene].copy()
+# promoter["start"] = promoter["start"]  # - 200000
+# promoter["end"] = promoter["end"]  # + 200000
+#
+# hic, bins_hic = chdm.hic.extract_hic(promoter, c=c)
+# import itertools
+#
+# hic = (
+#     pd.DataFrame(
+#         index=pd.MultiIndex.from_frame(
+#             pd.DataFrame(
+#                 itertools.product(bins_hic.index, bins_hic.index),
+#                 columns=["window1", "window2"],
+#             )
+#         )
+#     )
+#     .join(hic, how="left")
+#     .fillna({"balanced": 0.0})
+# )
+# hic["distance"] = np.abs(
+#     hic.index.get_level_values("window1") - hic.index.get_level_values("window2")
+# )
 
 # %% [markdown]
 # Power law
-
-fig, ax = plt.subplots()
-plotdata = hic.query("distance > 1000")
-ax.scatter(np.log(plotdata["distance"]), np.log(plotdata["balanced"]))
-fig, ax = plt.subplots()
-plotdata = interaction.query("distance > 1000")
-ax.scatter(np.log(plotdata["distance"]), plotdata["cor"].abs())
+#
+# fig, ax = plt.subplots()
+# plotdata = hic.query("distance > 1000")
+# ax.scatter(np.log(plotdata["distance"]), np.log(plotdata["balanced"]))
+# fig, ax = plt.subplots()
+# plotdata = interaction.query("distance > 1000")
+# ax.scatter(np.log(plotdata["distance"]), plotdata["cor"].abs())
 
 # %%
 fig, ax = plt.subplots()
@@ -870,25 +874,25 @@ fig.plot()
 
 # %% [markdown]
 # ## Focus on a single window
-
-position_oi = 66148  # rs17758695, https://www.nature.com/articles/s41588-019-0362-6, https://www.sciencedirect.com/science/article/pii/S0002929721003037?via%3Dihub#app3
+#
+# position_oi = 66148  # rs17758695, https://www.nature.com/articles/s41588-019-0362-6, https://www.sciencedirect.com/science/article/pii/S0002929721003037?via%3Dihub#app3
 # position_oi = (
 #     promoter["tss"] - 63235095
 # )  # rs954954, https://www.sciencedirect.com/science/article/pii/S0002929721003037?via%3Dihub#app3
 # position_oi = promoter["tss"] - 63248351  # rs9967405, random search
 # position_oi = promoter["tss"] - 63239451  # rs9967405, random search
 # position_oi = promoter["tss"] - 63121512  # rs9967405, random search
-
-windows_all = np.unique(interaction[["window1", "window2"]].values.flatten())
-window_oi = windows_all[np.argmin(np.abs(windows_all - position_oi))]
-
-interaction_single = interaction.query("(window1 == @window_oi)").set_index("window2")
-interaction_single = interaction_single.loc[
-    (interaction_single["lost1"] > 10)
-    & (interaction_single["lost2"] > 10)
-    # & (interaction_single["distance"] > 1000)
-    & True
-]
+#
+# windows_all = np.unique(interaction[["window1", "window2"]].values.flatten())
+# window_oi = windows_all[np.argmin(np.abs(windows_all - position_oi))]
+#
+# interaction_single = interaction.query("(window1 == @window_oi)").set_index("window2")
+# interaction_single = interaction_single.loc[
+#     (interaction_single["lost1"] > 10)
+#     & (interaction_single["lost2"] > 10)
+#     # & (interaction_single["distance"] > 1000)
+#     & True
+# ]
 
 # %%
 fig, ax = plt.subplots()

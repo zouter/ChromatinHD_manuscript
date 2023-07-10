@@ -27,13 +27,18 @@ from chromatinhd_manuscript.designs import (
     dataset_splitter_method_combinations as design,
 )
 
-
-design = design.query("method == 'v20'")
-# design = design.query("method == 'counter'")
-design = design.query("dataset == 'pbmc3k'")
-design = design.query("splitter == 'permutations_5fold5repeat'")
-design = design.query("promoter == '10k10k'")
+# design = design.query("method == 'v21'")
+# design = design.query("method == 'v20'")
+# design = design.query("method == 'v22'")
+design = design.query("method == 'counter'")
+# design = design.query("dataset == 'pbmc10k'")
+design = design.query("splitter == 'random_5fold'")
+# design = design.query("splitter == 'permutations_5fold5repeat'")
+# design = design.query("promoter == '10k10k'")
 # design = design.query("promoter == '100k100k'")
+design = design.query("promoter == '20kpromoter'")
+outcome_source = "counts"
+# outcome_source = "magic"
 
 design["force"] = True
 
@@ -46,6 +51,8 @@ for (dataset_name, promoter_name), subdesign in design.groupby(["dataset", "prom
         window = np.array([-100000, 100000])
     elif promoter_name == "100k100k":
         window = np.array([-1000000, 1000000])
+    elif promoter_name == "20kpromoter":
+        window = np.array([-20000, 0])
     promoters = pd.read_csv(
         folder_data_preproc / ("promoters_" + promoter_name + ".csv"), index_col=0
     )
@@ -121,10 +128,11 @@ for (dataset_name, promoter_name), subdesign in design.groupby(["dataset", "prom
                     for fold_ix, fold in enumerate(folds[fold_slice])
                 ]
 
-                # outcome = transcriptome.X.dense()
-                outcome = torch.from_numpy(transcriptome.adata.layers["magic"])
+                if outcome_source == "counts":
+                    outcome = transcriptome.X.dense()
+                else:
+                    outcome = torch.from_numpy(transcriptome.adata.layers["magic"])
 
-                ####
                 scorer = chd.scoring.prediction.Scorer(
                     models,
                     folds[: len(models)],

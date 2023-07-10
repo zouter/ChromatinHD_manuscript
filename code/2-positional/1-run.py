@@ -25,13 +25,24 @@ from chromatinhd_manuscript.designs import (
     dataset_splitter_method_combinations as design,
 )
 
-design = design.query("splitter == 'permutations_5fold5repeat'")
-design = design.query("method == 'v20'")
-# design = design.query("method == 'counter'")
+splitter = "random_5fold"
+promoter_name, window = "10k10k", np.array([-10000, 10000])
+# prediction_name = "v20"
+prediction_name = "counter"
+# prediction_name = "v21"
+
+design = design.query("splitter == 'random_5fold'")
+# design = design.query("splitter == 'permutations_5fold5repeat'")
+design = design.query("method == 'counter'")
+# design = design.query("method == 'v20'")
+# design = design.query("method == 'v21'")
 # design = design.query("dataset == 'pbmc10k'")
-design = design.query("dataset == 'pbmc3k'")
-# design = design.query("dataset == 'pbmc10k_gran'")
-design = design.query("promoter == '10k10k'")
+# design = design.query("dataset == 'pbmc3k'")
+design = design.query("promoter == '20kpromoter'")
+# design = design.query("promoter == '100k100k'")
+
+outcome_source = "counts"
+# outcome_source = "magic"
 
 design = design.copy()
 design["force"] = True
@@ -159,8 +170,10 @@ for (dataset_name, promoter_name), subdesign in design.groupby(["dataset", "prom
 
                     loss = lambda x, y: -paircor(x, y).mean() * 100
 
-                    # outcome = transcriptome.X.dense()
-                    outcome = torch.from_numpy(transcriptome.adata.layers["magic"])
+                    if outcome_source == "counts":
+                        outcome = transcriptome.X.dense()
+                    else:
+                        outcome = torch.from_numpy(transcriptome.adata.layers["magic"])
 
                     trainer = Trainer(
                         model,

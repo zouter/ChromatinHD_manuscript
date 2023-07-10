@@ -72,7 +72,6 @@ pbmc$peak_region_fragments <-  colSums(pbmc@assays$peaks@counts)
 
 results <- furrr::future_map_dfr(clusters, function(cluster){
     set.seed(1)
-# results <- map_dfr(clusters[1:2], function(cluster){
     da_peaks <- FindMarkers(
         object = pbmc,
         ident.1 = cluster,

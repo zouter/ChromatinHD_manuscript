@@ -32,6 +32,13 @@ bed_folder = chd.get_output() / "bed" / "gm1282_tf_chipseq"
 bed_folder.mkdir(exist_ok = True, parents = True)
 
 # %%
+import chromatinhd as chd
+import chromatinhd_manuscript as chdm
+from manuscript import Manuscript
+
+manuscript = Manuscript(chd.get_git_root() / "manuscript")
+
+# %%
 url = "https://www.encodeproject.org/metadata/?type=Experiment&replicates.library.biosample.donor.organism.scientific_name=Homo+sapiens&assay_title=TF+ChIP-seq&status=released&biosample_ontology.term_name=GM12878&target.label!=CTCF&target.label!=EP300&target.label!=POLR2A&assembly=GRCh38&control_type!=*&target.label!=POLR2AphosphoS2&target.label!=POLR2AphosphoS5"
 # url = "https://www.encodeproject.org/search/?type=Experiment&replicates.library.biosample.donor.organism.scientific_name=Homo+sapiens&assay_title=TF+ChIP-seq&status=released&biosample_ontology.term_name=GM12878&target.label!=CTCF&target.label!=EP300&target.label!=POLR2A&assembly=GRCh38&control_type!=*&target.label!=POLR2AphosphoS2&target.label!=POLR2AphosphoS5"
 
@@ -54,7 +61,7 @@ files["output_type"].value_counts()
 
 # %%
 files = files.loc[files["file_format"] == "bed narrowPeak"]
-files = files.loc[files["output_type"] == "optimal IDR thresholded peaks"]
+files = files.loc[files["output_type"].isin(["optimal IDR thresholded peaks", "conservative IDR thresholded peaks"])]
 files = files.loc[files["file_assembly"] == "GRCh38"]
 files = files.groupby("experiment_target").first().reset_index()
 files["experiment_target"].value_counts()
@@ -65,6 +72,10 @@ files["accession"] = files["file_download_url"].str.split("/").str[-1].str.split
 
 # %%
 files.to_csv(bed_folder / "files.csv")
+
+# %%
+files_oi = files[["experiment_target", "accession"]]
+manuscript.store_supplementary_table(files_oi, f"chipseqs_tfs")
 
 # %% [markdown]
 # ### Download files

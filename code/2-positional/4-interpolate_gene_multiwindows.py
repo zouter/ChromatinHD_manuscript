@@ -60,7 +60,7 @@ prediction = chd.flow.Flow(
 
 genes_all = fragments.var.index
 genes_all_oi = fragments.var.index
-# genes_all_oi = transcriptome.var.query("symbol == 'TCF3'").index
+genes_all_oi = transcriptome.var.query("symbol == 'AAK1'").index
 
 design = pd.DataFrame({"gene": genes_all_oi})
 design["force"] = False

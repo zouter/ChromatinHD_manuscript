@@ -174,13 +174,13 @@ ax2.yaxis_inverted()
 
 # %% [markdown]
 # ## Pairwindow
-#
-# scores_folder = prediction.path / "scoring" / "pairwindow_gene" / gene
-# interaction_file = scores_folder / "interaction.pkl"
-#
-# interaction = pd.read_pickle(interaction_file).assign(gene=gene).reset_index()
-# interaction = interaction.rename(columns={0: "cor"})
-# assert len(interaction) > 0
+# %%
+scores_folder = prediction.path / "scoring" / "pairwindow_gene" / gene
+interaction_file = scores_folder / "interaction.pkl"
+
+interaction = pd.read_pickle(interaction_file).assign(gene=gene).reset_index()
+interaction = interaction.rename(columns={0: "cor"})
+assert len(interaction) > 0
 
 # %%
 interaction["effect_prod"] = interaction["effect1"] * interaction["effect2"]

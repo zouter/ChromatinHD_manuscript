@@ -49,8 +49,8 @@ folder_root = chd.get_output()
 folder_data = folder_root / "data"
 
 # transcriptome
-# dataset_name = "lymphoma"
-dataset_name = "pbmc10k"
+dataset_name = "lymphoma"
+# dataset_name = "pbmc10k"
 # dataset_name = "e18brain"
 folder_data_preproc = folder_data / dataset_name
 
@@ -60,13 +60,13 @@ splitter = "random_5fold"
 promoter_name, window = "10k10k", np.array([-10000, 10000])
 prediction_name = "v20_initdefault"
 
-splitter = "permutations_5fold5repeat"
-promoter_name, window = "100k100k", np.array([-100000, 100000])
-prediction_name = "v20_initidefault"
-
 # splitter = "permutations_5fold5repeat"
-# promoter_name, window = "10k10k", np.array([-10000, 10000])
-# prediction_name = "v20"
+# promoter_name, window = "100k100k", np.array([-100000, 100000])
+# prediction_name = "v20_initidefault"
+
+splitter = "permutations_5fold5repeat"
+promoter_name, window = "10k10k", np.array([-10000, 10000])
+prediction_name = "v20"
 
 # fragments
 promoters = pd.read_csv(
@@ -172,6 +172,12 @@ def plot_genes(symbols, resolution=0.0003):
             genes_panel.ax.set_xlabel("")
             genes_panel.ax.set_xticks([])
 
+        predictive_panel = grid_gene[1, 0] = chd.predictive.plot.Predictive(
+            plotdata_predictive,
+            window,
+            panel_width,
+        )
+
         peaks_panel = grid_gene[2, 0] = chdm.plotting.Peaks(
             promoter,
             peaks_folder,
@@ -180,11 +186,6 @@ def plot_genes(symbols, resolution=0.0003):
             row_height=0.4,
         )
 
-        predictive_panel = grid_gene[1, 0] = chd.predictive.plot.Predictive(
-            plotdata_predictive,
-            window,
-            panel_width,
-        )
     fig.plot()
     return fig
 
@@ -316,3 +317,83 @@ for _, motifdatum in variants.iterrows():
     q = np.searchsorted(rnk_sorted, rnk_motif) / len(rnk_sorted)
     ax.scatter([rnk_motif], [q], color="red")
     # ax.scatter(motifdatum["position"], 0, color = "red", s = 5, marker = "|")
+
+
+# %%
+footprints_file = chd.get_git_root() / "tmp" / "rgt2" / "footprints.bed"
+footprints_name = "HINT"
+
+footprints_file.parent.mkdir(exist_ok = True, parents = True)
+if not footprints_file.exists():
+    !rsync -a --progress wsaelens@updeplasrv6.epfl.ch:{footprints_file} {footprints_file.parent} -v
+import pybedtools
+bed_footprints = pybedtools.BedTool(str(footprints_file))
+
+# %%
+gene = transcriptome.gene_id("BCL2")
+promoter = promoters.loc[gene]
+bed_promoter = pybedtools.BedTool(
+    f"{promoter['chr']}\t{promoter['start']}\t{promoter['end']}\n",
+    from_string = True
+)
+bed_promoter =             pybedtools.BedTool(
+                "\t".join(
+                    [
+                        promoter.chr,
+                        str(promoter.start),
+                        str(promoter.end),
+                    ]
+                ),
+                from_string=True,
+            )
+
+# %%
+footprints = bed_footprints.to_dataframe()
+
+# %%
+footprints_oi = footprints.loc[
+    (footprints["chrom"] == promoter.chr) &
+    (footprints["start"] > promoter.start) &
+    (footprints["end"] < promoter.end)
+]
+
+# %%
+fig, ax = plt.subplots()
+ax.scatter(footprints_oi["start"], [0] * len(footprints_oi), s = 0.1)
+
+# %%
+bed_footprints.intersect(bed_promoter, wa = True, wb = True).to_dataframe()
+
+# %%
+# %%
+import scanpy as sc
+
+transcriptome.adata.obs["oi"] = pd.Categorical(
+    np.array(["noi", "oi"])[
+        transcriptome.adata.obs["celltype"]
+        .isin(['memory B', 'naive B', 'CD14+ Monocytes', 'FCGR3A+ Monocytes'])
+        .values.astype(int)
+    ]
+)
+sc.tl.rank_genes_groups(transcriptome.adata, groupby="oi")
+diffexp = (
+    sc.get.rank_genes_groups_df(
+        transcriptome.adata,
+        # group="CD14+ Monocytes",
+        # group="naive B",
+        # group="memory B",
+        group="oi",
+    )
+    .rename(columns={"names": "gene"})
+    .assign(symbol=lambda x: transcriptome.var.loc[x["gene"], "symbol"].values)
+    .set_index("gene")
+)
+genes_diffexp = diffexp.query("logfoldchanges > 0.1").index
+# %%
+diffexp.head(30)
+
+# %%
+sc.pl.umap(
+    transcriptome.adata,
+    color=[transcriptome.gene_id("CD74")])
+# %%

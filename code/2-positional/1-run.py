@@ -27,22 +27,23 @@ from chromatinhd_manuscript.designs import (
 
 splitter = "random_5fold"
 promoter_name, window = "10k10k", np.array([-10000, 10000])
-# prediction_name = "v20"
-prediction_name = "counter"
+prediction_name = "v20"
+# prediction_name = "counter"
 # prediction_name = "v21"
 
-design = design.query("splitter == 'random_5fold'")
-# design = design.query("splitter == 'permutations_5fold5repeat'")
-design = design.query("method == 'counter'")
+# design = design.query("splitter == 'random_5fold'")
+design = design.query("splitter == 'permutations_5fold5repeat'")
+# design = design.query("method == 'counter'")
 # design = design.query("method == 'v20'")
 # design = design.query("method == 'v21'")
-# design = design.query("dataset == 'pbmc10k'")
+design = design.query("dataset == 'lymphoma'")
 # design = design.query("dataset == 'pbmc3k'")
-design = design.query("promoter == '20kpromoter'")
+design = design.query("promoter == '10k10k'")
+# design = design.query("promoter == '20kpromoter'")
 # design = design.query("promoter == '100k100k'")
 
-outcome_source = "counts"
-# outcome_source = "magic"
+# outcome_source = "counts"
+outcome_source = "magic"
 
 design = design.copy()
 design["force"] = True

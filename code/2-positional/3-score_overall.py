@@ -28,17 +28,17 @@ from chromatinhd_manuscript.designs import (
 )
 
 # design = design.query("method == 'v21'")
-# design = design.query("method == 'v20'")
+design = design.query("method == 'v20'")
 # design = design.query("method == 'v22'")
-design = design.query("method == 'counter'")
+# design = design.query("method == 'counter'")
 # design = design.query("dataset == 'pbmc10k'")
-design = design.query("splitter == 'random_5fold'")
-# design = design.query("splitter == 'permutations_5fold5repeat'")
-# design = design.query("promoter == '10k10k'")
+# design = design.query("splitter == 'random_5fold'")
+design = design.query("splitter == 'permutations_5fold5repeat'")
+design = design.query("promoter == '10k10k'")
 # design = design.query("promoter == '100k100k'")
-design = design.query("promoter == '20kpromoter'")
-outcome_source = "counts"
-# outcome_source = "magic"
+# design = design.query("promoter == '20kpromoter'")
+# outcome_source = "counts"
+outcome_source = "magic"
 
 design["force"] = True
 

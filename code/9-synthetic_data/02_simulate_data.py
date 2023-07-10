@@ -169,17 +169,6 @@ for gene_id in dataframe['gene_ix'].unique():
 dataframe['cut_start'] = dataframe['cut_start'] * (p_max - p_min) + p_min
 dataframe['cut_end'] = dataframe['cut_end'] * (p_max - p_min) + p_min
 
-# def plot_cutsites(df, gene, n_fragments):
-#     fig, ax = plt.subplots(figsize=(15, 15))
-#     ax.scatter(df['x'], df['y'], s=1, marker='s', color='black')
-#     ax.set_title(f"{gene} (cut sites = {2 * n_fragments})", fontsize=14)
-#     ax.set_xlabel('Position', fontsize=12)
-#     ax.set_ylabel('Latent Time', fontsize=12)
-#     ax.set_xlim([-10000, 10000])
-#     ax.set_ylim([0, 1])
-#     ax.set_facecolor('white')
-#     fig.show()
-
 # for gene_id in dataframe['gene_ix'].unique():
 #     print(gene_id)
 #     dataframe_sub = dataframe[dataframe['gene_ix'] == gene_id]

@@ -40,6 +40,10 @@ import polars as pl
 
 # %%
 import chromatinhd as chd
+import chromatinhd_manuscript as chdm
+from manuscript import Manuscript
+
+manuscript = Manuscript(chd.get_git_root() / "manuscript")
 
 # %%
 folder_qtl = chd.get_output() / "data" / "qtl" / "hs" / "gwas"
@@ -176,6 +180,10 @@ traits_oi = pd.DataFrame(
 ).set_index("disease/trait")
 motifscan_name = "gwas_immune"
 # traits_oi
+
+# %%
+traits_oi = traits_oi.loc[~traits_oi.index.duplicated()]
+manuscript.store_supplementary_table(traits_oi, f"traits_{motifscan_name}")
 
 # %%
 qtl = qtl.loc[qtl["disease/trait"].isin(traits_oi.index)]

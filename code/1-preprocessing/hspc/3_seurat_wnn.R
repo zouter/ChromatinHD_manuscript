@@ -11,12 +11,13 @@ library(Signac)
 getwd()
 
 main_path = '/home/vifernan/projects/ChromatinHD_manuscript/output/data/hspc/'
+dataset = 'MV2'
 
 # read in expression and accessbility data
-hspc.data <- Read10X(data.dir = paste0(main_path, "MV2"))
+hspc.data <- Read10X(data.dir = paste0(main_path, dataset))
 
 # subset for the same cells in the jointly filtered anndata object
-barcodes <- read.delim(paste0(main_path, "filtered_cells.txt"), header = F, stringsAsFactors = F)$V1
+barcodes <- read.delim(paste0(main_path, dataset, "_filtered_cells.txt"), header = F, stringsAsFactors = F)$V1
 
 # preprocess RNA
 hspc <- CreateSeuratObject(counts = hspc.data$`Gene Expression`[,barcodes])
@@ -44,11 +45,11 @@ nn_dist <- hspc@neighbors$weighted.nn@nn.dist
 nn_cells <- hspc@neighbors$weighted.nn@cell.names
 
 # save neighborhood graph
-write.table(nn_idx, paste0(main_path, "nn_idx.txt"), sep = ',', row.names = F, col.names = F, quote = F)
-write.table(nn_dist, paste0(main_path, "nn_dist.txt"), sep = ',', row.names = F, col.names = F, quote = F)
-write.table(nn_cells, paste0(main_path, "nn_cells.txt"), sep = ',', row.names = F, col.names = F, quote = F)
+write.table(nn_idx, paste0(main_path, dataset, "_nn_idx.txt"), sep = ',', row.names = F, col.names = F, quote = F)
+write.table(nn_dist, paste0(main_path, dataset, "_nn_dist.txt"), sep = ',', row.names = F, col.names = F, quote = F)
+write.table(nn_cells, paste0(main_path, dataset, "_nn_cells.txt"), sep = ',', row.names = F, col.names = F, quote = F)
 
 # save sessionInfo for reproducibility
-writeLines(capture.output(sessionInfo()), paste0(main_path, "sessionInfo.txt"))
+writeLines(capture.output(sessionInfo()), paste0(main_path, dataset, "_sessionInfo.txt"))
 
-print('end of script')
+print('3_seurat_wnn.R finished')

@@ -1,4 +1,5 @@
 # %%
+import glob
 import pathlib
 import subprocess
 import numpy as np
@@ -22,6 +23,7 @@ sc._settings.ScanpyConfig.figdir = pathlib.PosixPath('')
 folder_root = chd.get_output()
 folder_data = folder_root / "data"
 dataset_name = "hspc"
+dataset_name_sub = "MV2"
 organism = 'hs'
 
 folder_data_preproc = folder_data / dataset_name
@@ -47,7 +49,7 @@ lin_erythroid = info_genes_cells['lin_erythroid'].dropna().tolist()
 lin_platelet = info_genes_cells['lin_platelet'].dropna().tolist()
 
 #%%
-adata_rna = sc.read_loom(folder_data_preproc / "GSM6403410_3423-MV-2_gex_possorted_bam_ICXFB.loom")
+adata_rna = sc.read_loom(next(iter(glob.glob(str(folder_data_preproc / dataset_name_sub / "*.loom"))), None))
 
 #%%
 # check which layer is used
@@ -76,19 +78,17 @@ print(unspliced.sum() / matrix_sum, 'unspliced')
 print(ambiguous.sum() / matrix_sum, 'ambiguous')
 
 #%%
-adata_atac = sc.read_10x_mtx(folder_data_preproc / "MV2", var_names='gene_symbols', cache=True, gex_only=False)
+adata_atac = sc.read_10x_mtx(folder_data_preproc / dataset_name_sub, var_names='gene_symbols', cache=True, gex_only=False)
 adata_atac = adata_atac[:,adata_atac.var['feature_types'] == "Peaks"]
 
 #%%
-adata_atac = mv.aggregate_peaks_10x(
-    adata_atac, 
-    folder_data_preproc / 'GSM6403411_3423-MV-2_atac_peak_annotation.tsv', 
-    folder_data_preproc / 'GSE209878_3423-MV-2_feature_linkage.bedpe', 
-    verbose=True
-)
+atac_peak_annotation_file = next(iter(glob.glob(str(folder_data_preproc / dataset_name_sub / '*atac_peak_annotation.tsv'))), None)
+feature_linkage_file = next(iter(glob.glob(str(folder_data_preproc / dataset_name_sub / '*feature_linkage.bedpe'))), None)
 
-#%%
+adata_atac = mv.aggregate_peaks_10x(adata_atac, atac_peak_annotation_file, feature_linkage_file, verbose=True)
+
 plt.hist(adata_atac.X.sum(1), bins=100, range=(0, 200000))
+
 # %%
 sc.pp.filter_cells(adata_atac, min_counts=5000)
 sc.pp.filter_cells(adata_atac, max_counts=100000)
@@ -107,23 +107,29 @@ adata_rna = adata_rna[(adata_rna.obs['n_genes_by_counts'] < 5000) & (adata_rna.o
 
 #%%
 # filtering, normalize_per_cell, log1p all included in function
-scv.pp.filter_and_normalize(adata_rna, min_shared_counts=10, n_top_genes=1000)
-# scv.pp.filter_genes(adata_rna, min_shared_counts=10)
-# scv.pp.normalize_per_cell(adata_rna)
-# scv.pp.log1p(adata_rna)
-# adata_rna.raw = adata_rna
-# scv.pp.filter_genes_dispersion(adata_rna, n_top_genes=1000)
+# scv.pp.filter_and_normalize(adata_rna, min_shared_counts=10, n_top_genes=1000)
+
+scv.pp.filter_genes(adata_rna, min_shared_counts=10)
+scv.pp.normalize_per_cell(adata_rna)
+scv.pp.log1p(adata_rna)
 
 #%%
 shared_cells = pd.Index(np.intersect1d(adata_rna.obs_names, adata_atac.obs_names))
 shared_genes = pd.Index(np.intersect1d(adata_rna.var_names, adata_atac.var_names))
 
-#%%
 adata_rna2 = adata_rna[shared_cells, shared_genes]
 adata_atac2 = adata_atac[shared_cells, shared_genes]
 
+#%%
+scv.pp.filter_genes_dispersion(adata_rna2, n_top_genes=1000)
+
+#%%
+adata_atac2 = adata_atac2[:, adata_rna2.var_names]
+
+#%%
 s_genes_sub = adata_rna2.var[adata_rna2.var.index.isin(s_genes)].index
 g2m_genes_sub = adata_rna2.var[adata_rna2.var.index.isin(g2m_genes)].index
+
 #%%
 # function includes PCA and neighbors
 scv.pp.moments(adata_rna2, n_pcs=30, n_neighbors=50)
@@ -133,19 +139,19 @@ sc.tl.leiden(adata_rna2, resolution = 1)
 sc.tl.umap(adata_rna2, n_components=2)
 
 #%%
-plt.ioff()
+# plt.ioff()
 
 sc.pl.umap(adata_rna2, color="leiden", legend_loc="on data", show=False)
-plt.savefig(folder_data_preproc / 'plots/UMAP_MV2_basic.pdf')
+plt.savefig(folder_plots / f'{dataset_name_sub}_basic.pdf')
 
 sc.pl.umap(adata_rna2, color=hspc_marker_genes, title=hspc_marker_genes, show=False)
-plt.savefig(folder_data_preproc / 'plots/UMAP_MV2_basic_hspc_genes.pdf')
+plt.savefig(folder_plots / f'{dataset_name_sub}_basic_hspc_genes.pdf')
 
 sc.pl.umap(adata_rna2, color=s_genes_sub, title=s_genes_sub, show=False)
-plt.savefig(folder_data_preproc / 'plots/UMAP_MV2_basic_s_genes.pdf')
+plt.savefig(folder_plots / f'{dataset_name_sub}_basic_s_genes.pdf')
 
 sc.pl.umap(adata_rna2, color=g2m_genes_sub, title=g2m_genes_sub, show=False)
-plt.savefig(folder_data_preproc / 'plots/UMAP_MV2_basic_g2m_genes.pdf')
+plt.savefig(folder_plots / f'{dataset_name_sub}_basic_g2m_genes.pdf')
 
 #%%
 scv.tl.score_genes_cell_cycle(adata_rna2, s_genes=s_genes_sub, g2m_genes=g2m_genes_sub)
@@ -155,13 +161,13 @@ sc.pp.regress_out(adata_rna2, keys=['S_score', 'G2M_score'], n_jobs=4)
 
 #%%
 sc.pl.umap(adata_rna2, color=hspc_marker_genes, title=hspc_marker_genes, show=False)
-plt.savefig(folder_data_preproc / 'plots/UMAP_MV2_basic_hspc_genes_ro.pdf')
+plt.savefig(folder_plots / f'{dataset_name_sub}_basic_hspc_genes_ro.pdf')
 
 sc.pl.umap(adata_rna2, color=s_genes_sub, title=s_genes_sub, show=False)
-plt.savefig(folder_data_preproc / 'plots/UMAP_MV2_basic_s_genes_ro.pdf')
+plt.savefig(folder_plots / f'{dataset_name_sub}_basic_s_genes_ro.pdf')
 
 sc.pl.umap(adata_rna2, color=g2m_genes_sub, title=g2m_genes_sub, show=False)
-plt.savefig(folder_data_preproc / 'plots/UMAP_MV2_basic_g2m_genes_ro.pdf')
+plt.savefig(folder_plots / f'{dataset_name_sub}_basic_g2m_genes_ro.pdf')
 
 #%%
 del adata_rna2.uns
@@ -178,31 +184,32 @@ sc.tl.umap(adata_rna2, n_components=2)
 
 #%%
 sc.pl.umap(adata_rna2, color="leiden", legend_loc="on data", show=False)
-plt.savefig(folder_data_preproc / 'plots/UMAP_MV2_ro.pdf')
+plt.savefig(folder_plots / f'{dataset_name_sub}_ro.pdf')
 
 sc.pl.umap(adata_rna2, color=hspc_marker_genes, title=hspc_marker_genes, show=False)
-plt.savefig(folder_data_preproc / 'plots/UMAP_MV2_ro_hspc_genes.pdf')
+plt.savefig(folder_plots / f'{dataset_name_sub}_ro_hspc_genes.pdf')
 
 sc.pl.umap(adata_rna2, color=s_genes_sub, title=s_genes_sub, show=False)
-plt.savefig(folder_data_preproc / 'plots/UMAP_MV2_ro_s_genes.pdf')
+plt.savefig(folder_plots / f'{dataset_name_sub}_ro_s_genes.pdf')
 
 sc.pl.umap(adata_rna2, color=g2m_genes_sub, title=g2m_genes_sub, show=False)
-plt.savefig(folder_data_preproc / 'plots/UMAP_MV2_ro_g2m_genes.pdf')
+plt.savefig(folder_plots / f'{dataset_name_sub}_ro_g2m_genes.pdf')
 
 # %%
 # sc.pl.umap(adata_rna2, color=['CD34', 'ATXN1'], title=['CD34', 'ATXN1'], use_raw=True)
+
 #%%
 annotation = {
-    '0': 'LMPP', 
+    '1': 'LMPP', 
     '3': 'HSC', 
-    '6': 'MEP', 
+    '8': 'MEP', 
     '2': 'MPP', 
-    '1': 'Erythrocyte', 
-    '5': 'GMP', 
-    '4': 'Prog MK', 
-    '7': 'Granulocyte', 
+    '0': 'Erythrocyte', 
+    '4': 'GMP', 
+    '5': 'Prog MK', 
+    '6': 'Granulocyte', 
     '9': 'Prog DC', 
-    '8': 'Prog B', 
+    '7': 'Prog B', 
 }
 
 df_annotation = pd.DataFrame({'leiden': list(annotation.keys()), 'celltype': list(annotation.values())}).set_index("celltype")
@@ -212,15 +219,14 @@ df_annotation = df_annotation.reindex(adata_rna2.obs["leiden"].unique())
 adata_rna2.obs["celltype"] = df_annotation.loc[adata_rna2.obs["leiden"]].values
 
 sc.pl.umap(adata_rna2, color="celltype", legend_loc="on data", show=False)
-plt.savefig(folder_data_preproc / 'plots/UMAP_MV2_ro_celltypes.pdf')
+plt.savefig(folder_plots / f'{dataset_name_sub}_ro_celltypes.pdf')
 
 #%%
-adata_rna2.obs["celltype"].to_csv(folder_data_preproc / "MV2_celltypes.csv")
+adata_rna2.obs["celltype"].to_csv(folder_data_preproc / f'{dataset_name_sub}_celltypes.csv')
+adata_rna2.obs_names.to_frame().to_csv(folder_data_preproc / f'{dataset_name_sub}_filtered_cells.txt', header=False, index=False)
 
 #%%
-adata_rna2.obs_names.to_frame().to_csv(folder_data_preproc / 'filtered_cells.txt', header=False, index=False)
-#%%
-transcriptome = chromatinhd.data.Transcriptome(folder_data_preproc / "transcriptome")
+transcriptome = chromatinhd.data.Transcriptome(folder_data_preproc / f"{dataset_name_sub}_transcriptome")
 transcriptome.adata = adata_rna2
 transcriptome.var = adata_rna2.var
 transcriptome.obs = adata_rna2.obs
@@ -231,16 +237,14 @@ transcriptome.create_X()
 subprocess.call (folder_root.parent / "code/1-preprocessing/hspc/3_seurat_wnn.R")
 
 #%%
-nn_idx = np.loadtxt(folder_data_preproc / "nn_idx.txt", delimiter=',')
-nn_dist = np.loadtxt(folder_data_preproc / "nn_dist.txt", delimiter=',')
-nn_cells = pd.Index(pd.read_csv(folder_data_preproc / "nn_cells.txt", header=None)[0])
+nn_idx = np.loadtxt(folder_data_preproc / f"{dataset_name_sub}_nn_idx.txt", delimiter=',')
+nn_dist = np.loadtxt(folder_data_preproc / f"{dataset_name_sub}_nn_dist.txt", delimiter=',')
+nn_cells = pd.Index(pd.read_csv(folder_data_preproc / f"{dataset_name_sub}_nn_cells.txt", header=None)[0])
 
 #%%
 np.all(nn_cells == adata_atac2.obs_names)
 
 mv.knn_smooth_chrom(adata_atac2, nn_idx, nn_dist)
-
-adata_atac2
 
 adata_result = mv.recover_dynamics_chrom(
     adata_rna2,
@@ -256,6 +260,6 @@ adata_result = mv.recover_dynamics_chrom(
     extra_color_key='celltype'
 )
 
-adata_result.write(folder_data_preproc / "multivelo_result.h5ad")
+adata_result.write(folder_data_preproc / f"{dataset_name_sub}_multivelo_result.h5ad")
 
 #%%

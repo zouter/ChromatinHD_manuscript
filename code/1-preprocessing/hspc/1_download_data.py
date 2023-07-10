@@ -2,8 +2,10 @@
 import shutil
 import requests
 import itertools
+import subprocess
 import pandas as pd
 import chromatinhd as chd
+from tqdm import tqdm
 
 # %%
 folder_root = chd.get_output()
@@ -40,51 +42,68 @@ files = {
     'GSE209878_3423-MV-2_matrix.mtx.gz': 'https://ftp.ncbi.nlm.nih.gov/geo/series/GSE209nnn/GSE209878/suppl/GSE209878%5F3423%2DMV%2D2%5Fmatrix%2Emtx%2Egz'
 }
 
-for file in files:
+for file in tqdm(files.keys()):  # Iterate over the file keys and use tqdm to display the progress bar
     print(file)
-    r = requests.get(files[file])
-    with open(folder_data_preproc / file, 'wb') as f:
-        f.write(r.content) 
+    # check if file exists
+    if not (mv1 / file).exists() and not (mv2 / file).exists() and not (folder_data_preproc / file).exists():
+        print('Downloading file')
+        response = requests.get(files[file], stream=True)  # Enable streaming for large files
+        total_size = int(response.headers.get("content-length", 0))  # Get the total file size from the response headers
+        progress_bar = tqdm(total=total_size, unit="B", unit_scale=True)  # Initialize the progress bar
+
+        with open(folder_data_preproc / file, 'wb') as f:
+            for chunk in response.iter_content(chunk_size=1024):  # Iterate over the response content in chunks
+                if chunk:  # Filter out keep-alive new chunks
+                    f.write(chunk)
+                    progress_bar.update(len(chunk))  # Update the progress bar with the chunk size
+
+        progress_bar.close()  # Close the progress bar after the download is complete
+
+print('Downloaded all files')
 
 #%%
-shutil.move(folder_data_preproc/'GSE209878_3423-MV-1_barcodes.tsv.gz', mv1/'barcodes.tsv.gz')
-shutil.move(folder_data_preproc/'GSE209878_3423-MV-1_features.tsv.gz', mv1/'features.tsv.gz')
-shutil.move(folder_data_preproc/'GSE209878_3423-MV-1_matrix.mtx.gz', mv1/'matrix.mtx.gz')
+for x in zip(['MV-1', 'MV-2'], [mv1, mv2]):
+    print(x)
+    # get all filenames for MV-1 or MV-2
+    keys = [key for key in files if x[0] in key]
+    print(keys)
+    for key in keys:
+        print(folder_data_preproc/key, x[1]/key)
+        # move each file to the correct folder
+        shutil.move(folder_data_preproc/key, x[1]/key)
+        # unzip specific files
+        endings = ['.loom.gz', '_feature_linkage.bedpe.gz', '_atac_peak_annotation.tsv.gz', '_atac_fragments.tsv.gz.tbi.gz']
+        for ending in endings:
+            if key.endswith(ending):
+                full_path = f'{x[1]}/{key}'
+                subprocess.run(['gzip', '-d', full_path])
+                break
+    
+    # rename
+    shutil.move(x[1]/ f'GSE209878_3423-{x[0]}_barcodes.tsv.gz', x[1]/'barcodes.tsv.gz')
+    shutil.move(x[1]/ f'GSE209878_3423-{x[0]}_features.tsv.gz', x[1]/'features.tsv.gz')
+    shutil.move(x[1]/ f'GSE209878_3423-{x[0]}_matrix.mtx.gz', x[1]/'matrix.mtx.gz')
 
-shutil.move(folder_data_preproc/'GSE209878_3423-MV-2_barcodes.tsv.gz', mv2/'barcodes.tsv.gz')
-shutil.move(folder_data_preproc/'GSE209878_3423-MV-2_features.tsv.gz', mv2/'features.tsv.gz')
-shutil.move(folder_data_preproc/'GSE209878_3423-MV-2_matrix.mtx.gz', mv2/'matrix.mtx.gz')
 
 #%%
-!gzip -d {folder_data_preproc}/GSM6403408_3423-MV-1_gex_possorted_bam_0E7KE.loom.gz
-!gzip -d {folder_data_preproc}/GSM6403410_3423-MV-2_gex_possorted_bam_ICXFB.loom.gz
-
-!gzip -d {folder_data_preproc}/GSE209878_3423-MV-1_feature_linkage.bedpe.gz
-!gzip -d {folder_data_preproc}/GSE209878_3423-MV-2_feature_linkage.bedpe.gz
-
-!gzip -d {folder_data_preproc}/GSM6403409_3423-MV-1_atac_peak_annotation.tsv.gz
-!gzip -d {folder_data_preproc}/GSM6403411_3423-MV-2_atac_peak_annotation.tsv.gz
-
-!gzip -d {folder_data_preproc}/GSM6403409_3423-MV-1_atac_fragments.tsv.gz.tbi.gz
-!gzip -d {folder_data_preproc}/GSM6403411_3423-MV-2_atac_fragments.tsv.gz.tbi.gz
-# %% 
 # Softlink relevant data
-!ln -s {folder_data_preproc}/../brain/genes.gff.gz {folder_data_preproc}/genes.gff.gz
-!ln -s {folder_data_preproc}/../brain//chromosome.sizes {folder_data_preproc}/chromosome.sizes
-!ln -s {folder_data_preproc}/../brain/genome.pkl.gz {folder_data_preproc}/genome.pkl.gz
-!ln -s {folder_data_preproc}/../brain/dna.fa.gz {folder_data_preproc}/dna.fa.gz
-!ln -s {folder_data_preproc}/../brain/genes.csv {folder_data_preproc}/genes.csv
+subprocess.run(['ln', '-s', f'{folder_data_preproc}/../brain/genes.gff.gz', f'{folder_data_preproc}/genes.gff.gz'])
+subprocess.run(['ln', '-s', f'{folder_data_preproc}/../brain//chromosome.sizes', f'{folder_data_preproc}/chromosome.sizes'])
+subprocess.run(['ln', '-s', f'{folder_data_preproc}/../brain/genome.pkl.gz', f'{folder_data_preproc}/genome.pkl.gz'])
+subprocess.run(['ln', '-s', f'{folder_data_preproc}/../brain/dna.fa.gz', f'{folder_data_preproc}/dna.fa.gz'])
+subprocess.run(['ln', '-s', f'{folder_data_preproc}/../brain/genes.csv', f'{folder_data_preproc}/genes.csv'])
 
 #%%
 ref ={
     'dna.fa.gz': 'http://ftp.ensembl.org/pub/release-107/fasta/homo_sapiens/dna/Homo_sapiens.GRCh38.dna_sm.toplevel.fa.gz'
 }
 
-for file in ref:
-    print(file)
-    r = requests.get(ref[file])
-    with open(folder_data_preproc / file, 'wb') as f:
-        f.write(r.content) 
+# for file in ref:
+#     print(file)
+#     r = requests.get(ref[file])
+#     with open(folder_data_preproc / file, 'wb') as f:
+#         f.write(r.content) 
+
 # %%
 ### https://doi.org/10.1126/science.aad0501
 s_genes = [
@@ -119,5 +138,7 @@ data = itertools.zip_longest(s_genes, g2m_genes, hspc_marker_genes, lin_myeloid,
 df = pd.DataFrame(data, columns=['s_genes', 'g2m_genes', 'hspc_marker_genes', 'lin_myeloid', 'lin_erythroid', 'lin_platelet'])
 
 df.to_csv(folder_data_preproc / 'info_genes_cells.csv', index=False)
+
+print('1_download_data.py finished')
 
 # %%

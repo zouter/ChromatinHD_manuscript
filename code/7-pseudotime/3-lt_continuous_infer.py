@@ -15,18 +15,18 @@ import chromatinhd_manuscript.plot_functions as pf
 
 #%%
 folder_root = chd.get_output()
-folder_data_preproc = folder_root / "data" / "hspc_backup"
+folder_data_preproc = folder_root / "data" / "hspc"
 specs = pickle.load(open(folder_root.parent / "code/8-postprocessing/specs.pkl", "rb"))
 dataset_name = "myeloid"
 dataset_name = "simulated"
 dataset_name = specs['dataset_name']
-fragment_dir = folder_data_preproc / f"fragments_{dataset_name}"
+dataset_name_sub = "MV2"
+fragment_dir = folder_data_preproc / f"MV2_fragments_{dataset_name}"
 df_latent_file = folder_data_preproc / f"MV2_latent_time_{dataset_name}.csv"
 
 #%%
 promoter_name, window = "10k10k", np.array([-10000, 10000])
-promoter_file = promoter_name + "_simulated" if dataset_name == "simulated" else promoter_name
-promoters = pd.read_csv(folder_data_preproc / ("promoters_" + promoter_file + ".csv"), index_col = 0)
+promoters = pd.read_csv(folder_data_preproc / f"{dataset_name_sub}_promoters_{promoter_name}.csv", index_col = 0)
 
 fragments = chd.data.Fragments(fragment_dir / promoter_name)
 fragments.window = window
@@ -46,9 +46,8 @@ latent_times = torch.flip(latent_times, [0])
 #%%
 nbins = (128, 64, 32, )
 nbins = specs['nbins']
-data_source = "_simulated" if dataset_name == "simulated" else ""
 dir_models = folder_root.parent / f"code/7-pseudotime/models"
-model_pattern = f"3-lt_continuous{data_source}_{'_'.join(str(n) for n in nbins)}_fold_"
+model_pattern = f"3-lt_continuous{dataset_name}_{'_'.join(str(n) for n in nbins)}_fold_"
 models = sorted([file for file in os.listdir(dir_models) if model_pattern in file])
 models_name = [x.replace('3-lt_continuous_', '').replace('.pkl', '') for x in models]
 

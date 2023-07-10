@@ -28,7 +28,7 @@ import chromatinhd.models.likelihood.v9 as vae_model
 
 # %%
 folder_root = chd.get_output()
-folder_data_preproc = folder_root / "data" / "hspc"
+folder_data_preproc = folder_root / "data" / "hspc_backup"
 promoter_name, window = "10k10k", np.array([-10000, 10000])
 
 promoters = pd.read_csv(folder_data_preproc / ("promoters_" + promoter_name + ".csv"), index_col = 0)
@@ -268,7 +268,7 @@ def evaluate_pseudo_quantile(latent, gene_oi, model, device):
     return probs
 
 # %%
-model = pickle.load(open("./2-lt_discrete.pkl", "rb"))
+model = pickle.load(open("models/2-lt_discrete.pkl", "rb"))
 
 # %%
 # ## Inference single gene
@@ -285,7 +285,7 @@ model = model.to(device).eval()
 model = model.to(device)
 
 # %%
-dir_csv = folder_data_preproc / 'likelihood_quantile'
+dir_csv = folder_data_preproc / 'likelihood_quantile_myeloid'
 os.makedirs(dir_csv, exist_ok=True)
 
 pseudocoordinates = torch.linspace(0, 1, 1000).to(device)

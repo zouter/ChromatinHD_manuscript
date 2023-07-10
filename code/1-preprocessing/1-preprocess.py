@@ -64,9 +64,12 @@ organism = "hs"
 # genome = "GRCh38.107"
 # organism = "hs"
 
-# dataset_name = "lymphoma"; main_url = "https://cf.10xgenomics.com/samples/cell-arc/2.0.0/lymph_node_lymphoma_14k/lymph_node_lymphoma_14k"; genome = "GRCh38.107"; organism = "hs"
+dataset_name = "lymphoma"
+main_url = "https://cf.10xgenomics.com/samples/cell-arc/2.0.0/lymph_node_lymphoma_14k/lymph_node_lymphoma_14k"
+genome = "GRCh38.107"
+organism = "hs"
 
-dataset_name = "e18brain"; main_url = "https://cf.10xgenomics.com/samples/cell-arc/2.0.0/e18_mouse_brain_fresh_5k/e18_mouse_brain_fresh_5k";  genome = "mm10"; organism = "mm"
+# dataset_name = "e18brain"; main_url = "https://cf.10xgenomics.com/samples/cell-arc/2.0.0/e18_mouse_brain_fresh_5k/e18_mouse_brain_fresh_5k";  genome = "mm10"; organism = "mm"
 
 # dataset_name = "alzheimer"; main_url = "https://cf.10xgenomics.com/samples/cell-arc/2.0.1/Multiome_RNA_ATAC_Mouse_Brain_Alzheimers_AppNote/Multiome_RNA_ATAC_Mouse_Brain_Alzheimers_AppNote";  genome = "mm10"; organism = "mm"
 # dataset_name = "brain"; main_url = "https://s3-us-west-2.amazonaws.com/10x.files/samples/cell-arc/2.0.0/human_brain_3k/human_brain_3k"; genome = "GRCh38.107"; organism = "hs"

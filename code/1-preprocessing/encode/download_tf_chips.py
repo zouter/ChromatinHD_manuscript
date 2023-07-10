@@ -114,12 +114,15 @@ final_files = {}
 for file_accession, file in files.iterrows():
     final_files[file_accession] = pybedtools.BedTool(bed_folder / file["filename_sorted"]).slop(b = 100, g = chromosome_sizes)
 
+# %%
+import itertools
 
 # %%
 overlaps = []
-for (file_accession_a, file_a), (file_accession_b, file_b) in tqdm.tqdm(itertools.combinations(files.iterrows(), 2)):
-    if not (("SPI" in file_a["experiment_target"]) | ("SPI" in file_b["experiment_target"])):
-        continue
+combinations = list(itertools.combinations(files.iterrows(), 2))
+for (file_accession_a, file_a), (file_accession_b, file_b) in tqdm.tqdm(combinations):
+    # if not (("SPI" in file_a["experiment_target"]) | ("SPI" in file_b["experiment_target"])):
+    #     continue
     bed_a = final_files[file_accession_a]
     bed_b = final_files[file_accession_b]
     overlap_a = bed_a.intersect(bed_b, u = True).count()
@@ -139,7 +142,6 @@ for (file_accession_a, file_a), (file_accession_b, file_b) in tqdm.tqdm(itertool
 overlaps = pd.DataFrame(overlaps)
 
 # %%
-# %%
 overlaps.sort_values("jaccard")
 # %%
 overlaps["target_a"] = files.loc[overlaps["file_a"]]["experiment_target"].str.split("-").str[0].values
@@ -151,6 +153,36 @@ sns.heatmap(overlaps.set_index(["target_a", "target_b"])["jaccard"].unstack())
 # %%
 # %%
 overlaps.sort_values("jaccard")
+
+# %%
+overlaps_mat_ab = overlaps.set_index(["target_a", "target_b"])["overlap_ab"].unstack()
+overlaps_mat_ab = overlaps_mat_ab.reindex(index = overlaps_mat_ab.index, columns = overlaps_mat_ab.index)
+overlaps_mat_ba = overlaps.set_index(["target_a", "target_b"])["overlap_ba"].unstack()
+overlaps_mat_ba = overlaps_mat_ba.reindex(index = overlaps_mat_ab.index, columns = overlaps_mat_ab.index)
+overlaps_mat = overlaps_mat_ab.fillna(0.) + overlaps_mat_ab.T.fillna(0.)
+
+# %%
+sns.heatmap(overlaps_mat)
+
+# %%
+overlaps_mat["TBX21"].hist()
+
+# %%
+overlaps_mat["CEBPB"].mean()
+
+# %%
+overlaps_mat["STAT1"].hist()
+
+# %%
+files["experiment_target"].loc[files["experiment_target"].str.contains("STAT")]
+
+# %%
+import pickle
+pickle.dump(overlaps_mat, open(bed_folder / "overlaps_mat.pickle", "wb"))
+pickle.dump(overlaps, open(bed_folder / "overlaps.pickle", "wb"))
+
+# %% [markdown]
+# ## Filter files around genes
 
 # %%
 folder_root = chd.get_output()

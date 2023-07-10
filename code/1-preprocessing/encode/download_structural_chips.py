@@ -87,7 +87,6 @@ bed_folder.mkdir(exist_ok = True, parents = True)
 # %%
 # !ln -s ~/NAS2/wsaelens/projects/chromatinhd/chromatinhd_manuscript/{encode_folder_relative} {encode_folder}
 
-
 # %%
 import urllib
 

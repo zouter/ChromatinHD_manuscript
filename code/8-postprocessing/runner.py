@@ -5,7 +5,7 @@ import pathlib
 import itertools
 import subprocess
 
-dataset_name = ["simulated"]
+dataset_name = ["erythroid", "platelet"]
 nbins = [(128, 64, 32, ), (128, )]
 
 combinations = [{'dataset_name': name, 'nbins': n} for name, n in itertools.product(dataset_name, nbins)]
@@ -16,10 +16,13 @@ directory2 = pathlib.Path(os.getcwd()).parent / "8-postprocessing"
 # %%
 for combination in combinations:
     pickle.dump(combination, open("./specs.pkl", "wb"))
-
+    
     # subprocess.run(['python', directory1 / '3-lt_continuous_train.py'])
-    # subprocess.run(['python', directory1 / '3-lt_continuous_infer.py'])
-    # subprocess.run(['python', directory2 / 'likelihood.py'])
-    subprocess.run(['python', directory2 / 'combine_pngs.py'])
+    subprocess.run(['python', directory1 / '3-lt_continuous_infer.py'])
+    # subprocess.run(['python', directory2 / '01_cutsites.py'])
+    # subprocess.run(['python', directory2 / '02_likelihood.py'])
+    # subprocess.run(['python', directory2 / '03_combine_pngs.py'])
+
+print('End of runner.py')
 
 # %%

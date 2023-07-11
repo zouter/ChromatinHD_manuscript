@@ -12,6 +12,7 @@ import chromatinhd as chd
 import chromatinhd_manuscript.plot_functions as pf
 
 # %%
+print('Start of likelihood.py')
 # set folder paths
 folder_root = chd.get_output()
 folder_data_preproc = folder_root / "data" / "hspc"
@@ -75,6 +76,6 @@ for dir_sub in directories:
 
         print(dir_sub, gene)
 
-print('End of script')
+print('End of likelihood.py')
 
 # %%

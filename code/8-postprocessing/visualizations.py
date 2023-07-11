@@ -6,21 +6,17 @@ if IPython.get_ipython() is not None:
 
 import os
 import torch
-import imageio
 import numpy as np
 import pandas as pd
 import chromatinhd as chd
 import chromatinhd_manuscript.plot_functions as pf
 
-import seaborn as sns
-import plotly.express as px
-import plotly.graph_objects as go
 import matplotlib.pyplot as plt
 
 # %%
 # set folder paths
 folder_root = chd.get_output()
-folder_data_preproc = folder_root / "data" / "hspc_backup"
+folder_data_preproc = folder_root / "data" / "hspc"
 dataset_name = "simulated"
 dataset_name = "myeloid"
 fragment_dir = folder_data_preproc / f"fragments_{dataset_name}"
@@ -60,12 +56,8 @@ mapping_cutsites = torch.bincount(mapping[:, 1]) * 2
 
 #%%
 # find dirs of interest
-nbins = (32, )
-nbins = (1024, )
-nbins = (128, )
 nbins = (128, 64, 32, )
-data_source = "_simulated" if dataset_name == "simulated" else ""
-pattern = f"likelihood_continuous{data_source}_{'_'.join(str(n) for n in nbins)}_fold_"
+pattern = f"likelihood_continuous_{dataset_name}_{'_'.join(str(n) for n in nbins)}_fold_"
 dirs = sorted([file for file in os.listdir(folder_data_preproc) if pattern in file])
 
 #%%
@@ -88,21 +80,6 @@ for x in range(promoters.shape[0]):
     df = df.rename(columns={'rank': 'y'})
     
     directory = folder_data_preproc / 'plots' / f"cutsites_{dataset_name}"
-    pf.cutsites(gene, df, directory, show=False)
-
-    # tens = torch.cat((mapping_sub, coordinates_sub), dim=1)
-    # df = pd.DataFrame(tens.numpy())
-    # df.columns = ['cell_ix', 'gene_ix', 'cut_start', 'cut_end']
-    # df['height'] = 1
-
-    # df = pd.merge(df, latent_time, left_on='cell_ix', right_index=True)
-    # df_long = pd.melt(df, id_vars=['cell_ix', 'gene_ix', 'cell', 'latent_time', 'rank', 'height'], value_vars=['cut_start', 'cut_end'], var_name='cut_type', value_name='position')
-    # df_long = df_long.rename(columns={'position': 'x', 'rank': 'y'})
-    
-    # directory = folder_data_preproc / 'plots' / f"cutsites_histo_{dataset_name}"
-    # pf.cutsites_histo(gene, df, df_long, n_fragments, directory, show=False)
-    # directory = folder_data_preproc / f"likelihood_quantile_{dataset_name}"
-    # pf.model_quantile(x, latent_torch, fragments, directory, show=False)
 
 #%%
 # calculate the range that contains 90% of the data

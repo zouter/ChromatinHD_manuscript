@@ -12,9 +12,10 @@ import chromatinhd as chd
 import chromatinhd_manuscript.plot_functions as pf
 
 # %%
+print('Start of combine_pngs.py')
 # set folder paths
 folder_root = chd.get_output()
-folder_data_preproc = folder_root / "data" / "hspc_backup"
+folder_data_preproc = folder_root / "data" / "hspc"
 specs = pickle.load(open(folder_root.parent / "code/8-postprocessing/specs.pkl", "rb"))
 
 dataset_name = specs['dataset_name']
@@ -29,8 +30,8 @@ dir_out = folder_data_preproc / f'plots/likelihood_continuous_{dataset_name}_{"_
 dirs = [dir1, dir2, dir3]
 
 # %%
-pf.combine_1rows_3cols(dirs, dir_out, 1, 3)
+pf.combine_rows_cols(dirs, dir_out, 1, 3)
 
-print('End of script')
+print('End of combine_pngs.py')
 
 # %%

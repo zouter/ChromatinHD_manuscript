@@ -43,16 +43,16 @@ adata_result = sc.read_h5ad(folder_data_preproc / f"{dataset_name_sub}_multivelo
 #%%
 mv.velocity_graph(adata_result)
 mv.latent_time(adata_result)
-mv.velocity_embedding_stream(adata_result, basis='umap', color='celltype', save=str(folder_plots / f"{dataset_name_sub}_velo.pdf"))
-scv.pl.scatter(adata_result, color='latent_time', color_map='gnuplot', size=80, save=str(folder_plots / f"{dataset_name_sub}_latent.pdf"))
+mv.velocity_embedding_stream(adata_result, basis='umap', color='celltype', save=str(folder_plots / f"{dataset_name_sub}_velo.png"))
+scv.pl.scatter(adata_result, color='latent_time', color_map='gnuplot', size=80, save=str(folder_plots / f"{dataset_name_sub}_latent.png"))
 adata_result.obs['latent_time'].to_csv(folder_data_preproc / f"{dataset_name_sub}_latent_time.csv")
 
 #%%
 adata_result_lin = adata_result[adata_result.obs['celltype'].isin(lin_myeloid), ]
 mv.velocity_graph(adata_result_lin)
 mv.latent_time(adata_result_lin)
-mv.velocity_embedding_stream(adata_result_lin, basis='umap', color='celltype', save=str(folder_plots / f"{dataset_name_sub}_velo_myeloid.pdf"))
-scv.pl.scatter(adata_result_lin, color='latent_time', color_map='gnuplot', size=80, save=str(folder_plots / f"{dataset_name_sub}_latent_myeloid.pdf"))
+mv.velocity_embedding_stream(adata_result_lin, basis='umap', color='celltype', save=str(folder_plots / f"{dataset_name_sub}_velo_myeloid.png"))
+scv.pl.scatter(adata_result_lin, color='latent_time', color_map='gnuplot', size=80, save=str(folder_plots / f"{dataset_name_sub}_latent_myeloid.png"))
 
 df_myeloid = adata_result_lin.obs[['celltype', 'latent_time']]
 df_myeloid.to_csv(folder_data_preproc / f"{dataset_name_sub}_latent_time_myeloid.csv")
@@ -62,8 +62,8 @@ pf.celltypes_by_lt(df_myeloid, lin_myeloid, folder_data_preproc / 'plots', 'MV2_
 adata_result_lin = adata_result[adata_result.obs['celltype'].isin(lin_erythroid), ]
 mv.velocity_graph(adata_result_lin)
 mv.latent_time(adata_result_lin)
-mv.velocity_embedding_stream(adata_result_lin, basis='umap', color='celltype', save=str(folder_plots / f"{dataset_name_sub}_velo_erythroid.pdf"))
-scv.pl.scatter(adata_result_lin, color='latent_time', color_map='gnuplot', size=80, save=str(folder_plots / f"{dataset_name_sub}_latent_erythroid.pdf"))
+mv.velocity_embedding_stream(adata_result_lin, basis='umap', color='celltype', save=str(folder_plots / f"{dataset_name_sub}_velo_erythroid.png"))
+scv.pl.scatter(adata_result_lin, color='latent_time', color_map='gnuplot', size=80, save=str(folder_plots / f"{dataset_name_sub}_latent_erythroid.png"))
 
 df_erythroid = adata_result_lin.obs[['celltype', 'latent_time']]
 df_erythroid.to_csv(folder_data_preproc / f"{dataset_name_sub}_latent_time_erythroid.csv")
@@ -73,8 +73,8 @@ pf.celltypes_by_lt(df_erythroid, lin_erythroid, folder_data_preproc / 'plots', '
 adata_result_lin = adata_result[adata_result.obs['celltype'].isin(lin_platelet), ]
 mv.velocity_graph(adata_result_lin)
 mv.latent_time(adata_result_lin)
-mv.velocity_embedding_stream(adata_result_lin, basis='umap', color='celltype', save=str(folder_plots / f"{dataset_name_sub}_velo_platelet.pdf"))
-scv.pl.scatter(adata_result_lin, color='latent_time', color_map='gnuplot', size=80, save=str(folder_plots / f"{dataset_name_sub}_latent_platelet.pdf"))
+mv.velocity_embedding_stream(adata_result_lin, basis='umap', color='celltype', save=str(folder_plots / f"{dataset_name_sub}_velo_platelet.png"))
+scv.pl.scatter(adata_result_lin, color='latent_time', color_map='gnuplot', size=80, save=str(folder_plots / f"{dataset_name_sub}_latent_platelet.png"))
 
 df_platelet = adata_result_lin.obs[['celltype', 'latent_time']]
 df_platelet.to_csv(folder_data_preproc / f"{dataset_name_sub}_latent_time_platelet.csv")

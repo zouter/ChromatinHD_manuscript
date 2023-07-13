@@ -210,7 +210,7 @@ def celltypes_by_lt(df, labels, directory, prefix, show=False):
     else:
         plt.close(fig)
 
-def combine_1rows_3cols(dirs, output_dir, nrows, ncols):
+def combine_rows_cols(dirs, output_dir, nrows, ncols):
     """
     fixed: height per image in row
     fixed: width per image in column

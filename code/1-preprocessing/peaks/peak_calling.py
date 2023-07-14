@@ -74,6 +74,8 @@ software_folder = chd.get_git_root() / "software"
 # %% [markdown]
 # ## Cell ranger
 
+# Peaks were already called by cell ranger
+
 # %%
 peaks_folder = folder_root / "peaks" / dataset_name / "cellranger"
 peaks_folder.mkdir(exist_ok=True, parents=True)
@@ -85,7 +87,7 @@ peaks_folder.mkdir(exist_ok=True, parents=True)
 # ## Genrich
 
 # %% [markdown]
-# A lot of people seem to be happy with this, so why not add it to the "benchmark"
+# A lot of people seem to be happy with this
 
 # %% [markdown]
 # If you don't have bam file, check out this: https://github.com/jsh58/Genrich/issues/95
@@ -127,7 +129,10 @@ peaks_folder.mkdir(exist_ok=True, parents=True)
 # !echo 'rsync wsaelens@updeplasrv6.epfl.ch:{peaks_folder}/peaks.bed {peaks_folder}/peaks.bed'
 
 # %% [markdown]
-# ## MACS2
+# ## MACS2 ENCODE
+
+# MACS2 with encode parameters
+# https://github.com/ENCODE-DCC/atac-seq-pipeline/blob/master/src/encode_task_macs2_atac.py
 
 # %%
 peaks_folder = folder_root / "peaks" / dataset_name / "macs2"
@@ -138,9 +143,6 @@ peaks_folder.mkdir(exist_ok=True, parents=True)
 # !ls {peaks_folder}
 
 # %%
-peaks_folder
-
-# %%
 # !echo 'mkdir -p {peaks_folder}'
 
 # %%
@@ -148,14 +150,10 @@ peaks_folder
 
 # %%
 # if BAM is available
-# # !echo 'cd {peaks_folder} && macs2 callpeak -t {folder_data_preproc}/bam/atac_possorted_bam.bam -f BAMPE'
+# # !echo 'cd {peaks_folder} && macs2 callpeak -t {folder_data_preproc}/bam/atac_possorted_bam.bam --nomodel --shift -100 --extsize 200'
 
 # if BAM is not available
-# !echo 'cd {peaks_folder} && macs2 callpeak -t {folder_data_preproc}/atac_fragments.tsv.gz -f BEDPE && cp {peaks_folder}/NA_peaks.narrowPeak {peaks_folder}/peaks.bed'
-
-# if BAM is not available
-# alternative for other datasets
-# !echo 'cd {peaks_folder} && macs2 callpeak -t {folder_data_preproc}/fragments.tsv.gz -f BEDPE && cp {peaks_folder}/NA_peaks.narrowPeak {peaks_folder}/peaks.bed'
+# !echo 'cd {peaks_folder} && macs2 callpeak -t {folder_data_preproc}/atac_fragments.tsv.gz --nomodel --shift -100 --extsize 200 && cp {peaks_folder}/NA_peaks.narrowPeak {peaks_folder}/peaks.bed'
 
 # %%
 # !echo 'ls {peaks_folder}'
@@ -169,25 +167,11 @@ peaks_folder
 # !echo 'rsync wsaelens@updeplasrv6.epfl.ch:{peaks_folder}/peaks.bed {peaks_folder}/peaks.bed -v'
 
 # %% [markdown]
-# ## MACS2 with different parameters
+# ## MACS2 Paired-end
 
-# %%
-peaks_folder = folder_root / "peaks" / dataset_name / "macs2_q0.20"
-peaks_folder.mkdir(exist_ok=True, parents=True)
-
-# %%
-# !echo 'cd {peaks_folder} && macs2 callpeak -t {folder_data_preproc}/atac_fragments.tsv.gz -f BEDPE -q 0.20 && cp {peaks_folder}/NA_peaks.narrowPeak {peaks_folder}/peaks.bed'
-# !echo 'cd {peaks_folder} && macs2 callpeak -t {folder_data_preproc}/fragments.tsv.gz -f BEDPE -q 0.20 && cp {peaks_folder}/NA_peaks.narrowPeak {peaks_folder}/peaks.bed'
-
-# %%
-peaks_folder = folder_root / "peaks" / dataset_name / "macs2_q0.50"
-peaks_folder.mkdir(exist_ok=True, parents=True)
-
-# %%
-# !echo 'cd {peaks_folder} && macs2 callpeak -t {folder_data_preproc}/atac_fragments.tsv.gz -f BEDPE -q 0.50 && cp {peaks_folder}/NA_peaks.narrowPeak {peaks_folder}/peaks.bed'
-
-# %% [markdown]
-# ## MACS2 improved
+# This uses the settings recommended by the authors of MACS2
+# https://github.com/macs3-project/MACS/issues/145
+# In the end, this doesn't make much difference
 
 # %%
 peaks_folder = folder_root / "peaks" / dataset_name / "macs2_improved"
@@ -198,11 +182,8 @@ peaks_folder.mkdir(exist_ok=True, parents=True)
 # !ls {peaks_folder}
 
 # %%
-peaks_folder
-
-# %%
 # if BAM is available
-# # !echo 'cd {peaks_folder} && macs2 callpeak -t {folder_data_preproc}/bam/atac_possorted_bam.bam -f BAMPE'
+# # !echo 'cd {peaks_folder} && macs2 callpeak -t {folder_data_preproc}/bam/atac_possorted_bam.bam -f BAMPE --nomodel'
 
 # if BAM is not available
 # !echo 'cd {peaks_folder} && macs2 callpeak -t {folder_data_preproc}/atac_fragments.tsv.gz -f BEDPE --nomodel && cp {peaks_folder}/NA_peaks.narrowPeak {peaks_folder}/peaks.bed'
@@ -221,6 +202,24 @@ peaks_folder
 # from updeplasrv7
 # !echo 'mkdir -p {peaks_folder}'
 # !echo 'rsync wsaelens@updeplasrv6.epfl.ch:{peaks_folder}/peaks.bed {peaks_folder}/peaks.bed -v'
+
+# %% [markdown]
+# ## MACS2 paired-end with different q parameters
+# %%
+peaks_folder = folder_root / "peaks" / dataset_name / "macs2_q0.20"
+peaks_folder.mkdir(exist_ok=True, parents=True)
+
+# %%
+# !echo 'cd {peaks_folder} && macs2 callpeak -t {folder_data_preproc}/atac_fragments.tsv.gz --nomodel -f BEDPE -q 0.20 && cp {peaks_folder}/NA_peaks.narrowPeak {peaks_folder}/peaks.bed'
+# !echo 'cd {peaks_folder} && macs2 callpeak -t {folder_data_preproc}/fragments.tsv.gz --nomodel -f BEDPE -q 0.20 && cp {peaks_folder}/NA_peaks.narrowPeak {peaks_folder}/peaks.bed'
+
+# %%
+peaks_folder = folder_root / "peaks" / dataset_name / "macs2_q0.50"
+peaks_folder.mkdir(exist_ok=True, parents=True)
+
+# %%
+# !echo 'cd {peaks_folder} && macs2 callpeak -t {folder_data_preproc}/atac_fragments.tsv.gz --nomodel -f BEDPE -q 0.50 && cp {peaks_folder}/NA_peaks.narrowPeak {peaks_folder}/peaks.bed'
+
 
 # %% [markdown]
 # ## ENCODE Screen

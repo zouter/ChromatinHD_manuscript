@@ -25,7 +25,7 @@ import chromatinhd.models.likelihood.v9 as vae_model
 # %%
 folder_root = chd.get_output()
 folder_data_preproc = folder_root / "data" / "hspc"
-dataset_name = "erythroid"
+dataset_name = "platelet"
 dataset_name_sub = "MV2"
 fragment_dir = folder_data_preproc / f"{dataset_name_sub}_fragments_{dataset_name}"
 df_latent_file = folder_data_preproc / f"{dataset_name_sub}_latent_time_{dataset_name}.csv"
@@ -33,14 +33,14 @@ df_latent_file = folder_data_preproc / f"{dataset_name_sub}_latent_time_{dataset
 promoter_name, window = "10k10k", np.array([-10000, 10000])
 promoters = pd.read_csv(folder_data_preproc / f"{dataset_name_sub}_promoters_{promoter_name}.csv", index_col = 0)
 
+info_genes_cells = pd.read_csv(folder_data_preproc / "info_genes_cells.csv")
+lineage = info_genes_cells[f'lin_{dataset_name}'].dropna().tolist()
+
 # use this to obtain cell types
 df_latent = pd.read_csv(df_latent_file, index_col = 0)
-latent = pd.get_dummies(df_latent['celltype'], prefix='celltype')
+latent = pd.get_dummies(df_latent['celltype'])
+latent = latent[lineage]
 latent_torch = torch.from_numpy(latent.values).to(torch.float)
-
-cluster_info = pd.DataFrame()
-cluster_info['cluster'] = list(latent.columns)
-cluster_info.set_index('cluster', inplace=True)
 
 fragments = chd.data.Fragments(fragment_dir / promoter_name)
 fragments.window = window
@@ -135,11 +135,11 @@ loaders_validation.restart()
 trainer = chd.train.Trainer(model, loaders_train, loaders_validation, optimizer, n_epochs = 50, checkpoint_every_epoch=1, optimize_every_step = 1, hooks_checkpoint = hooks)
 trainer.train()
 
-model_path = folder_data_preproc / f"models/{dataset_name_sub}_{dataset_name}_celltypes.pkl"
+model_path = folder_data_preproc / f"models/{dataset_name_sub}_{dataset_name}_celltypes_{'_'.join(str(n) for n in nbins)}_fold_{index}.pkl"
 pickle.dump(model.to("cpu"), open(model_path, "wb"))
 
 # %%
-model_path = folder_data_preproc / f"models/{dataset_name_sub}_{dataset_name}_celltypes.pkl"
+model_path = folder_data_preproc / f"models/{dataset_name_sub}_{dataset_name}_celltypes_{'_'.join(str(n) for n in nbins)}_fold_{index}.pkl"
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 model = pickle.load(open(model_path, "rb"))
@@ -167,7 +167,7 @@ for gene_oi in range(len(promoters)):
     print(gene_oi)
     gene_id = fragments.var.index[gene_oi]
     probs = evaluate_pseudo_quantile(latent, gene_oi, model, device)
-    probs_df = pd.DataFrame(np.exp(probs), columns = pseudocoordinates.tolist(), index = cluster_info.index)
+    probs_df = pd.DataFrame(np.exp(probs), columns = pseudocoordinates.tolist(), index = latent.columns)
     probs_df.to_csv(dir_csv / f"{gene_id}.csv")
 
 print("Done \n")

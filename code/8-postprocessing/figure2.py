@@ -25,8 +25,12 @@ annotation = pickle.load(open(folder_data_preproc / f"{dataset_name_sub}_celltyp
 transcriptome = chd.data.Transcriptome(folder_data_preproc / f"{dataset_name_sub}_transcriptome")
 adata = transcriptome.adata
 
+bins = np.linspace(0, 1, 500)
+binmids = (bins[1:] + bins[:-1])/2
+binsize = binmids[1] - binmids[0]
+pseudocoordinates = torch.linspace(0, 1, 1000)
 #%%
-lineage_gene = {'lin_myeloid': 'MPO', 'lin_erythroid': 'HBB', 'lin_platelet': 'PF4'}
+lineage_gene = {'lin_myeloid': 'MPO', 'lin_erythroid': 'HBB', 'lin_platelet': 'CD74'}
 lineage_objects = {}
 
 for lineage_name, gene_name in lineage_gene.items():
@@ -52,6 +56,16 @@ for lineage_name, gene_name in lineage_gene.items():
     dir_likelihood = folder_data_preproc / f"{dataset_name_sub}_LCT/lct_{dataset_name}_128_64_32_fold_0"
     probs = pd.read_csv(dir_likelihood / (gene_id + '.csv'), index_col=0)
 
+    df_bincounts = pd.DataFrame()
+    for i, celltype in enumerate(latent.columns):
+        fragments_oi = (latent_torch[fragments.cut_local_cell_ix, i] != 0) & (fragments.cut_local_gene_ix == gene_ix)
+        bincounts, _ = np.histogram(fragments.cut_coordinates[fragments_oi].cpu().numpy(), bins=bins)
+        n_cells = latent_torch[:, i].sum()
+        bincounts = bincounts / n_cells * len(bins)
+
+        df_bincounts[celltype] = bincounts
+
+    print(lineage_name)
     lineage_objects[lineage_name] = {
         'df_latent': df_latent,
         'latent_torch': latent_torch,
@@ -60,15 +74,12 @@ for lineage_name, gene_name in lineage_gene.items():
         'gene_name': gene_name,
         'gene_ix': gene_ix,
         'probs': probs,
+        'df_bincounts': df_bincounts,
         'exp_xmin': exp_xmin,
         'exp_xmax': exp_xmax,
     }
 
 # %%
-bins = np.linspace(0, 1, 500)
-binmids = (bins[1:] + bins[:-1])/2
-binsize = binmids[1] - binmids[0]
-pseudocoordinates = torch.linspace(0, 1, 1000)
 
 # Create the grid layout
 height, width = 10, 10
@@ -85,20 +96,23 @@ df['index'] = df.groupby('group').cumcount()
 df['plot_row'] = range(df.shape[0]) + df['group']
 df['plot_row'] = df.groupby('group')['plot_row'].transform(lambda x: x.sort_values(ascending=False).values)
 df = df.sort_values('plot_row').reset_index(drop=True)
-# cumcount for each group
+# column with yes or no. yes for min values in index per group
+df['xaxis'] = df.groupby('group')['index'].transform(lambda x: x == x.min())
+df['title'] = df.groupby('group')['index'].transform(lambda x: x == x.max())
 
 col_accessibility = [grid[i, 1:10] for i in df['plot_row']]
 col_expression = [grid[i, 11:15] for i in df['plot_row']]
 col_lt = [grid[i, 16:20] for i in df['plot_row']]
 
-def plot_accessibility(fig, gridspec, binmids, bincounts, n_cells, bins, binsize, pseudocoordinates, data, index, annotation):
+def plot_accessibility(fig, gridspec, binmids, bincounts, n_cells, bins, binsize, pseudocoordinates, data, index, annotation, ymax):
     ax_object = fig.add_subplot(gridspec)
-    ax_object.bar(binmids, bincounts / n_cells * len(bins), width=binsize, color="#888888", lw=0)
+    ax_object.bar(binmids, bincounts, width=binsize, color="#888888", lw=0)
     ax_object.plot(pseudocoordinates.numpy(), data['probs'].iloc[index, :], label=index, color=annotation[data['celltypes'][index]], lw=2, zorder=20)
     ax_object.plot(pseudocoordinates.numpy(), data['probs'].iloc[index, :], label=index, color="#FFFFFF", lw=3, zorder=10)
     ax_object.set_ylabel(f"{data['probs'].index[index]}  \n n={int(n_cells)}  ", rotation=0, ha="right", va="center")
     ax_object.spines['top'].set_visible(False)
     ax_object.spines['right'].set_visible(False)
+    ax_object.set_ylim(0, ymax)
     return ax_object
 
 def plot_expression(fig, gridspec, expression, celltype, annotation, exp_xmin, exp_xmax):
@@ -106,6 +120,10 @@ def plot_expression(fig, gridspec, expression, celltype, annotation, exp_xmin, e
     ax_object = fig.add_subplot(gridspec)
     ax_object.boxplot(expression, vert=False, widths=0.5, showfliers=False, medianprops=medianprops)
     ax_object.set_xlim(exp_xmin * 1.05, exp_xmax * 1.05)
+    ax_object.spines['top'].set_visible(False)
+    ax_object.spines['right'].set_visible(False)
+    ax_object.spines['left'].set_visible(False)
+    ax_object.get_yaxis().set_visible(False)
     return ax_object
 
 def plot_lt(fig, gridspec, lt, celltype, annotation):
@@ -113,161 +131,61 @@ def plot_lt(fig, gridspec, lt, celltype, annotation):
     ax_object = fig.add_subplot(gridspec)
     ax_object.boxplot(lt, vert=False, widths=0.5, showfliers=False, medianprops=medianprops)
     ax_object.set_xlim(-0.05, 1.05)
+    ax_object.spines['top'].set_visible(False)
+    ax_object.spines['right'].set_visible(False)
+    ax_object.spines['left'].set_visible(False)
+    ax_object.get_yaxis().set_visible(False)
     return ax_object
 
-for lineage, celltype, index, plot_row, c1, c2, c3 in zip(df['lineage'], df['cell type'], df['index'], df['plot_row'], col_accessibility, col_expression, col_lt):
+for lineage, celltype, index, plot_row, xaxis, title, c1, c2, c3 in zip(df['lineage'], df['cell type'], df['index'], df['plot_row'], df['xaxis'], df['title'], col_accessibility, col_expression, col_lt):
     print(lineage, celltype, index, plot_row, c1, c2, c3)
 
     data = lineage_objects[lineage]
     print(data['gene_name'], data['celltypes'])
 
     # 1. data for accessibility
-    fragments_oi = (data['latent_torch'][data['fragments'].cut_local_cell_ix, index] != 0) & (data['fragments'].cut_local_gene_ix == data['gene_ix'])
-    bincounts, _ = np.histogram(data['fragments'].cut_coordinates[fragments_oi].cpu().numpy(), bins=bins)
+    # fragments_oi = (data['latent_torch'][data['fragments'].cut_local_cell_ix, index] != 0) & (data['fragments'].cut_local_gene_ix == data['gene_ix'])
+    # bincounts, _ = np.histogram(data['fragments'].cut_coordinates[fragments_oi].cpu().numpy(), bins=bins)
+    bincounts = data['df_bincounts'][celltype]
+    ymax = data['df_bincounts'].max().max()
+    print(ymax)
     n_cells = data['latent_torch'][:, index].sum()
 
     # 2. data for expression
     expression = data['df_latent'].loc[data['df_latent']['celltype'] == data['celltypes'][index], data['gene_name']].values
     
     # 3. data for latent time
-    lt = df_latent.loc[df_latent['celltype'] == celltype, 'latent_time'].values
+    lt = data['df_latent'].loc[data['df_latent']['celltype'] == celltype, 'latent_time'].values
 
-    ax_1 = plot_accessibility(fig, c1, binmids, bincounts, n_cells, bins, binsize, pseudocoordinates, data, index, annotation)
+    ax_1 = plot_accessibility(fig, c1, binmids, bincounts, n_cells, bins, binsize, pseudocoordinates, data, index, annotation, ymax)
     ax_2 = plot_expression(fig, c2, expression, data['celltypes'][index], annotation, data['exp_xmin'], data['exp_xmax'])
     ax_3 = plot_lt(fig, c3, lt, data['celltypes'][index], annotation)
 
-#%%
-subplot_positions = {}
-for index, lineage in enumerate(lineages):
-    print(index, lineage)
-    subplot_positions[lineage] = {
-        f"ax_{1 + len(lineages)*index}": [grid[i, 1:10] for i in df.loc[df['lineage'] == lineage, 'plot_row']][::-1],
-        f"ax_{2 + len(lineages)*index}": [grid[i, 11:15] for i in df.loc[df['lineage'] == lineage, 'plot_row']][::-1],
-        f"ax_{3 + len(lineages)*index}": [grid[i, 16:20] for i in df.loc[df['lineage'] == lineage, 'plot_row']][::-1],
-    }
-
-ax_1 = None
-ax_4 = None
-ax_7 = None
-
-for lin_type, ax_dict in subplot_positions.items():
-    print(lin_type)
-    data = lineage_objects[lin_type]
-    print(data['gene_name'], data['celltypes'])
-    for ax, gridspec_list in ax_dict.items():
-        for index, gridspec in enumerate(gridspec_list):
-            if ax in ['ax_1', 'ax_4', 'ax_7']:
-                print(ax, gridspec, index, data['celltypes'][index])
-
-                fragments_oi = (data['latent_torch'][data['fragments'].cut_local_cell_ix, index] != 0) & (data['fragments'].cut_local_gene_ix == data['gene_ix'])
-                bincounts, _ = np.histogram(data['fragments'].cut_coordinates[fragments_oi].cpu().numpy(), bins=bins)
-                n_cells = data['latent_torch'][:, index].sum()
-
-                if ax == 'ax_1':
-                    ax_1 = plot_accessibility(fig, gridspec, binmids, bincounts, n_cells, bins, binsize, pseudocoordinates, data, index, annotation)
-                if ax == 'ax_4':
-                    ax_4 = plot_accessibility(fig, gridspec, binmids, bincounts, n_cells, bins, binsize, pseudocoordinates, data, index, annotation)
-                if ax == 'ax_7':
-                    ax_7 = plot_accessibility(fig, gridspec, binmids, bincounts, n_cells, bins, binsize, pseudocoordinates, data, index, annotation)
-
-            if ax in ['ax_2', 'ax_5', 'ax_8']:
-                print(ax, gridspec, index, data['celltypes'][index])
-
-                expression = data['df_latent'].loc[data['df_latent']['celltype'] == data['celltypes'][index], data['gene_name']].values
-
-                if ax == 'ax_2':
-                    ax_2 = plot_expression(fig, gridspec, expression, data['celltypes'][index], annotation, data['exp_xmin'], data['exp_xmax'])
-                if ax == 'ax_5':
-                    ax_5 = plot_expression(fig, gridspec, expression, data['celltypes'][index], annotation, data['exp_xmin'], data['exp_xmax'])
-                if ax == 'ax_8':
-                    ax_8 = plot_expression(fig, gridspec, expression, data['celltypes'][index], annotation, data['exp_xmin'], data['exp_xmax'])
-
-            if ax in ['ax_3', 'ax_6', 'ax_9']:
-                print(ax, gridspec, index, data['celltypes'][index])
-
-
-                if ax == 'ax_3':
-                    ax_3 = fig.add_subplot(gridspec)
-                if ax == 'ax_6':
-                    ax_6 = fig.add_subplot(gridspec)
-                if ax == 'ax_9':
-                    ax_9 = fig.add_subplot(gridspec)
-
-                ax_3.boxplot([11, 12, 13], vert=False, widths=0.5)
+    if title == True:
+        ax_1.set_title(f"{lineage_gene[lineage]}: Accessibility")
+        ax_2.set_title(f"{lineage_gene[lineage]}: Expression")
+        ax_3.set_title("Latent Time")
     
-        print('---')
-
-fig.show()
-
-#%%
-# Create the shared ax_1 outside the loop
-ax_1 = None
-ax_4 = None
-ax_7 = None
-
-bins = np.linspace(0, 1, 500)
-binmids = (bins[1:] + bins[:-1])/2
-binsize = binmids[1] - binmids[0]
-pseudocoordinates = torch.linspace(0, 1, 1000)
-
-num_plots_mye = len(lineage)
-subplot_positions = {
-    "ax_1": [grid[i, 1:10] for i in range(num_plots_mye)],
-    "ax_2": [grid[i, 11:15] for i in range(num_plots_mye)],
-    "ax_3": [grid[i, 16:20] for i in range(num_plots_mye)],
-}
-
-for i, celltype in enumerate(probs.index):
-    print(i, celltype)
-
-    if i == 0:
-        ax_1 = fig.add_subplot(subplot_positions["ax_1"][num_plots_mye - 1 - i])
-    else:
-        ax_1 = fig.add_subplot(subplot_positions["ax_1"][num_plots_mye - 1 - i], sharey=ax_1)
-    ax_2 = fig.add_subplot(subplot_positions["ax_2"][num_plots_mye - 1 - i])
-    ax_3 = fig.add_subplot(subplot_positions["ax_3"][num_plots_mye - 1 - i])
-
-    fragments_oi = (latent_torch[fragments.cut_local_cell_ix, i] != 0) & (fragments.cut_local_gene_ix == gene_ix)
-    bincounts, _ = np.histogram(fragments.cut_coordinates[fragments_oi].cpu().numpy(), bins=bins)
-    n_cells = latent_torch[:, i].sum()
-    ax_1.bar(binmids, bincounts / n_cells * len(bins), width=binsize, color="#888888", lw=0)
-    ax_1.plot(pseudocoordinates.numpy(), probs.iloc[i, :], label=i, color=annotation[celltype], lw=2, zorder=20)
-    ax_1.plot(pseudocoordinates.numpy(), probs.iloc[i, :], label=i, color="#FFFFFF", lw=3, zorder=10)
-    ax_1.set_ylabel(f"{probs.index[i]}  \n n={int(n_cells)}  ", rotation=0, ha="right", va="center")
-    ax_1.spines['top'].set_visible(False)
-    ax_1.spines['right'].set_visible(False)
-
-    medianprops = dict(color=annotation[celltype], linewidth=1)
-
-    expression = df_latent.loc[df_latent['celltype'] == celltype, gene_name].values
-    ax_2.boxplot(expression, vert=False, widths=0.5, showfliers=False, medianprops=medianprops)
-    ax_2.set_xlim(exp_xmin*1.05, exp_xmax*1.05)
-
-    lt = df_latent.loc[df_latent['celltype'] == celltype, 'latent_time'].values
-    ax_3.boxplot(lt, vert=False, widths=0.5, showfliers=False, medianprops=medianprops)
-    ax_3.set_xlim(-0.05, 1.05)
-
-    for ax in [ax_2, ax_3]:
-        ax.spines['top'].set_visible(False)
-        ax.spines['right'].set_visible(False)
-        ax.spines['left'].set_visible(False)
-        ax.get_yaxis().set_visible(False)
-
-    if i > 0:
+    if xaxis == False:
         ax_1.set_xticklabels([])
         ax_2.set_xticklabels([])
         ax_3.set_xticklabels([])
-    
-    if i == num_plots_mye - 1:
-        ax_1.set_title(f"{gene_name}: Accessibility")
-        ax_2.set_title(f"{gene_name}: Expression")
-        ax_3.set_title("Latent Time")
 
-fig.text(0.15, 0.95, 'A', fontsize=16, fontweight='bold', va='top')
-fig.text(0.55, 0.95, 'B', fontsize=16, fontweight='bold', va='top')
-fig.text(0.74, 0.95, 'C', fontsize=16, fontweight='bold', va='top')
+x1, x2, x3 = 0.05, 0.52, 0.73
+y1, y2, y3 = 0.905, 0.58, 0.32
+
+fig.text(x1, y1, 'A', fontsize=16, fontweight='bold', va='top')
+fig.text(x2, y1, 'B', fontsize=16, fontweight='bold', va='top')
+fig.text(x3, y1, 'C', fontsize=16, fontweight='bold', va='top')
+
+fig.text(x1, y2, 'D', fontsize=16, fontweight='bold', va='top')
+fig.text(x2, y2, 'E', fontsize=16, fontweight='bold', va='top')
+fig.text(x3, y2, 'F', fontsize=16, fontweight='bold', va='top')
+
+fig.text(x1, y3, 'G', fontsize=16, fontweight='bold', va='top')
+fig.text(x2, y3, 'H', fontsize=16, fontweight='bold', va='top')
+fig.text(x3, y3, 'I', fontsize=16, fontweight='bold', va='top')
 
 fig.savefig(folder_data_preproc / 'plots' / "fig2.pdf", bbox_inches='tight', pad_inches=0.01)
-plt.show()
 
-# %%
+#%%

@@ -29,6 +29,7 @@ bins = np.linspace(0, 1, 500)
 binmids = (bins[1:] + bins[:-1])/2
 binsize = binmids[1] - binmids[0]
 pseudocoordinates = torch.linspace(0, 1, 1000)
+
 #%%
 lineage_gene = {'lin_myeloid': 'MPO', 'lin_erythroid': 'HBB', 'lin_platelet': 'CD74'}
 lineage_objects = {}
@@ -80,7 +81,6 @@ for lineage_name, gene_name in lineage_gene.items():
     }
 
 # %%
-
 # Create the grid layout
 height, width = 10, 10
 fig = plt.figure(figsize=(height, width))
@@ -96,7 +96,6 @@ df['index'] = df.groupby('group').cumcount()
 df['plot_row'] = range(df.shape[0]) + df['group']
 df['plot_row'] = df.groupby('group')['plot_row'].transform(lambda x: x.sort_values(ascending=False).values)
 df = df.sort_values('plot_row').reset_index(drop=True)
-# column with yes or no. yes for min values in index per group
 df['xaxis'] = df.groupby('group')['index'].transform(lambda x: x == x.min())
 df['title'] = df.groupby('group')['index'].transform(lambda x: x == x.max())
 
@@ -113,6 +112,10 @@ def plot_accessibility(fig, gridspec, binmids, bincounts, n_cells, bins, binsize
     ax_object.spines['top'].set_visible(False)
     ax_object.spines['right'].set_visible(False)
     ax_object.set_ylim(0, ymax)
+    new_ticks = [-10000, -5000, 0, 5000, 10000]
+    old_ticks = [x/20000 + 0.5 for x in new_ticks]
+    ax_object.set_xticks(old_ticks)
+    ax_object.set_xticklabels(new_ticks)
     return ax_object
 
 def plot_expression(fig, gridspec, expression, celltype, annotation, exp_xmin, exp_xmax):
@@ -144,8 +147,6 @@ for lineage, celltype, index, plot_row, xaxis, title, c1, c2, c3 in zip(df['line
     print(data['gene_name'], data['celltypes'])
 
     # 1. data for accessibility
-    # fragments_oi = (data['latent_torch'][data['fragments'].cut_local_cell_ix, index] != 0) & (data['fragments'].cut_local_gene_ix == data['gene_ix'])
-    # bincounts, _ = np.histogram(data['fragments'].cut_coordinates[fragments_oi].cpu().numpy(), bins=bins)
     bincounts = data['df_bincounts'][celltype]
     ymax = data['df_bincounts'].max().max()
     print(ymax)

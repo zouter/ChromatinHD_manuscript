@@ -4,6 +4,7 @@ if IPython.get_ipython() is not None:
     IPython.get_ipython().magic('load_ext autoreload')
     IPython.get_ipython().magic('autoreload 2')
 
+import pickle
 import numpy as np
 import pandas as pd
 import chromatinhd as chd
@@ -13,6 +14,7 @@ from matplotlib import cm
 from matplotlib.gridspec import GridSpec
 from matplotlib.colors import ListedColormap
 from matplotlib.patches import FancyArrowPatch
+
 # %%
 folder_root = chd.get_output()
 folder_data_preproc = folder_root / "data" / "hspc"
@@ -42,20 +44,7 @@ obs = obs.merge(df_erythroid[['cell', 'latent_time_erythroid']], on='cell', how=
 obs = obs.merge(df_platelet[['cell', 'latent_time_platelet']], on='cell', how='left')
 
 #%%
-annotation = {
-    'LMPP': '134, 94, 173',
-    'HSC': '213, 47, 47',
-    'MEP': '140, 86, 76',
-    'MPP': '222, 117, 189',
-    'Erythrocyte': '31, 119, 180',
-    'GMP': '255, 127, 15',
-    'Prog MK': '21, 190, 207',
-    'Granulocyte': '43, 160, 43',
-    'Prog DC': '188, 189, 33',
-    'Prog B': '127, 127, 127'
- }
-
-annotation = {key: tuple([int(x) / 255 for x in value.split(", ")]) for key, value in annotation.items()}
+annotation = pickle.load(open(folder_data_preproc / f"{dataset_name_sub}_celltype_colors.pkl", "rb"))
 
 obs['color'] = [annotation[label] for label in obs['celltype']]
 
@@ -88,7 +77,7 @@ obs[genes] = transcriptome.adata.X[:, genes_ix]
 
 #%%
 for gene in genes:
-    obs[f'color_gradient_{gene}'] = create_color_gradient(obs, gene, 'RdBu')
+    obs[f'color_gradient_{gene}'] = create_color_gradient(obs, gene, 'RdBu_r')
 # reverse the gradient
 
 def lt_vs_rank(obs, lineage):
@@ -124,43 +113,39 @@ def lt_vs_rank(obs, lineage):
 
 # %%
 # Create the grid layout
-height = 60
-width = 96
+rows, cols = 68, 90
 
 rowA_y1 = 0
-rowA_y2 = 32
+rowA_y2 = 31
 
-rowB_y1 = 32
-rowB_y2 = 54
+rowB_y1 = 37
+rowB_y2 = 58
 
-rowC_y1 = 54
-rowC_y2 = 60
+rowC_y1 = 64
+rowC_y2 = 68
 
 fig = plt.figure(figsize=(24, 15))
-grid = GridSpec(height, width, figure=fig)
+grid = GridSpec(rows, cols, figure=fig)
 
-ax_cellt = fig.add_subplot(grid[rowA_y1:rowA_y2, int((0/4)*width):int((2/4)*width)])
-ax_gene1 = fig.add_subplot(grid[rowA_y1:int(rowA_y2/2), int((2/4)*width):int((3/4)*width)])
-ax_gene2 = fig.add_subplot(grid[rowA_y1:int(rowA_y2/2), int((3/4)*width):int((4/4)*width)])
-ax_gene3 = fig.add_subplot(grid[int(rowA_y2/2):rowA_y2, int((2/4)*width):int((3/4)*width)])
-ax_gene4 = fig.add_subplot(grid[int(rowA_y2/2):rowA_y2, int((3/4)*width):int((4/4)*width)])
+ax_cellt = fig.add_subplot(grid[rowA_y1:rowA_y2, int((0/4)*cols):int((2/4)*cols)])
+ax_gene1 = fig.add_subplot(grid[rowA_y1:int(rowA_y2/2), int((2/4)*cols):int((3/4)*cols)])
+ax_gene2 = fig.add_subplot(grid[rowA_y1:int(rowA_y2/2), int((3/4)*cols)+1:int((4/4)*cols)])
+ax_gene3 = fig.add_subplot(grid[int(rowA_y2/2)+1:rowA_y2, int((2/4)*cols):int((3/4)*cols)])
+ax_gene4 = fig.add_subplot(grid[int(rowA_y2/2)+1:rowA_y2, int((3/4)*cols)+1:int((4/4)*cols)])
 
-ax_mye = fig.add_subplot(grid[rowB_y1:rowB_y2, int((0/3)*width):int((1/3)*width)])
-ax_ery = fig.add_subplot(grid[rowB_y1:rowB_y2, int((1/3)*width):int((2/3)*width)])
-ax_pla = fig.add_subplot(grid[rowB_y1:rowB_y2, int((2/3)*width):int((3/3)*width)])
+ax_mye = fig.add_subplot(grid[rowB_y1:rowB_y2, int((0/3)*cols):int((1/3)*cols)])
+ax_ery = fig.add_subplot(grid[rowB_y1:rowB_y2, int((1/3)*cols):int((2/3)*cols)])
+ax_pla = fig.add_subplot(grid[rowB_y1:rowB_y2, int((2/3)*cols):int((3/3)*cols)])
 
-ax_mye_rank = fig.add_subplot(grid[rowC_y1:rowC_y2, int((0/3)*width):int((1/3)*width)])
-ax_ery_rank = fig.add_subplot(grid[rowC_y1:rowC_y2, int((1/3)*width):int((2/3)*width)])
-ax_pla_rank = fig.add_subplot(grid[rowC_y1:rowC_y2, int((2/3)*width):int((3/3)*width)])
+ax_mye_rank = fig.add_subplot(grid[rowC_y1:rowC_y2, int((0/3)*cols)+3:int((1/3)*cols)-3])
+ax_ery_rank = fig.add_subplot(grid[rowC_y1:rowC_y2, int((1/3)*cols)+3:int((2/3)*cols)-3])
+ax_pla_rank = fig.add_subplot(grid[rowC_y1:rowC_y2, int((2/3)*cols)+3:int((3/3)*cols)-3])
 
 # plots
-ax_cellt.scatter(obs['umap1'], obs['umap2'], s=1, c=obs['color'])
+ax_cellt.scatter(obs['umap1'], obs['umap2'], s=3, c=obs['color'])
 ax_cellt.set_title(f"All cells (n = {len(obs)})")
 ax_cellt.tick_params(axis='both', which='both', bottom=False, top=False, labelbottom=False, right=False, left=False, labelleft=False)
-for spine in plt.gca().spines.values():
-    spine.set_visible(False)
-clusters = obs['celltype'].unique()
-for cluster in clusters:
+for cluster in obs['celltype'].unique():
     cluster_obs = obs[obs['celltype'] == cluster]
     cluster_center_umap1 = cluster_obs['umap1'].mean()
     cluster_center_umap2 = cluster_obs['umap2'].mean()
@@ -171,37 +156,27 @@ gene = 'MPO'
 ax_gene1.scatter(obs['umap1'], obs['umap2'], s=1, c=obs[f'color_gradient_{gene}'])
 ax_gene1.set_title(f"{gene}")
 ax_gene1.tick_params(axis='both', which='both', bottom=False, top=False, labelbottom=False, right=False, left=False, labelleft=False)
-for spine in plt.gca().spines.values():
-    spine.set_visible(False)
 
 gene = 'PF4'
 ax_gene2.scatter(obs['umap1'], obs['umap2'], s=1, c=obs[f'color_gradient_{gene}'])
 ax_gene2.set_title(f"{gene}")
 ax_gene2.tick_params(axis='both', which='both', bottom=False, top=False, labelbottom=False, right=False, left=False, labelleft=False)
-for spine in plt.gca().spines.values():
-    spine.set_visible(False)
 
 gene = 'HBB'
 ax_gene3.scatter(obs['umap1'], obs['umap2'], s=1, c=obs[f'color_gradient_{gene}'])
 ax_gene3.set_title(f"{gene}")
 ax_gene3.tick_params(axis='both', which='both', bottom=False, top=False, labelbottom=False, right=False, left=False, labelleft=False)
-for spine in plt.gca().spines.values():
-    spine.set_visible(False)
 
 gene = 'CD74'
 ax_gene4.scatter(obs['umap1'], obs['umap2'], s=1, c=obs[f'color_gradient_{gene}'])
 ax_gene4.set_title(f"{gene}")
 ax_gene4.tick_params(axis='both', which='both', bottom=False, top=False, labelbottom=False, right=False, left=False, labelleft=False)
-for spine in plt.gca().spines.values():
-    spine.set_visible(False)
 
 x = 'myeloid'
 title = f"{x[0].upper() + x[1:]} lineage (n = {(obs[f'color_gradient_{x}'] != 'lightgray').sum()})"
 ax_mye.scatter(obs['umap1'], obs['umap2'], s=1, c=obs[f'color_gradient_{x}'])
 ax_mye.set_title(title)
 ax_mye.tick_params(axis='both', which='both', bottom=False, top=False, labelbottom=False, right=False, left=False, labelleft=False)
-for spine in plt.gca().spines.values():
-    spine.set_visible(False)
 arrow = FancyArrowPatch(posA=(-2.3, -0.9), posB=(-0.3, 10.5), arrowstyle='->, head_width=0.3', connectionstyle=f'arc3, rad=-0.5', mutation_scale=10, lw=1, color='black')
 ax_mye.add_patch(arrow)
 
@@ -210,8 +185,6 @@ title = f"{x[0].upper() + x[1:]} lineage (n = {(obs[f'color_gradient_{x}'] != 'l
 ax_ery.scatter(obs['umap1'], obs['umap2'], s=1, c=obs[f'color_gradient_{x}'])
 ax_ery.set_title(title)
 ax_ery.tick_params(axis='both', which='both', bottom=False, top=False, labelbottom=False, right=False, left=False, labelleft=False)
-for spine in plt.gca().spines.values():
-    spine.set_visible(False)
 arrow = FancyArrowPatch(posA=(-0.1, -0.9), posB=(7, -0.1), arrowstyle='->, head_width=0.3', connectionstyle=f'arc3, rad=-0.5', mutation_scale=10, lw=1, color='black')
 ax_ery.add_patch(arrow)
 
@@ -220,8 +193,6 @@ title = f"{x[0].upper() + x[1:]} lineage (n = {(obs[f'color_gradient_{x}'] != 'l
 ax_pla.scatter(obs['umap1'], obs['umap2'], s=1, c=obs[f'color_gradient_{x}'])
 ax_pla.set_title(title)
 ax_pla.tick_params(axis='both', which='both', bottom=False, top=False, labelbottom=False, right=False, left=False, labelleft=False)
-for spine in plt.gca().spines.values():
-    spine.set_visible(False)
 arrow = FancyArrowPatch(posA=(-3, 1.5), posB=(6.8, 10.5), arrowstyle='->, head_width=0.3', connectionstyle=f'arc3, rad=-0.1', mutation_scale=10, lw=1, color='black')
 ax_pla.add_patch(arrow)
 
@@ -235,8 +206,6 @@ for i in range(len(x_values[0])):
     ax_mye_rank.plot(x_values[:,i], y_values[:,i], c=colors[i], linewidth=0.1)
 ax_mye_rank2 = ax_mye_rank.twiny()
 ax_mye_rank2.set_xlabel('Latent Time (non uniform distribution)')
-ax_mye_rank2.spines['left'].set_visible(False)
-ax_mye_rank2.spines['right'].set_visible(False)
 ax_mye_rank2.set_xlim(0, 1)
 
 x_values, y_values, colors = lt_vs_rank(obs, 'erythroid')
@@ -249,8 +218,6 @@ for i in range(len(x_values[0])):
     ax_ery_rank.plot(x_values[:,i], y_values[:,i], c=colors[i], linewidth=0.1)
 ax_ery_rank2 = ax_ery_rank.twiny()
 ax_ery_rank2.set_xlabel('Latent Time (non uniform distribution)')
-ax_ery_rank2.spines['left'].set_visible(False)
-ax_ery_rank2.spines['right'].set_visible(False)
 ax_ery_rank2.set_xlim(0, 1)
 
 x_values, y_values, colors = lt_vs_rank(obs, 'platelet')
@@ -263,13 +230,24 @@ for i in range(len(x_values[0])):
     ax_pla_rank.plot(x_values[:,i], y_values[:,i], c=colors[i], linewidth=0.1)
 ax_pla_rank2 = ax_pla_rank.twiny()
 ax_pla_rank2.set_xlabel('Latent Time (non uniform distribution)')
-ax_pla_rank2.spines['left'].set_visible(False)
-ax_pla_rank2.spines['right'].set_visible(False)
 ax_pla_rank2.set_xlim(0, 1)
 
+# TODO
 # maybe add histograms of latent time distributions as new row between rowB and rowC
+# add colorbar for latent time
+# add colorbar for expression
 
-plt.savefig(folder_data_preproc / 'plots' / f"fig1.pdf")
+
+for ax_name in [ax_cellt, ax_gene1, ax_gene2, ax_gene3, ax_gene4, ax_mye, ax_ery, ax_pla, ax_mye_rank, ax_ery_rank, ax_pla_rank]:
+    for spine in ax_name.spines.values():
+        spine.set_visible(False)
+
+fig.text(0.14, 0.9, 'A', fontsize=16, fontweight='bold', va='top')
+fig.text(0.52, 0.9, 'B', fontsize=16, fontweight='bold', va='top')
+fig.text(0.14, 0.5, 'C', fontsize=16, fontweight='bold', va='top')
+fig.text(0.14, 0.2, 'D', fontsize=16, fontweight='bold', va='top')
+
+plt.savefig(folder_data_preproc / 'plots' / "fig1.pdf", bbox_inches='tight', pad_inches=0)
 
 ############################################################################################################################################################################
 "End of figure 1"

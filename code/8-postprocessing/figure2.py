@@ -82,8 +82,8 @@ for lineage_name, gene_name in lineage_gene.items():
 
 # %%
 # Create the grid layout
-height, width = 10, 10
-fig = plt.figure(figsize=(height, width))
+height, width = 12, 10
+fig = plt.figure(figsize=(width, height))
 
 rows, cols = 12, 20
 grid = GridSpec(rows, cols, figure=fig)

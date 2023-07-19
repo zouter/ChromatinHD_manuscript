@@ -37,7 +37,7 @@ print(design)
 # ]
 # design = design.query("dataset == 'pbmc10k'")
 # design = design.query("dataset == 'pbmc10k'")
-design = design.query("promoter == '20kpromoter'")
+design = design.query("promoter == '10k10k'")
 # design = design.query("testdataset == 'pbmc10k_gran-pbmc10k'")
 # design = design.query("testdataset == 'lymphoma-pbmc10k'")
 
@@ -123,6 +123,9 @@ for (dataset_name, promoters_name), design_dataset in design.groupby(
                 peaks = promoters.copy().reset_index()[["chr", "start", "end", "gene"]]
                 peaks["start"] = peaks["start"] - window[0] - 1000
                 peaks["end"] = peaks["start"] - window[0] + 1000
+            elif peakcaller == "gene_body":
+                peaks = promoters.copy().reset_index()[["chr", "start", "end", "gene", "tss"]]
+                peaks["start"] = peaks["tss"]
             else:
                 peaks_folder = folder_root / "peaks" / dataset_name / peakcaller
                 try:

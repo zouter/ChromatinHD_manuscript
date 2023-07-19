@@ -112,7 +112,10 @@ symbol = "BCL2"
 # symbol = "CD14"
 # symbol = "AXIN2"
 symbol = "FLYWCH1"
-symbol = "PPP2R3C"
+# symbol = "PPP2R3C"
+symbol = "BCL2"
+symbol = "CCL4"
+symbol = "CCL5"
 # symbol = transcriptome.symbol("ENSG00000170345")
 print(symbol)
 genes_oi = transcriptome.var["symbol"] == symbol
@@ -171,6 +174,11 @@ window_scoring.genescores["retained"].sel(phase="validation").mean("gene").mean(
     "model"
 ).plot(ax=ax2, color="orange")
 ax2.yaxis_inverted()
+
+# %%
+window_scoring.genescores.sel(phase="validation").mean("gene").mean(
+    "model"
+).to_pandas().sort_values("deltacor").head(20)
 
 # %% [markdown]
 # ## Pairwindow
@@ -299,9 +307,6 @@ for x in np.linspace(*window, 16):
 ax.axis("off")
 
 fig.plot()
-
-# %%
-fig.savefig("fig.png", dpi=300)
 
 # %%
 sns.heatmap(
@@ -519,8 +524,8 @@ regions["width"] = regions["end"] - regions["start"]
 main = chd.grid.Grid(padding_height=0.1)
 fig = chd.grid.Figure(main)
 
-resolution = 1 / 4500
-# resolution = 1 / 1000
+# resolution = 1 / 4500
+resolution = 1 / 1000
 gap = 0.025
 panel_width = regions["width"].sum() * resolution + len(regions) * gap
 
@@ -633,7 +638,6 @@ if symbol in ["BCL2"]:
 
 ax.set_xlim([transform(regions["start"].min()), transform(regions["end"].max())])
 fig.plot()
-fig.savefig("fig.png", dpi=300)
 
 
 # %%

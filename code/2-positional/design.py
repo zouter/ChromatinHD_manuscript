@@ -35,6 +35,13 @@ def get_design(transcriptome, fragments):
         "loader_cls": chromatinhd.loaders.fragments.Fragments,
         "loader_parameters": general_loader_parameters,
     }
+    design["counter_magic"] = {
+        "model_cls": chromatinhd.models.positional.counter.Model,
+        "model_parameters": {**general_model_parameters},
+        "loader_cls": chromatinhd.loaders.fragments.Fragments,
+        "loader_parameters": general_loader_parameters,
+        "expression_source": "magic",
+    }
     design["counter_10k"] = {
         "model_cls": chromatinhd.models.positional.counter.Model,
         "model_parameters": {
@@ -81,6 +88,13 @@ def get_design(transcriptome, fragments):
         "model_parameters": {},
         "loader_cls": chromatinhd.loaders.fragments.Fragments,
         "loader_parameters": general_loader_parameters,
+    }
+    design["v20_magic"] = {
+        "model_cls": chromatinhd.models.positional.v20.Model,
+        "model_parameters": {},
+        "loader_cls": chromatinhd.loaders.fragments.Fragments,
+        "loader_parameters": general_loader_parameters,
+        "expression_source": "magic",
     }
     return design
 

@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.14.5
+#       jupytext_version: 1.14.7
 #   kernelspec:
 #     display_name: Python 3 (ipykernel)
 #     language: python
@@ -91,9 +91,22 @@ design = design.query("dataset != 'alzheimer'").copy()
 # design = design.query("dataset == 'pbmc10k_gran-pbmc10k'").copy()
 
 # %%
-design = design.query("splitter in ['random_5fold', 'all']").copy()
-# design = design.query("promoter in ['10k10k']").copy()
-design = design.query("promoter in ['20kpromoter']").copy()
+# design = design.query("splitter in ['permutations_5fold5repeat']").copy()
+# design = design.query("splitter in ['permutations_5fold5repeat']").copy()
+design = design.loc[((design["splitter"].isin(["random_5fold", "all"])))]
+# design = design.loc[
+#     (
+#         (design["splitter"].isin(["random_5fold"]))
+#         & ~design["method"].isin(["v20", "v21", "v22", "counter"])
+#     )
+#     | (
+#         (design["splitter"].isin(["permutations_5fold5repeat"]))
+#         & (design["method"].isin(["v20", "v21", "v22", "counter"]))
+#     )
+# ]
+# design = design.query("splitter in ['random_5fold', 'all']").copy()
+design = design.query("promoter in ['10k10k']").copy()
+# design = design.query("promoter in ['20kpromoter']").copy()
 design = design.query("method not in ['v20_initdefault', 'v21', 'v22']").copy()
 design = design.loc[design["peakcaller"] != "stack"]
 
@@ -153,8 +166,10 @@ group_ids = ["method", "dataset", "promoter", "phase"]
 meanscores = scores.groupby(group_ids)[["cor", "design_ix"]].mean()
 diffscores = meanscores - meanscores.xs(dummy_method, level="method")
 diffscores.columns = diffscores.columns + "_diff"
+relscores = np.log(meanscores / meanscores.xs(dummy_method, level="method"))
+relscores.columns = relscores.columns + "_rel"
 
-scores_all = meanscores.join(diffscores)
+scores_all = meanscores.join(diffscores).join(relscores)
 
 # %%
 methods_info = chdm.methods.prediction_methods.reindex(design["method"].unique())
@@ -192,6 +207,14 @@ metrics_info = pd.DataFrame(
             "ticks": [-0.01, 0, 0.01],
             "ticklabels": ["-0.01", "0", "0.01"],
         },
+        # {
+        #     "label": "cor ratio",
+        #     "metric": "cor_rel",
+        #     "limits": (np.log(2 / 3), np.log(1.5)),
+        #     "transform": lambda x: x,
+        #     # "ticks": [-0.01, 0, 0.01],
+        #     # "ticklabels": ["-0.01", "0", "0.01"],
+        # },
     ]
 ).set_index("metric")
 metrics_info["ix"] = np.arange(len(metrics_info))
@@ -478,8 +501,8 @@ manuscript.save_figure(fig, "2", "positional_all_scores_datagroups")
 
 # %% [markdown]
 # ### Averaged over all datasets
-group_ids = [*methods_info.index.names, "phase"]
-score_relative_all = scores_all.groupby(group_ids).mean()
+# group_ids = [*methods_info.index.names, "phase"]
+# score_relative_all = scores_all.groupby(group_ids).mean()
 
 # %%
 panel_width = 5 / 4
@@ -559,9 +582,9 @@ manuscript.save_figure(fig, "2", "positional_all_scores")
 # ## Compare against CRE methods
 
 # %%
-# method_oi1 = "v20"
-# method_oi2 = "cellranger/linear"
-method_oi1 = "rolling_50/linear"
+method_oi1 = "v20"
+method_oi2 = "macs2_improved/lasso"
+# method_oi1 = "rolling_50/linear"
 method_oi2 = "rolling_500/linear"
 plotdata = pd.DataFrame(
     {
@@ -595,6 +618,7 @@ plt.scatter(
     alpha=0.5,
     s=1,
 )
+ax.set_xlim()
 ax.set_xlabel(f"$\Delta$ cor {method_oi2}")
 ax.set_ylabel(f"$\Delta$ cor {method_oi1}", rotation=0, ha="right", va="center")
 

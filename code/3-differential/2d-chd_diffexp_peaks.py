@@ -201,7 +201,7 @@ for dataset_name, design_dataset in design.groupby("dataset"):
 
                         # call differential regions
                         regionresult = (
-                            chd.differential.DifferentialSlices.from_basepair_ranking(
+                            chd.models.diff.DifferentialSlices.from_basepair_ranking(
                                 basepair_ranking,
                                 window,
                                 cutoff=cutoffs[:, None],

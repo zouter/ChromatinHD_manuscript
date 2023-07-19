@@ -113,7 +113,7 @@ for dataset_name, subdesign in design.groupby("dataset"):
                     assert enricher == "cluster_vs_clusters"
 
                     enrichmentscores = (
-                        chd.differential.enrichment.enrich_cluster_vs_clusters(
+                        chd.models.diff.enrichment.enrich_cluster_vs_clusters(
                             motifscan, window, regions, "cluster", fragments.n_genes
                         )
                     )

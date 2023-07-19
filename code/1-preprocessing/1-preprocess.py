@@ -652,7 +652,7 @@ fragments_tabix = tabix.open(str(folder_data_preproc / "atac_fragments.tsv.gz"))
 # promoter_name, (padding_negative, padding_positive) = "4k2k", (2000, 4000)
 promoter_name, (padding_negative, padding_positive) = "10k10k", (10000, 10000)
 # promoter_name, (padding_negative, padding_positive) = "100k100k", (100000, 100000)
-promoter_name, (padding_negative, padding_positive) = "20kpromoter", (20000, 0)
+# promoter_name, (padding_negative, padding_positive) = "20kpromoter", (20000, 0)
 # promoter_name, (padding_negative, padding_positive) = "1k1k", (1000, 1000)
 
 # %%

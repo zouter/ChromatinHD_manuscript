@@ -175,7 +175,7 @@ for dataset_name, design_dataset in design.groupby("dataset"):
                             )
 
                             if enricher == "cluster_vs_clusters":
-                                enrichmentscores = chd.differential.enrichment.enrich_cluster_vs_clusters(
+                                enrichmentscores = chd.models.diff.enrichment.enrich_cluster_vs_clusters(
                                     motifscan,
                                     window,
                                     regions,
@@ -197,7 +197,7 @@ for dataset_name, design_dataset in design.groupby("dataset"):
                                             )
                                         ).open("rb")
                                     ).flatten(0, 1)
-                                enrichmentscores = chd.differential.enrichment.enrich_cluster_vs_background(
+                                enrichmentscores = chd.models.diff.enrichment.enrich_cluster_vs_background(
                                     motifscan,
                                     window,
                                     regions,
@@ -207,7 +207,7 @@ for dataset_name, design_dataset in design.groupby("dataset"):
                                 )
                             elif enricher in ["cluster_vs_all"]:
                                 enrichmentscores = (
-                                    chd.differential.enrichment.enrich_cluster_vs_all(
+                                    chd.models.diff.enrichment.enrich_cluster_vs_all(
                                         motifscan,
                                         window,
                                         regions,
@@ -231,7 +231,7 @@ for dataset_name, design_dataset in design.groupby("dataset"):
                             )
 
                             if enricher == "cluster_vs_clusters":
-                                enrichmentscores = chd.differential.enrichment.enrich_cluster_vs_clusters(
+                                enrichmentscores = chd.models.diff.enrichment.enrich_cluster_vs_clusters(
                                     motifscan,
                                     window,
                                     regions,
@@ -242,7 +242,7 @@ for dataset_name, design_dataset in design.groupby("dataset"):
                                 "cluster_vs_background",
                                 "cluster_vs_background_gc",
                             ]:
-                                enrichmentscores = chd.differential.enrichment.enrich_cluster_vs_background(
+                                enrichmentscores = chd.models.diff.enrichment.enrich_cluster_vs_background(
                                     motifscan,
                                     window,
                                     regions,
@@ -252,7 +252,7 @@ for dataset_name, design_dataset in design.groupby("dataset"):
                                 )
                             elif enricher in ["cluster_vs_all"]:
                                 enrichmentscores = (
-                                    chd.differential.enrichment.enrich_cluster_vs_all(
+                                    chd.models.diff.enrichment.enrich_cluster_vs_all(
                                         motifscan,
                                         window,
                                         regions,

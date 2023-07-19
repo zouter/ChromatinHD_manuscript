@@ -16,9 +16,9 @@ predictors = {
 }
 
 # design = design.loc[~(design["peakcaller"].str.startswith("rolling"))]
-# design = design.loc[(design["peakcaller"].str.startswith("macs2_leiden_0.1"))]
+design = design.loc[(design["peakcaller"].str.startswith("gene_body"))]
 # design = design.loc[(design["predictor"] == "linear")]
-design = design.loc[(design["predictor"] == "xgboost")]
+# design = design.loc[(design["predictor"] == "xgboost")]
 # design = design.loc[(design["testdataset"] != "pbmc3k-pbmc10k")]
 # design = design.loc[(design["testdataset"] != "pbmc3k-pbmc10k")]
 # design = design.loc[(design["splitter"] == "random_5fold")]

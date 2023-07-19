@@ -102,7 +102,8 @@ symbol = "MAP4K2"
 # symbol = "CD74"
 # symbol = "CXCR5"
 # symbol = "SPIB"
-symbol = "BCL2"
+# symbol = "BCL2"
+symbol = "CCL4"
 gene = transcriptome.var.query("symbol == @symbol").index[0]
 print(symbol)
 

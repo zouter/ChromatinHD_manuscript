@@ -728,7 +728,7 @@ ax_gene = main[0, 1] = chdm.plotting.Genes(
 panel_height = 0.5
 
 # differential atac
-wrap_differential = main[1, 1] = chd.differential.plot.Differential(
+wrap_differential = main[1, 1] = chd.models.diff.plot.Differential(
     plotdata_genome,
     plotdata_genome_mean,
     cluster_info_oi,
@@ -748,8 +748,8 @@ if show_motifs:
     # motifdata = motifdata.query("motif in ['SPI1_HUMAN.H11MO.0.A', 'CEBPB_HUMAN.H11MO.0.A']")
     # motifdata = motifdata.query("motif in ['SPI1_HUMAN.H11MO.0.A']")
     # motifdata = motifdata.query("motif in ['IRF4_HUMAN.H11MO.0.A']")
-    chd.differential.plot.MotifsHighlighting(wrap_differential, motifdata, motifs_oi, cluster_info)
-    wrap_motiflegend = main[1, 2] = chd.differential.plot.MotifsLegend(
+    chd.models.diff.plot.MotifsHighlighting(wrap_differential, motifdata, motifs_oi, cluster_info)
+    wrap_motiflegend = main[1, 2] = chd.models.diff.plot.MotifsLegend(
         motifs_oi,
         cluster_info_oi,
         1,
@@ -759,7 +759,7 @@ if show_motifs:
 
 show_expression = True
 if show_expression:
-    wrap_expression = main[1, 0] = chd.differential.plot.DifferentialExpression(
+    wrap_expression = main[1, 0] = chd.models.diff.plot.DifferentialExpression(
         plotdata_expression,
         plotdata_expression_clusters,
         cluster_info_oi,
@@ -781,10 +781,10 @@ if show_peaks:
 
 show_lower = False
 if show_lower:
-    ax_conservation = main.add_under(chd.differential.plot.Conservation(plotdata_conservation, window, panel_width), 1)
-    ax_gc = main.add_under(chd.differential.plot.GC(plotdata_gc, window, panel_width), 1)
-    ax_annot = main.add_under(chd.differential.plot.Annot(plotdata_chromatin_annot, window, panel_width, cluster_info), 1)
-    main[5, 2] = chd.differential.plot.AnnotLegend(ax_annot, width = 1)
+    ax_conservation = main.add_under(chd.models.diff.plot.Conservation(plotdata_conservation, window, panel_width), 1)
+    ax_gc = main.add_under(chd.models.diff.plot.GC(plotdata_gc, window, panel_width), 1)
+    ax_annot = main.add_under(chd.models.diff.plot.Annot(plotdata_chromatin_annot, window, panel_width, cluster_info), 1)
+    main[5, 2] = chd.models.diff.plot.AnnotLegend(ax_annot, width = 1)
 
 # set x ticks
 fig.plot()

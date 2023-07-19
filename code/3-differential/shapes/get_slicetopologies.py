@@ -480,7 +480,7 @@ for slicetype, slicetype_info in types_info.iterrows():
             break
 
         # differential atac
-        wrap_differential = chd.differential.plot.Differential(
+        wrap_differential = chd.models.diff.plot.Differential(
             plotdata_atac,
             plotdata_atac_mean,
             cluster_info_oi,
@@ -625,7 +625,7 @@ for i in range(30):
     panel_width = (window_oi[1] - window_oi[0]) * resolution
 
     # differential atac
-    wrap_differential = chd.differential.plot.Differential(
+    wrap_differential = chd.models.diff.plot.Differential(
         plotdata_atac,
         plotdata_atac_mean,
         cluster_info_oi,
@@ -1405,7 +1405,7 @@ def enrich_groups_cluster_vs_clusters(
             background_slices = (
                 (~oi) if inclusive else (~oi & (regions[grouping_id] == group_id))
             )
-            motifscores_group = chd.differential.enrichment.enrich_windows(
+            motifscores_group = chd.models.diff.enrichment.enrich_windows(
                 motifscan,
                 regions[["start", "end"]].values,
                 regions["gene_ix"].values,
@@ -1435,7 +1435,7 @@ slicetopologies["cluster"] = pd.Categorical(
 typeenrichments = enrich_groups_cluster_vs_clusters(
     slicetopologies, "cluster", "type", inclusive=False
 )
-type_group_enrichments = chd.differential.enrichment.enrich_cluster_vs_clusters(
+type_group_enrichments = chd.models.diff.enrichment.enrich_cluster_vs_clusters(
     motifscan, window, slicetopologies, "type", fragments.n_genes
 )
 
@@ -1791,7 +1791,7 @@ slicetopologies["cluster_type"] = pd.Categorical(
 )
 
 # %%
-qtl_enrichments = chd.differential.enrichment.enrich_cluster_vs_all(
+qtl_enrichments = chd.models.diff.enrichment.enrich_cluster_vs_all(
     motifscan,
     window,
     slicetopologies,
@@ -1799,7 +1799,7 @@ qtl_enrichments = chd.differential.enrichment.enrich_cluster_vs_all(
     fragments.n_genes,
     fragments.var.index,
 )
-# qtl_enrichments = chd.differential.enrichment.enrich_cluster_vs_clusters(motifscan, window, slicetopologies, "cluster_type", fragments.n_genes)
+# qtl_enrichments = chd.models.diff.enrichment.enrich_cluster_vs_clusters(motifscan, window, slicetopologies, "cluster_type", fragments.n_genes)
 
 # %%
 qtl_enrichments["type"] = (

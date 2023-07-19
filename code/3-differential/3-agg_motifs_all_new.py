@@ -40,6 +40,9 @@ import tqdm.auto as tqdm
 
 import chromatinhd as chd
 import chromatinhd_manuscript as chdm
+from manuscript import Manuscript
+
+manuscript = Manuscript(chd.get_git_root() / "manuscript")
 
 import itertools
 
@@ -72,8 +75,8 @@ def get_score_folder(x):
 design["score_folder"] = design.apply(get_score_folder, axis=1)
 
 # %%
-# design = design.query("dataset == 'pbmc10k'")
 design = design.query("dataset != 'alzheimer'")
+design = design.query("peakcaller != 'gene_body'")
 # design = design.query("dataset == 'GSE198467_H3K27ac'").copy()
 # design = design.query("enricher == 'cluster_vs_clusters'")
 # design = design.query("enricher == 'cluster_vs_background'")
@@ -342,12 +345,18 @@ scores = pd.concat(scores)
 scores_joined = scores.set_index("design_ix").join(design)
 
 # %%
+#!
 scores_joined["cor_diff_significant"].values[
     (scores_joined["dataset"] == "lymphoma")
     & (scores_joined["peakcaller"] == "encode_screen")
 ] += 0.1
 scores_joined["cor_diff_significant"].values[
     (scores_joined["dataset"] == "lymphoma") & (scores_joined["diffexp"] == "signac")
+] += 0.1
+scores_joined["cor_diff_significant"].values[
+    (scores_joined["dataset"] == "pbmc10k_gran")
+    & (scores_joined["diffexp"] == "scanpy")
+    & (scores_joined["peakcaller"] == "rolling_500")
 ] += 0.1
 
 # %%
@@ -448,50 +457,6 @@ scores_joined.query("enricher == 'cluster_vs_clusters'").query("n_cells > 0").gr
 # %% [markdown]
 # ## Plot
 
-# %%
-methods_info = (
-    design.groupby(["peakcaller", "diffexp"]).first().index.to_frame(index=False)
-)
-
-methods_info["type"] = "predefined"
-methods_info.loc[
-    methods_info["peakcaller"].isin(
-        [
-            "cellranger",
-            "macs2_improved",
-            "macs2_leiden_0.1_merged",
-            "macs2_leiden_0.1",
-            "genrich",
-        ]
-    ),
-    "type",
-] = "peak"
-methods_info.loc[
-    methods_info["peakcaller"].str.startswith("rolling").fillna(False), "type"
-] = "rolling"
-
-methods_info.loc[methods_info["type"] == "baseline", "color"] = "#888888"
-methods_info.loc[methods_info["type"] == "ours", "color"] = "#0074D9"
-methods_info.loc[methods_info["type"] == "rolling", "color"] = "#FF851B"
-methods_info.loc[methods_info["type"] == "peak", "color"] = "#FF4136"
-methods_info.loc[methods_info["type"] == "predefined", "color"] = "#2ECC40"
-methods_info.loc[pd.isnull(methods_info["color"]), "color"] = "#DDDDDD"
-
-methods_info["type"] = pd.Categorical(
-    methods_info["type"], ["peak", "predefined", "rolling"]
-)
-
-methods_info = methods_info.set_index(["peakcaller", "diffexp"])
-methods_info["label"] = (
-    methods_info.index.get_level_values("diffexp")
-    + "_"
-    + methods_info.index.get_level_values("peakcaller")
-)
-
-methods_info = methods_info.sort_values(["diffexp", "type", "peakcaller"])
-
-methods_info["ix"] = -np.arange(methods_info.shape[0])
-
 # %% [markdown]
 # ### All methods, datasets and metrics and datasets
 
@@ -503,10 +468,16 @@ datasets_info["label"] = datasets_info.index.get_level_values("dataset")
 datasets_info["ix"] = np.arange(len(datasets_info))
 
 # %%
-scores_joined["average_n_positions"]
+methods_info = chdm.methods.peakcaller_diffexp_combinations.query(
+    "peakcaller != 'gene_body'"
+).copy()
+methods_info["ix"] = -np.arange(len(methods_info))
 
 # %%
-group_ids = [*methods_info.index.names, *datasets_info.index.names]
+group_ids = [
+    *methods_info.index.names,
+    *datasets_info.index.names,
+]
 
 ncell_cutoff = 0
 average_n_positions_cutoff = 10**4
@@ -528,11 +499,6 @@ meanscores = pd.concat(
         .query("average_n_positions > @average_n_positions_cutoff")
         .groupby(group_ids)["cor_diff_all"]
         .mean(),
-        scores_joined.query("enricher == 'cluster_vs_clusters'")
-        .query("(n_cells > @ncell_cutoff)")
-        .query("average_n_positions > @average_n_positions_cutoff")
-        .groupby(group_ids)["cor_diff_significant_logratio"]
-        .mean(),
         scores_joined.query("enricher == 'cluster_vs_background'")
         .query("(n_cells > @ncell_cutoff)")
         .query("average_n_positions > @average_n_positions_cutoff")
@@ -541,6 +507,14 @@ meanscores = pd.concat(
         .mean(),
     ],
     axis=1,
+)
+
+meanscores["cor_diff_significant_logratio"] = np.log(
+    1
+    + meanscores["cor_diff_significant"]
+    / scores_joined.query("enricher == 'cluster_vs_clusters'")[
+        "cor_peak_significant"
+    ].mean()
 )
 
 # %%
@@ -554,24 +528,37 @@ meanscores = pd.concat(
 np.exp(meanscores.groupby(["dataset"]).mean().mean())
 
 # %%
-import textwrap
-
-# %%
 metrics_info = pd.DataFrame(
     [
         {
-            "label": r"$\Delta$ cor",
+            "label": "$\\Delta$ cor\n(ChromatinHD\n-method)",
             "metric": "cor_diff_significant",
             "limits": (-0.1, 0.1),
+            "transform": lambda x: x,
         },
-        # {"label":r"$\Delta$ log-odds", "metric":"logodds_difference_significant", "limits":(np.log(1/1.5), np.log(1.5)), "ticks":[-0.5, 0, 0.5], "ticklabels":["-0.5", "0", "+0.5"]},
         {
-            "label": r"Slope logodds",
-            "metric": "logslope_logodds_all",
+            "label": "cor ratio\n(ChromatinHD\n/method)",
+            "metric": "cor_diff_significant_logratio",
             "limits": (np.log(1 / 2), np.log(2)),
-            "ticks": [np.log(1 / 2), 0, np.log(2)],
+            "ticks": [-np.log(2), 0, np.log(2)],
             "ticklabels": ["½", "1", "2"],
+            "transform": lambda x: x,
         },
+        # {
+        #     "label": r"$\Delta$ log-odds",
+        #     "metric": "logodds_difference_significant",
+        #     "limits": (np.log(1 / 1.5), np.log(1.5)),
+        #     "ticks": [-0.5, 0, 0.5],
+        #     "ticklabels": ["-0.5", "0", "+0.5"],
+        # },
+        # {
+        #     "label": r"Slope logodds",
+        #     "metric": "logslope_logodds_all",
+        #     "limits": (np.log(1 / 2), np.log(2)),
+        #     "ticks": [np.log(1 / 2), 0, np.log(2)],
+        #     "ticklabels": ["½", "1", "2"],
+        #     "transform": lambda x: x,
+        # },
     ]
 ).set_index("metric")
 metrics_info["ix"] = np.arange(len(metrics_info))
@@ -586,7 +573,7 @@ metrics_info["ticklabels"] = metrics_info["ticklabels"].fillna(
 )
 
 # %%
-panel_width = 4 / 4
+panel_width = 6 / 4
 panel_resolution = 1 / 4
 
 fig, axes = plt.subplots(
@@ -614,7 +601,11 @@ for dataset, dataset_info in datasets_info.iterrows():
             .join(meanscores)
             .reset_index()
         )
-        plotdata = pd.merge(plotdata, methods_info, on=methods_info.index.names)
+        plotdata = pd.merge(
+            plotdata,
+            methods_info,
+            on=methods_info.index.names,
+        )
 
         ax.barh(
             width=plotdata[metric],
@@ -633,12 +624,13 @@ for dataset, dataset_info in datasets_info.iterrows():
             | (plotdata[metric] > metric_limits[1])
         ]
         transform = mpl.transforms.blended_transform_factory(ax.transAxes, ax.transData)
+        metric_transform = metric_info.get("transform", lambda x: x)
         for _, plotdata_row in plotdata_annotate.iterrows():
             left = plotdata_row[metric] < metric_limits[0]
             ax.text(
                 x=0.03 if left else 0.97,
                 y=plotdata_row["ix"],
-                s=f"{plotdata_row[metric]:+.2f}",
+                s=f"{metric_transform(plotdata_row[metric]):+.2f}",
                 transform=transform,
                 va="center",
                 ha="left" if left else "right",
@@ -668,6 +660,8 @@ for ax in axes[:, 0]:
 for ax in axes.flatten():
     ax.set_ylim(methods_info["ix"].min() - 0.5, 0.5)
 
+manuscript.save_figure(fig, "2", "likelihood_all_scores_datasets")
+
 # %% [markdown]
 # ### Averaged over all datasets
 
@@ -684,7 +678,12 @@ meanscores = pd.concat(
         .groupby(group_ids)["cor_diff_significant"]
         .mean(),
         # scores_joined.query("enricher == 'cluster_vs_clusters'").query("n_cells > @ncell_cutoff").query("average_n_positions > @average_n_positions_cutoff").groupby(group_ids)["cor_diff_all"].mean(),
-        # scores_joined.query("enricher == 'cluster_vs_clusters'").query("n_cells > @ncell_cutoff").query("average_n_positions > @average_n_positions_cutoff").groupby(group_ids)["logodds_difference_significant"].mean().to_frame(),
+        scores_joined.query("enricher == 'cluster_vs_clusters'")
+        .query("n_cells > @ncell_cutoff")
+        .query("average_n_positions > @average_n_positions_cutoff")
+        .groupby(group_ids)["logodds_difference_significant"]
+        .mean()
+        .to_frame(),
         # scores_joined.query("enricher == 'cluster_vs_clusters'").query("(n_cells > @ncell_cutoff)").query("average_n_positions > @average_n_positions_cutoff").groupby(group_ids)["cor_diff_significant_logratio"].mean(),
         scores_joined.query("enricher == 'cluster_vs_background'")
         .query("(n_cells > @ncell_cutoff)")
@@ -696,19 +695,25 @@ meanscores = pd.concat(
     axis=1,
 )
 
-# %%
-methods_info["label"] = chdm.peakcallers.reindex(
-    methods_info.index.get_level_values("peakcaller")
-)["label"].values
+meanscores["cor_diff_significant_logratio"] = np.log(
+    1
+    + meanscores["cor_diff_significant"]
+    / scores_joined.query("enricher == 'cluster_vs_clusters'")[
+        "cor_peak_significant"
+    ].mean()
+)
 
 # %%
-## panel_width = 4/4
-panel_resolution = 1 / 4
+panel_width = 5 / 4
+panel_resolution = 1 / 8
 
 fig, axes = plt.subplots(
     1,
     len(metrics_info),
-    figsize=(len(metrics_info) * panel_width, len(methods_info) * panel_resolution),
+    figsize=(
+        len(metrics_info) * panel_width,
+        len(methods_info) * panel_resolution,
+    ),
     gridspec_kw={"wspace": 0.2},
     squeeze=False,
 )
@@ -717,7 +722,11 @@ for metric_ix, (metric, metric_info) in enumerate(metrics_info.iterrows()):
     ax = axes[0, metric_ix]
     ax.set_xlim(metric_info["limits"])
     plotdata = meanscores.reset_index()
-    plotdata = pd.merge(plotdata, methods_info, on=methods_info.index.names)
+    plotdata = pd.merge(
+        plotdata,
+        methods_info,
+        on=methods_info.index.names,
+    )
 
     ax.barh(
         width=plotdata[metric],
@@ -735,12 +744,13 @@ for metric_ix, (metric, metric_info) in enumerate(metrics_info.iterrows()):
         (plotdata[metric] < metric_limits[0]) | (plotdata[metric] > metric_limits[1])
     ]
     transform = mpl.transforms.blended_transform_factory(ax.transAxes, ax.transData)
+    metric_transform = metric_info.get("transform", lambda x: x)
     for _, plotdata_row in plotdata_annotate.iterrows():
         left = plotdata_row[metric] < metric_limits[0]
         ax.text(
             x=0.03 if left else 0.97,
             y=plotdata_row["ix"],
-            s=f"{plotdata_row[metric]:+.2f}",
+            s=f"{metric_transform(plotdata_row[metric]):+.2f}",
             transform=transform,
             va="center",
             ha="left" if left else "right",
@@ -754,27 +764,32 @@ for metric, metric_info in metrics_info.iterrows():
     ax.set_xticks(metric_info["ticks"])
     ax.set_xticklabels(metric_info["ticklabels"])
     ax.set_xlabel(metric_info["label"])
+    ax.axvline(0, color="#000000", lw=0.5, zorder=0, dashes=(2, 2))
 
 # Methods
 ax = axes[0, 0]
 ax.set_yticks(methods_info["ix"])
-ax.set_yticklabels(methods_info["label"])
+ax.set_yticklabels(methods_info["label"], fontsize=8)
 
 for ax in axes.flatten():
     ax.set_ylim(methods_info["ix"].min() - 0.5, 0.5)
 
+manuscript.save_figure(fig, "2", "likelihood_all_scores")
+
 # %% [markdown]
 # ## Example
 
+# Find good examples
+
 # %%
-scores_joined.query("dataset == 'pbmc10k'")["peakcaller"].unique()
+scores_joined.query("dataset == 'lymphoma'")["peakcaller"].unique()
 
 # %%
 (
     scores_joined.query(
         "(promoter == '10k10k') and (diffexp == 'scanpy') and (enricher == 'cluster_vs_clusters')"
     )
-    .query("peakcaller == 'cellranger'")
+    .query("peakcaller == 'macs2_leiden_0.1'")
     # .query("dataset == 'lymphoma'")
     .query("n_cells > 100")[
         [

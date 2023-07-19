@@ -909,7 +909,7 @@ for slice_oi in slices_oi.to_dict(orient="records"):
     panel_width = (window_oi[1] - window_oi[0]) * resolution
 
     # differential atac
-    wrap_differential = chd.differential.plot.Differential(
+    wrap_differential = chd.models.diff.plot.Differential(
         plotdata_atac,
         plotdata_atac_mean,
         cluster_info_oi,
@@ -931,7 +931,7 @@ for slice_oi in slices_oi.to_dict(orient="records"):
         gene_oi, cluster_ix, expanded_slice_oi["start"] : expanded_slice_oi["end"]
     ]
 
-    chd.differential.plot.CommonUnique(
+    chd.models.diff.plot.CommonUnique(
         ax,
         peak_position_chosen_oi,
         region_position_chosen_oi,
@@ -945,7 +945,7 @@ for slice_oi in slices_oi.to_dict(orient="records"):
     cluster_label = cluster_info.query("dimension == @cluster_ix")["label"][0]
     position_label = str(int(slice_oi["start"] + slice_oi["length"] / 2) + window[0])
 
-    chd.differential.plot.LabelSlice(ax, gene_label, cluster_label, slice_oi, window)
+    chd.models.diff.plot.LabelSlice(ax, gene_label, cluster_label, slice_oi, window)
 
 legend_panel = main[0, 1] = chd.grid.Panel((1, panel_height * 2))
 legend_panel.ax.axis("off")
@@ -1072,7 +1072,7 @@ for slice_ix, slice_oi in enumerate(slices_oi.to_dict(orient="records")):
     panel_width = (window_oi[1] - window_oi[0]) * resolution
 
     # differential atac
-    wrap_differential = chd.differential.plot.Differential(
+    wrap_differential = chd.models.diff.plot.Differential(
         plotdata_atac,
         plotdata_atac_mean,
         cluster_info_oi,
@@ -1091,7 +1091,7 @@ for slice_ix, slice_oi in enumerate(slices_oi.to_dict(orient="records")):
     cluster_label = cluster_info.query("dimension == @cluster_ix")["label"][0]
     position_label = str(int(slice_oi["start"] + slice_oi["length"] / 2) + window[0])
 
-    chd.differential.plot.LabelSlice(ax, gene_label, cluster_label, slice_oi, window)
+    chd.models.diff.plot.LabelSlice(ax, gene_label, cluster_label, slice_oi, window)
 
     # peaks
     promoter = promoters.iloc[expanded_slice_oi["gene_ix"]]
@@ -1114,7 +1114,7 @@ for slice_ix, slice_oi in enumerate(slices_oi.to_dict(orient="records")):
         gene_oi, cluster_ix, expanded_slice_oi["start"] : expanded_slice_oi["end"]
     ]
 
-    chd.differential.plot.CommonUnique(
+    chd.models.diff.plot.CommonUnique(
         ax,
         peak_position_chosen_oi,
         region_position_chosen_oi,
@@ -1180,7 +1180,7 @@ for differential_positions_group, peakscores_group in peakscores_oi.groupby(
     "differential_positions_group"
 ):
     print(differential_positions_group, peakscores_group.shape)
-    motifscores_region = chd.differential.enrichment.enrich_windows(
+    motifscores_region = chd.models.diff.enrichment.enrich_windows(
         motifscan,
         peakscores_oi[["start", "end"]].values,
         peakscores_oi["gene_ix"].values,
@@ -1792,7 +1792,7 @@ for slicetype, slicetype_info in types_info.iterrows():
             break
 
         # differential atac
-        wrap_differential = chd.differential.plot.Differential(
+        wrap_differential = chd.models.diff.plot.Differential(
             plotdata_atac,
             plotdata_atac_mean,
             cluster_info_oi,
@@ -1937,7 +1937,7 @@ for i in range(30):
     panel_width = (window_oi[1] - window_oi[0]) * resolution
 
     # differential atac
-    wrap_differential = chd.differential.plot.Differential(
+    wrap_differential = chd.models.diff.plot.Differential(
         plotdata_atac,
         plotdata_atac_mean,
         cluster_info_oi,
@@ -2649,7 +2649,7 @@ def enrich_groups_cluster_vs_clusters(
             background_slices = (
                 (~oi) if inclusive else (~oi & (regions[grouping_id] == group_id))
             )
-            motifscores_group = chd.differential.enrichment.enrich_windows(
+            motifscores_group = chd.models.diff.enrichment.enrich_windows(
                 motifscan,
                 regions[["start", "end"]].values,
                 regions["gene_ix"].values,
@@ -2679,7 +2679,7 @@ slicetopologies["cluster"] = pd.Categorical(
 typeenrichments = enrich_groups_cluster_vs_clusters(
     slicetopologies, "cluster", "type", inclusive=False
 )
-type_group_enrichments = chd.differential.enrichment.enrich_cluster_vs_clusters(
+type_group_enrichments = chd.models.diff.enrichment.enrich_cluster_vs_clusters(
     motifscan, window, slicetopologies, "type", fragments.n_genes
 )
 
@@ -3049,7 +3049,7 @@ slicetopologies["cluster_type"] = pd.Categorical(
 )
 
 # %%
-qtl_enrichments = chd.differential.enrichment.enrich_cluster_vs_all(
+qtl_enrichments = chd.models.diff.enrichment.enrich_cluster_vs_all(
     motifscan,
     window,
     slicetopologies,
@@ -3057,7 +3057,7 @@ qtl_enrichments = chd.differential.enrichment.enrich_cluster_vs_all(
     fragments.n_genes,
     fragments.var.index,
 )
-# qtl_enrichments = chd.differential.enrichment.enrich_cluster_vs_clusters(motifscan, window, slicetopologies, "cluster_type", fragments.n_genes)
+# qtl_enrichments = chd.models.diff.enrichment.enrich_cluster_vs_clusters(motifscan, window, slicetopologies, "cluster_type", fragments.n_genes)
 
 # %%
 qtl_enrichments["type"] = (

@@ -75,7 +75,7 @@ window = np.array([0.05, 1])
 width = 0.5
 height = 0.5
 panel = fig.main.add_under(
-    chd.differential.plot.Differential(
+    chd.models.diff.plot.Differential(
         plotdata_genome=plotdata_genome,
         plotdata_genome_mean=plotdata_genome_mean,
         cluster_info=cluster_info,
@@ -122,7 +122,7 @@ cluster_info = pd.DataFrame({"cluster": ["A"], "dimension": [0]}).set_index("clu
 width = 0.5
 height = 0.5
 panel = fig.main.add_under(
-    chd.differential.plot.Differential(
+    chd.models.diff.plot.Differential(
         plotdata_genome=plotdata_genome,
         plotdata_genome_mean=plotdata_genome_mean,
         cluster_info=cluster_info,
@@ -171,7 +171,7 @@ cluster_info = pd.DataFrame({"cluster": ["A"], "dimension": [0]}).set_index("clu
 width = 1.0
 height = 0.5
 panel = fig.main.add_under(
-    chd.differential.plot.Differential(
+    chd.models.diff.plot.Differential(
         plotdata_genome=plotdata_genome,
         plotdata_genome_mean=plotdata_genome_mean,
         cluster_info=cluster_info,
@@ -221,7 +221,7 @@ cluster_info = pd.DataFrame({"cluster": ["A"], "dimension": [0]}).set_index("clu
 width = 1.0
 height = 0.5
 panel = fig.main.add_under(
-    chd.differential.plot.Differential(
+    chd.models.diff.plot.Differential(
         plotdata_genome=plotdata_genome,
         plotdata_genome_mean=plotdata_genome_mean,
         cluster_info=cluster_info,
@@ -296,7 +296,7 @@ plotdata_genome["prob"] = (
 width = 1.0
 height = 0.4
 panel = fig.main.add_under(
-    chd.differential.plot.Differential(
+    chd.models.diff.plot.Differential(
         plotdata_genome=plotdata_genome,
         plotdata_genome_mean=plotdata_genome_mean,
         cluster_info=cluster_info,

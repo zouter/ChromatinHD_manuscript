@@ -277,7 +277,7 @@ for dataset_name, design_dataset in design.groupby("dataset"):
                             # gene_ixs_slices = np.random.permutation(gene_ixs_slices)
 
                             motifscores_peak = (
-                                chd.differential.enrichment.enrich_windows(
+                                chd.models.diff.enrichment.enrich_windows(
                                     motifscan,
                                     position_slices,
                                     gene_ixs_slices,
@@ -287,7 +287,7 @@ for dataset_name, design_dataset in design.groupby("dataset"):
                                 )
                             )
                             genemotifscores_peak = (
-                                chd.differential.enrichment.detect_windows(
+                                chd.models.diff.enrichment.detect_windows(
                                     motifscan,
                                     position_slices,
                                     gene_ixs_slices,
@@ -334,7 +334,7 @@ for dataset_name, design_dataset in design.groupby("dataset"):
                             # gene_ixs_slices = np.random.permutation(gene_ixs_slices)
 
                             motifscores_region = (
-                                chd.differential.enrichment.enrich_windows(
+                                chd.models.diff.enrichment.enrich_windows(
                                     motifscan,
                                     position_slices,
                                     gene_ixs_slices,
@@ -344,7 +344,7 @@ for dataset_name, design_dataset in design.groupby("dataset"):
                                 )
                             )
                             genemotifscores_region = (
-                                chd.differential.enrichment.detect_windows(
+                                chd.models.diff.enrichment.detect_windows(
                                     motifscan,
                                     position_slices,
                                     gene_ixs_slices,

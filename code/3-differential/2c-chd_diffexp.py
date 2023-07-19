@@ -100,7 +100,7 @@ for dataset_name, design_dataset in design.groupby("dataset"):
                     basepair_ranking[probs_interpolated < prob_cutoff] = -np.inf
 
                     region_result = (
-                        chd.differential.DifferentialSlices.from_basepair_ranking(
+                        chd.models.diff.DifferentialSlices.from_basepair_ranking(
                             basepair_ranking, window, cutoff=np.log(2.0)
                         )
                     )

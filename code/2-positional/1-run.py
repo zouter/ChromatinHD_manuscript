@@ -89,6 +89,9 @@ for (dataset_name, promoter_name), subdesign in design.groupby(["dataset", "prom
         for method_name, subdesign in subdesign.groupby("method"):
             method_info = methods_info[method_name]
 
+            if "expression_source" in method_info:
+                outcome_source = method_info["expression_source"]
+
             prediction = chd.flow.Flow(
                 chd.get_output()
                 / "prediction_positional"

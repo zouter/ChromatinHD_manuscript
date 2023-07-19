@@ -1,5 +1,5 @@
 import chromatinhd_manuscript as chdm
-from chromatinhd.differential.plot import Peaks as PeaksBase
+from chromatinhd.models.diff.plot import Peaks as PeaksBase
 import pandas as pd
 import pybedtools
 import numpy as np

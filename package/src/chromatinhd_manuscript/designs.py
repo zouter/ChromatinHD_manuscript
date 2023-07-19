@@ -26,6 +26,7 @@ dataset_peakcaller_combinations = pd.DataFrame.from_records(
                 "encode_screen",
                 "1k1k",
                 "stack",
+                "gene_body",
             ],
         ),
         itertools.product(

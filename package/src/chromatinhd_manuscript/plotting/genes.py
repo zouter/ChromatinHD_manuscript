@@ -1,5 +1,5 @@
 import chromatinhd as chd
-from chromatinhd.differential.plot import Genes as GenesBase
+from chromatinhd.models.diff.plot import Genes as GenesBase
 import pandas as pd
 import pybedtools
 import numpy as np

@@ -6,14 +6,14 @@ peakcallers = pd.DataFrame(
         {"peakcaller": "macs2_leiden_0.1", "label": "MACS2 per celltype"},
         {"peakcaller": "genrich", "label": "Genrich"},
         {"peakcaller": "macs2_leiden_0.1_merged", "label": "MACS2 per celltype merged"},
-        {"peakcaller": "1k1k", "label": "1kb ← TSS → 1kb"},
+        {"peakcaller": "1k1k", "label": "-1kb ← TSS → +1kb"},
         {"peakcaller": "encode_screen", "label": "ENCODE screen"},
-        {"peakcaller": "gene_body", "label": "Gene body"},
-        {"peakcaller": "stack", "label": "10kb ← TSS → 10kb"},
+        {"peakcaller": "stack", "label": "-10kb ← TSS → +10kb"},
         {"peakcaller": "rolling_100", "label": "Window 100bp"},
         {"peakcaller": "rolling_50", "label": "Window 50bp"},
         {"peakcaller": "rolling_500", "label": "Window 500bp"},
         {"peakcaller": "cellranger", "label": "Cellranger"},
+        {"peakcaller": "gene_body", "label": "TSS → +10kb"},
     ]
 ).set_index("peakcaller")
 peakcallers.loc[
@@ -35,6 +35,7 @@ peakcallers.loc[
             "gene_body",
             "1k1k",
             "encode_screen",
+            "gene_body",
         ]
     ),
     "type",

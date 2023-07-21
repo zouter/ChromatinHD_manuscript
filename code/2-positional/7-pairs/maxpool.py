@@ -272,7 +272,7 @@ mappable = ax.matshow(x.T, aspect="auto", cmap="magma", norm=norm)
 ax.set_xlabel("Genes" + f" ({len(gene_scores.gene.unique())})")
 ax.set_xticks([])
 ax.set_ylabel("Distance")
-ax.yaxis.set_major_formatter(chd.plotting.DistanceFormatter(base=1e-3))
+ax.yaxis.set_major_formatter(chd.plot.DistanceFormatter(base=1e-3))
 cbar = fig.colorbar(mappable, ax=ax, pad=0.05)
 cbar.set_label(
     "Odds ratio \nhigh Hi-C and \nhigh co-predictivity",
@@ -351,7 +351,7 @@ ax.annotate(
 ax.set_ylim(ax.get_ylim())
 ax.yaxis.set_minor_formatter(mpl.ticker.ScalarFormatter())
 ax.yaxis.set_major_formatter(mpl.ticker.ScalarFormatter())
-ax.xaxis.set_major_formatter(chd.plotting.DistanceFormatter(base=1e-3))
+ax.xaxis.set_major_formatter(chd.plot.DistanceFormatter(base=1e-3))
 ax.set_xlabel("HiC max-pool distance")
 ax.set_ylabel(
     "Odds ratio high Hi-C\nand high co-predictivity",

@@ -741,7 +741,7 @@ for ax, (type, plotdata) in zip(axes, slicetopologies.groupby("type")):
     y -= h
 
     l = ax.yaxis.get_label()
-    inset = chd.plotting.replace_patch(ax, l, points=25, ha="right")
+    inset = chd.plot.replace_patch(ax, l, points=25, ha="right")
     l.set_visible(False)
     inset.axis("off")
     chd.slicetypes.plot_type(inset, type)

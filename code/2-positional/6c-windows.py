@@ -174,7 +174,7 @@ def join_overall(df, columns=(overallmetric, "label")):
 
 
 # %%
-phases = chd.plotting.phases
+phases = chd.plot.phases
 
 # %% [markdown]
 # ### Global view

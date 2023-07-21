@@ -299,7 +299,7 @@ for distance1, distance2 in tqdm.tqdm(distslices[["distance1", "distance2"]].val
     width = len(matching_oi["windowmid"].unique()) * resolution
     height = len(matching_oi["dist"].unique()) * resolution
     panel = fig.main.add_under(chd.grid.Panel((width, height)), padding=0)
-    chd.plotting.matshow45(
+    chd.plot.matshow45(
         panel.ax,
         matching_oi["cor"],
         radius=1000 / 2,
@@ -314,7 +314,7 @@ for distance1, distance2 in tqdm.tqdm(distslices[["distance1", "distance2"]].val
     panel.ax.set_yticklabels([f"{distance1/1000:.0f}kb-{distance2/1000:.0f}kb"])
 
     panel = fig.main.add_under(chd.grid.Panel((width, height)))
-    chd.plotting.matshow45(
+    chd.plot.matshow45(
         panel.ax,
         matching_oi["balanced"],
         radius=1000 / 2,

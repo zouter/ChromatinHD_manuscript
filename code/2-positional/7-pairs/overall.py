@@ -206,7 +206,7 @@ ax.plot(
 ax.set_xlim(1000)
 ax.set_ylim(0)
 ax.set_xticks([1000, 100000, 200000])
-ax.xaxis.set_major_formatter(chd.plotting.distance_ticker)
+ax.xaxis.set_major_formatter(chd.plot.distance_ticker)
 ax.set_ylabel("Average co-predictivity\n(cor between $\\Delta$ cor)")
 ax.set_xlabel("Distance")
 manuscript.save_figure(fig, "5", "synergism_distance")
@@ -270,7 +270,7 @@ ax.plot(
 )
 ax.set_ylim(0)
 ax.set_xlim(*window)
-ax.xaxis.set_major_formatter(chd.plotting.gene_ticker)
+ax.xaxis.set_major_formatter(chd.plot.gene_ticker)
 ax.set_ylabel("Average co-predictivity\n(cor between $\\Delta$ cor)")
 
 manuscript.save_figure(fig, "5", "synergism_position")

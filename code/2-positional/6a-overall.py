@@ -135,7 +135,7 @@ genescores_baseline.loc["test"]["cor"].mean(), genescores.loc["test"]["cor"].mea
 # ### Global view
 
 # %%
-phases = chd.plotting.phases
+phases = chd.plot.phases
 
 # %%
 cor_cutoff = 0.01

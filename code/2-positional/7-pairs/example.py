@@ -265,7 +265,7 @@ colors = []
 plotdata_interaction["dist"] = (
     plotdata_interaction["window2"] - plotdata_interaction["window1"]
 )
-chd.plotting.matshow45(
+chd.plot.matshow45(
     ax,
     plotdata_interaction.query("dist < 0").set_index(["window1", "window2"])["cor"],
     cmap=cmap,
@@ -613,7 +613,7 @@ plotdata = plotdata.loc[
     ~pd.isnull(plotdata["window1_broken"]) & ~pd.isnull(plotdata["window2_broken"])
 ]
 
-chd.plotting.matshow45(
+chd.plot.matshow45(
     ax,
     plotdata.query("dist > 0").set_index(["window1_broken", "window2_broken"])["cor"],
     cmap=cmap,

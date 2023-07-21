@@ -112,10 +112,10 @@ ax_mse = ax_perc.twinx()
 ax_mse.plot(
     scores.coords["window"],
     scores["deltacor"].sel(phase="validation"),
-    color=chd.plotting.colors[0],
+    color=chd.plot.colors[0],
 )
 ax_mse.set_ylabel(
-    r"$\Delta$ cor", rotation=0, ha="left", va="center", color=chd.plotting.colors[0]
+    r"$\Delta$ cor", rotation=0, ha="left", va="center", color=chd.plot.colors[0]
 )
 ax_mse.invert_yaxis()
 # ax_mse.plot(mse_dummy_lengths.index, mse_dummy_lengths["validation"])
@@ -124,10 +124,10 @@ ax_perc.set_xlabel("Fragment length")
 ax_perc.plot(
     scores.coords["window"],
     1 - scores["retained"].sel(phase="validation"),
-    color=chd.plotting.colors[1],
+    color=chd.plot.colors[1],
 )
 ax_perc.set_ylabel(
-    "% Fragments", rotation=0, ha="right", va="center", color=chd.plotting.colors[1]
+    "% Fragments", rotation=0, ha="right", va="center", color=chd.plot.colors[1]
 )
 ax_perc.yaxis.set_major_formatter(mpl.ticker.PercentFormatter(xmax=1))
 ax_perc.yaxis.set_major_locator(plt.MaxNLocator(3))

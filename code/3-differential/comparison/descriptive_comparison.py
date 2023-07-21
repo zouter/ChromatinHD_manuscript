@@ -545,7 +545,7 @@ ax.fill_between(
 ax.axvline(0, dashes=(2, 2), color="#333", lw=1)
 ax.set_xlim(*window)
 ax.set_xticks([window[0], 0, window[1]])
-ax.xaxis.set_major_formatter(chromatinhd.plotting.gene_ticker)
+ax.xaxis.set_major_formatter(chromatinhd.plot.gene_ticker)
 ax.set_xlabel("Distance to TSS")
 
 ax = axes[1, 1]
@@ -564,7 +564,7 @@ ax.fill_between(
 ax.axvline(0, dashes=(2, 2), color="#333", lw=1)
 ax.set_xlim(*window)
 ax.set_xlim(-3000, 3000)
-ax.xaxis.set_major_formatter(chromatinhd.plotting.gene_ticker)
+ax.xaxis.set_major_formatter(chromatinhd.plot.gene_ticker)
 ax.set_yticks([])
 
 ax = axes[0, 1]
@@ -2053,7 +2053,7 @@ for ax, (type, plotdata) in zip(axes, slicetopologies.groupby("type")):
     y -= h
 
     l = ax.yaxis.get_label()
-    inset = chd.plotting.replace_patch(ax, l, points=25, ha="right")
+    inset = chd.plot.replace_patch(ax, l, points=25, ha="right")
     l.set_visible(False)
     inset.axis("off")
     chd.slicetypes.plot_type(inset, type)

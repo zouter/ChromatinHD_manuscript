@@ -234,7 +234,7 @@ panel_genes = chdm.plotting.genes.Genes(
 )
 panel_genes = main.add_under(panel_genes)
 
-panel_predictive = chd.predictive.plot.Predictive(
+panel_predictive = chd.models.pred.plot.Predictivity(
     plotdata_predictive, window, panel_width
 )
 panel_predictive = main.add_under(panel_predictive, padding=0)
@@ -827,7 +827,7 @@ panel_genes = chdm.plotting.genes.Genes(
 )
 panel_genes = main.add_under(panel_genes)
 
-panel_predictive = chd.predictive.plot.Predictive(
+panel_predictive = chd.models.pred.plot.Predictivity(
     plotdata_predictive, window, panel_width
 )
 panel_predictive = main.add_under(panel_predictive, padding=0)

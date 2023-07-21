@@ -42,3 +42,11 @@ However, the Tn5 insertion propensity will be correlation with the local accessi
 I thin this is by definition a convolution, i.e. P(X) = P(TF) * P(cut site), and we want P(TF)
 
 Could we deconvolve to get P(TF)? This way we would be able to more accurately get where the protein binds, in single cells perhaps?
+
+## Fragment size advanced
+
+Is the ratio of TF footprint vs submono really the only thing that counts? Isn't there just a linear relationship between fragment length 
+
+Perhaps this relationship even continues into mono fragments => ambiguous meaning of these fragments. Could this ambiguous meaning be detected e.g. by also seeing smaller fragments if the gene is slightly lower expressed?
+
+With larger fragment sizes, are the fragments "randomly" distributed or is there still a kind of footprinting signal?

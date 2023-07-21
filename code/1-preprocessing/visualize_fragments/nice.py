@@ -101,6 +101,7 @@ settings = {
 setting = settings["local_QKI_-1300"]
 setting = settings["mid_IL1B_-5kb"]
 setting = settings["long_ZEB1_TSS"]
+setting = None
 
 # %%
 # gene_id = transcriptome.gene_id("IL1B")
@@ -108,9 +109,10 @@ setting = settings["long_ZEB1_TSS"]
 # gene_id = transcriptome.gene_id("QKI")
 # gene_id = transcriptome.gene_id("FOSB")
 # gene_id = transcriptome.gene_id("CCL4")
-gene_id = transcriptome.gene_id("CCDC138")
-gene_id = transcriptome.gene_id("UBE3D")
-gene_id = transcriptome.gene_id("ZEB1")
+# gene_id = transcriptome.gene_id("CCDC138")
+# gene_id = transcriptome.gene_id("UBE3D")
+# gene_id = transcriptome.gene_id("ZEB1")
+gene_id = transcriptome.gene_id("RHEX")
 
 if setting is not None:
     gene_id = transcriptome.gene_id(setting["gene"])
@@ -194,10 +196,8 @@ panel_width = 2.0
 # genes
 
 genome_folder = folder_data_preproc / "genome"
-panel_genes = chdm.plotting.genes.Genes(
+panel_genes = chd.plot.genome.Genes.from_region(
     promoter_oi,
-    genome_folder,
-    window_oi,
     width=panel_width,
     label_genome=True,
     symbol=transcriptome.symbol(gene_id),

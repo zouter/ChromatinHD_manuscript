@@ -389,7 +389,7 @@ peaks_panel = main[2, 0] = chdm.plotting.Peaks(
     row_height=0.8,
 )
 
-predictive_panel = main[1, 0] = chd.predictive.plot.Predictive(
+predictive_panel = main[1, 0] = chd.models.pred.plot.Predictivity(
     plotdata_predictive,
     window,
     panel_width,

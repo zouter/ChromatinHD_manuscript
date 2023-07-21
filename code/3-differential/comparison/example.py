@@ -440,16 +440,15 @@ class Example:
         panel_height = 0.5
 
         # gene annotation
-        genome_folder = folder_data_preproc / "genome"
-        ax_gene = main[0, 1] = chdm.plotting.Genes(
+        ax_gene = main[0, 1] = chd.plot.genome.Genes.from_region(
             self.promoter,
-            genome_folder=genome_folder,
+            genome="GRCh38",
             window=window,
             width=self.panel_width,
         )
 
         # predictive
-        predictive_panel = main[1, 1] = chd.predictive.plot.Predictive(
+        predictive_panel = main[1, 1] = chd.models.pred.plot.Predictivity(
             plotdata_predictive,
             window,
             self.panel_width,

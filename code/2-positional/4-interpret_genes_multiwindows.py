@@ -172,7 +172,7 @@ def plot_genes(symbols, resolution=0.0003):
             genes_panel.ax.set_xlabel("")
             genes_panel.ax.set_xticks([])
 
-        predictive_panel = grid_gene[1, 0] = chd.predictive.plot.Predictive(
+        predictive_panel = grid_gene[1, 0] = chd.models.pred.plot.Predictivity(
             plotdata_predictive,
             window,
             panel_width,

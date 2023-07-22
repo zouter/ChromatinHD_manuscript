@@ -182,7 +182,7 @@ motifscan_name = "gwas_immune"
 # traits_oi
 
 # %%
-traits_oi = traits_oi.loc[~traits_oi.index.duplicated()]
+traits_oi = traits_oi.loc[~traits_oi.index.duplicated()].reset_index()
 manuscript.store_supplementary_table(traits_oi, f"traits_{motifscan_name}")
 
 # %%

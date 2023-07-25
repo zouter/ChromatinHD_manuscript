@@ -113,7 +113,7 @@ def lt_vs_rank(obs, lineage):
 
 # %%
 # Create the grid layout
-rows, cols = 68, 90
+rows, cols = 70, 90
 
 rowA_y1 = 0
 rowA_y2 = 31
@@ -121,10 +121,11 @@ rowA_y2 = 31
 rowB_y1 = 37
 rowB_y2 = 58
 
-rowC_y1 = 64
-rowC_y2 = 68
+rowC_y1 = 66
+rowC_y2 = 70
 
-fig = plt.figure(figsize=(24, 15))
+heigth, width = 12, 15
+fig = plt.figure(figsize=(width, heigth))
 grid = GridSpec(rows, cols, figure=fig)
 
 ax_cellt = fig.add_subplot(grid[rowA_y1:rowA_y2, int((0/4)*cols):int((2/4)*cols)])
@@ -198,38 +199,38 @@ ax_pla.add_patch(arrow)
 
 x_values, y_values, colors = lt_vs_rank(obs, 'myeloid')
 ax_mye_rank.set_xlim(0, 1)
-ax_mye_rank.set_xlabel('Percent Rank (uniform distribution)')
+ax_mye_rank.set_xlabel('Percent Rank')
 ax_mye_rank.spines['left'].set_visible(False)
 ax_mye_rank.spines['right'].set_visible(False)
 ax_mye_rank.yaxis.set_visible(False)
 for i in range(len(x_values[0])):
     ax_mye_rank.plot(x_values[:,i], y_values[:,i], c=colors[i], linewidth=0.1)
 ax_mye_rank2 = ax_mye_rank.twiny()
-ax_mye_rank2.set_xlabel('Latent Time (non uniform distribution)')
+ax_mye_rank2.set_xlabel('Latent Time')
 ax_mye_rank2.set_xlim(0, 1)
 
 x_values, y_values, colors = lt_vs_rank(obs, 'erythroid')
 ax_ery_rank.set_xlim(0, 1)
-ax_ery_rank.set_xlabel('Percent Rank (uniform distribution)')
+ax_ery_rank.set_xlabel('Percent Rank')
 ax_ery_rank.spines['left'].set_visible(False)
 ax_ery_rank.spines['right'].set_visible(False)
 ax_ery_rank.yaxis.set_visible(False)
 for i in range(len(x_values[0])):
     ax_ery_rank.plot(x_values[:,i], y_values[:,i], c=colors[i], linewidth=0.1)
 ax_ery_rank2 = ax_ery_rank.twiny()
-ax_ery_rank2.set_xlabel('Latent Time (non uniform distribution)')
+ax_ery_rank2.set_xlabel('Latent Time')
 ax_ery_rank2.set_xlim(0, 1)
 
 x_values, y_values, colors = lt_vs_rank(obs, 'platelet')
 ax_pla_rank.set_xlim(0, 1)
-ax_pla_rank.set_xlabel('Percent Rank (uniform distribution)')
+ax_pla_rank.set_xlabel('Percent Rank')
 ax_pla_rank.spines['left'].set_visible(False)
 ax_pla_rank.spines['right'].set_visible(False)
 ax_pla_rank.yaxis.set_visible(False)
 for i in range(len(x_values[0])):
     ax_pla_rank.plot(x_values[:,i], y_values[:,i], c=colors[i], linewidth=0.1)
 ax_pla_rank2 = ax_pla_rank.twiny()
-ax_pla_rank2.set_xlabel('Latent Time (non uniform distribution)')
+ax_pla_rank2.set_xlabel('Latent Time')
 ax_pla_rank2.set_xlim(0, 1)
 
 # TODO
@@ -237,10 +238,30 @@ ax_pla_rank2.set_xlim(0, 1)
 # add colorbar for latent time
 # add colorbar for expression
 
-
 for ax_name in [ax_cellt, ax_gene1, ax_gene2, ax_gene3, ax_gene4, ax_mye, ax_ery, ax_pla, ax_mye_rank, ax_ery_rank, ax_pla_rank]:
     for spine in ax_name.spines.values():
         spine.set_visible(False)
+
+x = 'myeloid'
+df_colorbar = obs[[f'color_gradient_{x}', f'latent_time_{x}']].sort_values(by=f'latent_time_{x}')
+cmap = ListedColormap(df_colorbar[f'color_gradient_{x}'].unique())
+cax = fig.add_axes([0.91, 0.29, 0.015, 0.15])
+cb = fig.colorbar(cm.ScalarMappable(cmap=cmap), cax=cax, orientation='vertical')
+cb.set_label('latent time', labelpad=5)
+cb.ax.yaxis.set_tick_params(labelleft=False, labelright=True)
+
+from matplotlib.cm import ScalarMappable
+from matplotlib.colors import Normalize
+
+cmap2 = plt.get_cmap('RdBu_r')
+cax2 = fig.add_axes([0.91, 0.65, 0.015, 0.1])
+sm2 = ScalarMappable(cmap=cmap2, norm=Normalize(vmin=0, vmax=1))
+cb2 = fig.colorbar(sm2, cax=cax2, orientation='vertical')
+cb2.set_label('Expression', labelpad=5)
+cb2.set_ticks([0, 1])
+cb2.set_ticklabels(['low', 'high'])
+cb2.ax.yaxis.set_tick_params(labelleft=False, labelright=True)
+
 
 fig.text(0.14, 0.9, 'A', fontsize=16, fontweight='bold', va='top')
 fig.text(0.52, 0.9, 'B', fontsize=16, fontweight='bold', va='top')

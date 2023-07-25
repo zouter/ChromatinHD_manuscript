@@ -203,4 +203,35 @@ for lineage in lineages:
     fig.savefig(folder_data_preproc / 'plots' / f"fig3_{lineage}_{lineage_gene[lineage]}.pdf", bbox_inches='tight', pad_inches=0.01)
     fig.show()
 
+############################################################################################################################################################################
+"End of figure 3"
+############################################################################################################################################################################
+
 # %%
+# alternative for third panel, fraction of cell types in each quantile instead of boxplot of latent time
+lin = 'lin_myeloid'
+quantiles = sorted(lineage_objects[lin]['df_latent']['quantile'].unique())[::-1]
+lineage = info_genes_cells[lin].dropna().tolist()
+
+for quant in quantiles:
+    print(quant)
+    df_oi = lineage_objects[lin]['df_latent'][lineage_objects[lin]['df_latent']['quantile'] == quant]
+    vc = df_oi['celltype'].value_counts(normalize=True)
+
+    df_vc = pd.DataFrame(vc).reset_index()
+    df_vc.columns = ['celltype', 'fraction']
+    df_vc['color'] = df_vc['celltype'].apply(lambda x: annotation_original[x])
+    df_vc['order'] = df_vc['celltype'].apply(lambda x: lineage.index(x))
+    df_vc = df_vc.sort_values('order')
+
+    fig, ax = plt.subplots(figsize=(5, 0.5))
+    bottom = 0
+    for value, color in zip(df_vc['fraction'], df_vc['color']):
+        ax.barh('a', value, left=bottom, color=color)
+        bottom += value
+    ax.set_xlim(0, 1)
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    ax.spines['left'].set_visible(False)
+    ax.get_yaxis().set_visible(False)
+    plt.show()

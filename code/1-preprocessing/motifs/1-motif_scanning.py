@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.14.1
+#       jupytext_version: 1.14.7
 #   kernelspec:
 #     display_name: Python 3 (ipykernel)
 #     language: python
@@ -308,7 +308,7 @@ str(np.prod(onehot_promoters.shape) * 32 / 8 / 1024 / 1024 / 1024) + " GiB"
 cutoff_col = "cutoff_0001"
 # cutoff_col = "cutoff_001"
 
-# %% tags=[]
+# %%
 position_ixs = []
 motif_ixs = []
 scores = []
@@ -483,7 +483,7 @@ motifscan.shape = motifscores.shape
 # motifscan_folder = chd.get_output() / "motifscans" / dataset_name / promoter_name
 # motifscan_folder.mkdir(parents=True, exist_ok=True)
 
-# %% [markdown] tags=[]
+# %% [markdown]
 # ### Save motifs (with gene info)
 
 # %%

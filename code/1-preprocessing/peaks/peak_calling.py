@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.14.4
+#       jupytext_version: 1.14.7
 #   kernelspec:
 #     display_name: Python 3 (ipykernel)
 #     language: python
@@ -73,7 +73,7 @@ software_folder = chd.get_git_root() / "software"
 
 # %% [markdown]
 # ## Cell ranger
-
+#
 # Peaks were already called by cell ranger
 
 # %%
@@ -130,7 +130,7 @@ peaks_folder.mkdir(exist_ok=True, parents=True)
 
 # %% [markdown]
 # ## MACS2 ENCODE
-
+#
 # MACS2 with encode parameters
 # https://github.com/ENCODE-DCC/atac-seq-pipeline/blob/master/src/encode_task_macs2_atac.py
 
@@ -168,7 +168,7 @@ peaks_folder.mkdir(exist_ok=True, parents=True)
 
 # %% [markdown]
 # ## MACS2 Paired-end
-
+#
 # This uses the settings recommended by the authors of MACS2
 # https://github.com/macs3-project/MACS/issues/145
 # In the end, this doesn't make much difference

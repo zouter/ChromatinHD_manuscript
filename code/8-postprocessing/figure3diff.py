@@ -4,6 +4,8 @@ if IPython.get_ipython() is not None:
     IPython.get_ipython().magic('load_ext autoreload')
     IPython.get_ipython().magic('autoreload 2')
 
+import os
+import sys
 import torch
 import pickle
 import numpy as np
@@ -33,7 +35,14 @@ binsize = binmids[1] - binmids[0]
 pseudocoordinates = torch.linspace(0, 1, 1000)
 
 #%%
-lineage_gene = {'lin_myeloid': 'MPO', 'lin_erythroid': 'HBB', 'lin_platelet': 'CD74'}
+lineage_gene = {'lin_myeloid': 'MPO', 'lin_erythroid': 'HBB', 'lin_platelet': 'ADCYAP1'}
+if len(sys.argv) > 2 and sys.argv[2] == 'from_fig_runner':
+    lineage_gene = sys.argv[1]
+    lineage_gene = dict([eval(lineage_gene)])
+    fig_runner = True
+else:
+    fig_runner = False
+
 lineage_objects = {}
 
 for lineage_name, gene_name in lineage_gene.items():
@@ -55,6 +64,22 @@ for lineage_name, gene_name in lineage_gene.items():
     adata_oi = adata[list(df_latent.index), gene_name]
     df_latent[gene_name] = pd.DataFrame(adata_oi.X, index=adata_oi.obs.index, columns=[gene_name])
     exp_xmin, exp_xmax = df_latent[gene_name].min(), df_latent[gene_name].max()
+
+    whisker_limits = {}
+    for quantile in df_latent['quantile'].unique():
+        subset = df_latent[df_latent['quantile'] == quantile]
+        Q1 = np.percentile(subset[gene_name], 25)
+        Q3 = np.percentile(subset[gene_name], 75)
+        IQR = Q3 - Q1
+        lower_whisker = Q1 - 1.5 * IQR
+        upper_whisker = Q3 + 1.5 * IQR
+        whisker_limits[quantile] = (lower_whisker, upper_whisker)
+
+    w_min = min([x[0] for x in whisker_limits.values()])
+    w_max = max([x[1] for x in whisker_limits.values()])
+
+    exp_xmin = max(w_min, exp_xmin)
+    exp_xmax = min(w_max, exp_xmax)
 
     dir_likelihood = folder_data_preproc / f"{dataset_name_sub}_LQ/lq_{dataset_name}_128_64_32_fold_0"
     probs = pd.read_csv(dir_likelihood / (gene_id + '.csv'), index_col=0)
@@ -113,33 +138,17 @@ def gradient(colors):
     result = {i+1: result[i] for i in range(len(result))}
     return result
 
-def plot_accessibility(fig, gridspec, binmids, bincounts, n_cells, bins, binsize, pseudocoordinates, data, index, annotation, ymax):
-    ax_object = fig.add_subplot(gridspec)
-    ax_object.bar(binmids, bincounts, width=binsize, color="#888888", lw=0)
-    ax_object.plot(pseudocoordinates.numpy(), data['probs'].iloc[index, :], label=index, color=annotation[data['celltypes'][index]], lw=2, zorder=20)
-    ax_object.plot(pseudocoordinates.numpy(), data['probs'].iloc[index, :], label=index, color="#FFFFFF", lw=3, zorder=10)
-    ax_object.set_ylabel(f"quantile {data['probs'].index[index]}  \n n={int(n_cells)}  ", rotation=0, ha="right", va="center")
-    ax_object.spines['top'].set_visible(False)
-    ax_object.spines['right'].set_visible(False)
-    ax_object.set_ylim(0, ymax)
-    new_ticks = [-10000, -5000, 0, 5000, 10000]
-    old_ticks = [x/20000 + 0.5 for x in new_ticks]
-    ax_object.set_xticks(old_ticks)
-    ax_object.set_xticklabels(new_ticks)
-    return ax_object
-
 def plot_differential(fig, gridspec, data, ymax, celltype, n_cells):
     ax_object = fig.add_subplot(gridspec)
     ax_object.plot(data["position"], (data["prob"]), color="gray", lw=0.5, zorder=1, linestyle="solid")
     ax_object.plot(data["position"], (data["baseline"]), color="black", lw=0.5, zorder=1, linestyle="solid")
-    ax_object.set_ylabel(f"quantile {celltype}  \n n={int(n_cells)}  ", rotation=0, ha="right", va="center")
+    ax_object.set_ylabel(f"q{celltype}, n={int(n_cells)} \n n_fr.=2000 \n n_exp.=200 ", rotation=0, ha="right", va="center")
     ax_object.spines['top'].set_visible(False)
     ax_object.spines['right'].set_visible(False)  
     ax_object.set_ylim(0, ymax)
     ax_object.set_xlim(0, 1000)
     new_ticks = [-10000, -5000, 0, 5000, 10000]
     old_ticks = [(x/20000 + 0.5) * 1000 for x in new_ticks]
-    print(old_ticks)
     ax_object.set_xticks(old_ticks)
     ax_object.set_xticklabels(new_ticks)
 
@@ -158,7 +167,7 @@ def plot_expression(fig, gridspec, expression, celltype, annotation, exp_xmin, e
     medianprops = dict(color=annotation[celltype], linewidth=1)
     ax_object = fig.add_subplot(gridspec)
     ax_object.boxplot(expression, vert=False, widths=0.5, showfliers=False, medianprops=medianprops)
-    ax_object.set_xlim(exp_xmin * 1.05, exp_xmax * 1.05)
+    ax_object.set_xlim(exp_xmin - abs(exp_xmin * 0.1), exp_xmax + abs(exp_xmax * 0.1))
     ax_object.spines['top'].set_visible(False)
     ax_object.spines['right'].set_visible(False)
     ax_object.spines['left'].set_visible(False)
@@ -181,10 +190,7 @@ def plot_lt(fig, gridspec, lt, celltype, annotation):
 height, width = 10, 10
 rows, cols = 10, 20
 
-lineages = [x for x in info_genes_cells.columns if 'lin' in x]
-lineages_dict = {x: lineage_objects[x]['celltypes'] for x in lineages}
-
-for lineage in lineages:
+for lineage in lineage_objects.keys():
     print(lineage, lineage_objects[lineage]['celltypes'])
 
     fig = plt.figure(figsize=(width, height))
@@ -255,8 +261,12 @@ for lineage in lineages:
     fig.text(x2, y1, 'B', fontsize=16, fontweight='bold', va='top')
     fig.text(x3, y1, 'C', fontsize=16, fontweight='bold', va='top')
 
-    fig.savefig(folder_data_preproc / 'plots' / f"fig3s_{lineage}_{lineage_gene[lineage]}.pdf", bbox_inches='tight', pad_inches=0.01)
-    fig.show()
+    if fig_runner:
+        os.makedirs(folder_data_preproc / 'plots' / lineage, exist_ok=True)
+        fig.savefig(folder_data_preproc / 'plots' / lineage / f"fig3diff_{lineage}_{lineage_gene[lineage]}.pdf", bbox_inches='tight', pad_inches=0.01)
+    else:
+        fig.savefig(folder_data_preproc / 'plots' / f"fig3diff_{lineage}_{lineage_gene[lineage]}.pdf", bbox_inches='tight', pad_inches=0.01)
+        fig.show()
 
 ############################################################################################################################################################################
 "End of figure 3"

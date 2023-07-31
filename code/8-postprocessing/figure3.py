@@ -133,10 +133,7 @@ def plot_lt(fig, gridspec, lt, celltype, annotation):
 height, width = 10, 10
 rows, cols = 10, 20
 
-lineages = [x for x in info_genes_cells.columns if 'lin' in x]
-lineages_dict = {x: lineage_objects[x]['celltypes'] for x in lineages}
-
-for lineage in lineages:
+for lineage in lineage_objects.keys():
     print(lineage, lineage_objects[lineage]['celltypes'])
 
     fig = plt.figure(figsize=(width, height))

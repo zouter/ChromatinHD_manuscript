@@ -4,8 +4,9 @@ if IPython.get_ipython() is not None:
     IPython.get_ipython().magic('load_ext autoreload')
     IPython.get_ipython().magic('autoreload 2')
 
+import sys
+import ast
 import torch
-import torch_scatter
 import pickle
 import numpy as np
 import pandas as pd
@@ -13,16 +14,28 @@ import tqdm.auto as tqdm
 
 import chromatinhd as chd
 import chromatinhd.loaders.fragments
-import chromatinhd.models.likelihood_pseudotime.v1 as likelihood_model
 
 #%%
+print('Start of 3-lt_continuous_train.py')
+
+if len(sys.argv) > 2 and sys.argv[2] == 'external':
+    locals().update(ast.literal_eval(sys.argv[1]))
+    external = True
+else:
+    dataset_name_sub = "MV2"
+    dataset_name = "myeloid"
+    nbins = (128, 64, 32, )
+    model_type = 'sigmoid'
+    external = False
+
+if model_type == 'linear':
+    import chromatinhd.models.likelihood_pseudotime.v1 as likelihood_model
+elif model_type == 'sigmoid':
+    import chromatinhd.models.likelihood_pseudotime.v2 as likelihood_model
+
 folder_root = chd.get_output()
 folder_data_preproc = folder_root / "data" / "hspc"
-specs = pickle.load(open(folder_root.parent / "code/8-postprocessing/specs.pkl", "rb"))
-dataset_name = "myeloid"
-dataset_name = "simulated"
-dataset_name = specs['dataset_name']
-dataset_name_sub = "MV2"
+
 fragment_dir = folder_data_preproc / f"{dataset_name_sub}_fragments_{dataset_name}"
 df_latent_file = folder_data_preproc / f"{dataset_name_sub}_latent_time_{dataset_name}.csv"
 
@@ -47,6 +60,9 @@ n_genes_step = 5000
 #%%
 for index, fold in enumerate(folds):
     print(f"Training fold {index}")
+    model_name = f"{dataset_name_sub}_{dataset_name}_{model_type}_{'_'.join(str(n) for n in nbins)}_fold_{index}"
+    model_name_pickle = folder_data_preproc / f"models/{model_name}.pkl"
+    print(model_name_pickle)
 
     loaders_train = chromatinhd.loaders.pool.LoaderPool(
         chromatinhd.loaders.fragments.Fragments,
@@ -83,12 +99,7 @@ for index, fold in enumerate(folds):
 
     data = loaders_train.pull()
 
-    nbins = (128, 64, 32, )
-    nbins = specs['nbins']
-    model_name = f"{dataset_name}_{'_'.join(str(n) for n in nbins)}_fold_{index}"
-
     model = likelihood_model.Model(fragments, latent, nbins = nbins)
-    
     model.forward(data)
 
     optimizer = chd.optim.SparseDenseAdam(model.parameters_sparse(), model.parameters_dense(autoextend=True), lr = 1e-2)
@@ -100,21 +111,20 @@ for index, fold in enumerate(folds):
     trainer = chd.train.Trainer(model, loaders_train, loaders_validation, optimizer, n_epochs = 50, checkpoint_every_epoch=1, optimize_every_step = 1)
     trainer.train()
 
-    model_name_pickle = folder_root.parent / f"code/7-pseudotime/models/3-lt_continuous_{model_name}.pkl"
     pickle.dump(model.to("cpu"), open(model_name_pickle, "wb"))
+    
+    # likelihood_per_gene = torch.zeros(fragments.n_genes)
+    # for data in loaders_validation:
+    #     with torch.no_grad():
+    #         model.forward(data)
+    #     loaders_validation.submit_next()
 
-    likelihood_per_gene = torch.zeros(fragments.n_genes)
-    for data in loaders_validation:
-        with torch.no_grad():
-            model.forward(data)
-        loaders_validation.submit_next()
+    #     cut_gene_ix = data.genes_oi_torch[data.cut_local_gene_ix]
+    #     torch_scatter.scatter_add(model.track["likelihood"], cut_gene_ix, out = likelihood_per_gene).detach().cpu() # check dict key
 
-        cut_gene_ix = data.genes_oi_torch[data.cut_local_gene_ix]
-        torch_scatter.scatter_add(model.track["likelihood"], cut_gene_ix, out = likelihood_per_gene).detach().cpu()
+    # np.savetxt(folder_data_preproc / f'3-lt_continuous_{model_name}_likelihood_per_gene.csv', likelihood_per_gene.numpy(), delimiter=',')
 
-    np.savetxt(folder_data_preproc / f'3-lt_continuous_{model_name}_likelihood_per_gene.csv', likelihood_per_gene.numpy(), delimiter=',')
-
-print("Training complete, models saved")
+print('End of 3-lt_continuous_train.py')
 
 #%%
-trainer.trace.plot()
+# trainer.trace.plot()

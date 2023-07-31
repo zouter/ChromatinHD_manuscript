@@ -1,7 +1,8 @@
+# Script to score overall performance of ChromatinHD models for prediction of gene expression using test cells
+
 import pandas as pd
 import numpy as np
 import torch
-import tqdm.auto as tqdm
 
 import chromatinhd as chd
 import chromatinhd.data
@@ -12,16 +13,6 @@ device = "cuda:0"
 
 folder_root = chd.get_output()
 folder_data = folder_root / "data"
-
-
-class Prediction(chd.flow.Flow):
-    pass
-
-
-# import os
-# os.environ["PYTORCH_CUDA_ALLOC_CONF"] = 'max_split_size_mb:4096'
-
-print(torch.cuda.memory_allocated(0))
 
 from chromatinhd_manuscript.designs import (
     dataset_splitter_method_combinations as design,

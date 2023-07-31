@@ -43,22 +43,6 @@ folder_root = chd.get_output()
 folder_data = folder_root / "data"
 
 dataset_name = "pbmc10k"
-# dataset_name = "e18brain"
-# dataset_name = "lymphoma"
-# dataset_name = "alzheimer"
-# dataset_name = "brain"
-# dataset_name = "pbmc10k_gran"
-
-# dataset_name = "CDX1_7"
-# dataset_name = "FLI1_7"
-# dataset_name = "PAX2_7"
-# dataset_name = "NHLH1_7"
-# dataset_name = "CDX2_7"
-# dataset_name = "MSGN1_7"
-# dataset_name = "KLF4_7"
-# dataset_name = "KLF5_7"
-# dataset_name = "PTF1A_4"
-# dataset_name = "morf_20"
 
 folder_data_preproc = folder_data / dataset_name
 folder_data_preproc.mkdir(exist_ok = True, parents = True)

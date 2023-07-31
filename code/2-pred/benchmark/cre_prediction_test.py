@@ -1,3 +1,5 @@
+# Script to predict and score performance of CRE-based models for prediction of gene expression using a test dataset
+
 import chromatinhd as chd
 import pickle
 import pandas as pd

@@ -1,0 +1,1 @@
+rsync -av --filter="merge included.txt" ./ ../chd_manuscript/

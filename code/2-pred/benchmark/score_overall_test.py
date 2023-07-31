@@ -1,3 +1,5 @@
+# Script to predict and score performance of CRE-based models for prediction of gene expression using a test dataset
+
 import pandas as pd
 import numpy as np
 import torch

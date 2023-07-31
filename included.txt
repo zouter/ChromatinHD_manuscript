@@ -6,6 +6,7 @@
 + code/1-preprocessing/2-preprocess-test.py
 + code/1-preprocessing/3-latent.py
 + code/1-preprocessing/4-create_folds.py
+
 + code/2-pred/
 + code/2-pred/benchmark/***
 + code/2-pred/README.md
@@ -15,5 +16,11 @@
 + code/2-pred/3-score_overall.py
 + code/2-pred/3-score_overall_test.py
 
++ code/3-diff/
++ code/3-diff/benchmark/
++ code/3-diff/benchmark/cre_diffexp.py
++ code/3-diff/benchmark/cre_diffexp_signac.py
++ code/3-diff/README.md
++ code/3-diff/1-run.py
 
 - /**

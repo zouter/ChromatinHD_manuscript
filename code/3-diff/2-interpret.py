@@ -1,3 +1,5 @@
+# Interpret ChromatinHD-diff models and save results
+
 import pandas as pd
 import numpy as np
 import torch

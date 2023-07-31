@@ -1,1 +1,1 @@
-rsync -av --filter="merge included.txt" ./ ../chd_manuscript/
+rsync -av --filter="merge included.txt" ./ ../chromatinhd_manuscript_public/

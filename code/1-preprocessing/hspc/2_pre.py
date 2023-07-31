@@ -262,4 +262,5 @@ adata_result = mv.recover_dynamics_chrom(
 
 adata_result.write(folder_data_preproc / f"{dataset_name_sub}_multivelo_result.h5ad")
 
+print('End of 2_pre.py')
 #%%

@@ -41,6 +41,10 @@ design = design.query("promoter == '10k10k'")
 # design = design.query("testdataset == 'pbmc10k_gran-pbmc10k'")
 # design = design.query("testdataset == 'lymphoma-pbmc10k'")
 
+htslib_folder = pathlib.Path("/data/peak_free_atac/software/htslib-1.16/")
+tabix_location = htslib_folder / "tabix"
+
+
 design["force"] = False
 print(design)
 
@@ -124,7 +128,9 @@ for (dataset_name, promoters_name), design_dataset in design.groupby(
                 peaks["start"] = peaks["start"] - window[0] - 1000
                 peaks["end"] = peaks["start"] - window[0] + 1000
             elif peakcaller == "gene_body":
-                peaks = promoters.copy().reset_index()[["chr", "start", "end", "gene", "tss"]]
+                peaks = promoters.copy().reset_index()[
+                    ["chr", "start", "end", "gene", "tss"]
+                ]
                 peaks["start"] = peaks["tss"]
             else:
                 peaks_folder = folder_root / "peaks" / dataset_name / peakcaller
@@ -204,4 +210,6 @@ for (dataset_name, promoters_name), design_dataset in design.groupby(
                 if not fragments_location.exists():
                     print("No atac fragments found")
                     continue
-            peakcounts.count_peaks(fragments_location, fragments.obs.index)
+            peakcounts.count_peaks(
+                fragments_location, fragments.obs.index, tabix_location=tabix_location
+            )

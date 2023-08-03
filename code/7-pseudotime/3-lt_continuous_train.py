@@ -11,7 +11,6 @@ import pickle
 import numpy as np
 import pandas as pd
 import tqdm.auto as tqdm
-
 import chromatinhd as chd
 import chromatinhd.loaders.fragments
 
@@ -113,16 +112,16 @@ for index, fold in enumerate(folds):
 
     pickle.dump(model.to("cpu"), open(model_name_pickle, "wb"))
     
-    # likelihood_per_gene = torch.zeros(fragments.n_genes)
-    # for data in loaders_validation:
-    #     with torch.no_grad():
-    #         model.forward(data)
-    #     loaders_validation.submit_next()
+    likelihood_per_gene = torch.zeros(fragments.n_genes)
+    for data in loaders_validation:
+        with torch.no_grad():
+            model.forward(data)
+        loaders_validation.submit_next()
 
-    #     cut_gene_ix = data.genes_oi_torch[data.cut_local_gene_ix]
-    #     torch_scatter.scatter_add(model.track["likelihood"], cut_gene_ix, out = likelihood_per_gene).detach().cpu() # check dict key
+        cut_gene_ix = data.genes_oi_torch[data.cut_local_gene_ix]
+        torch_scatter.scatter_add(model.track["likelihood"], cut_gene_ix, out = likelihood_per_gene).detach().cpu() # check dict key
 
-    # np.savetxt(folder_data_preproc / f'3-lt_continuous_{model_name}_likelihood_per_gene.csv', likelihood_per_gene.numpy(), delimiter=',')
+    np.savetxt(folder_data_preproc / f'3-lt_continuous_{model_name}_likelihood_per_gene.csv', likelihood_per_gene.numpy(), delimiter=',')
 
 print('End of 3-lt_continuous_train.py')
 

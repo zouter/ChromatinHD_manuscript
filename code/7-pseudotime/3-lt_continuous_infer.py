@@ -5,24 +5,34 @@ if IPython.get_ipython() is not None:
     IPython.get_ipython().magic('autoreload 2')
 
 import os
+import sys
+import ast
+import gzip
 import torch
 import pickle
 import numpy as np
 import pandas as pd
 import tqdm.auto as tqdm
 import chromatinhd as chd
-import chromatinhd_manuscript.plot_functions as pf
 
 #%%
+print('Start of 3-lt_continuous_infer.py')
+
+if len(sys.argv) > 2 and sys.argv[2] == 'external':
+    locals().update(ast.literal_eval(sys.argv[1]))
+    external = True
+else:
+    dataset_name_sub = "MV2"
+    dataset_name = "myeloid"
+    nbins = (128, 64, 32, )
+    model_type = 'sigmoid'
+    external = False
+
 folder_root = chd.get_output()
 folder_data_preproc = folder_root / "data" / "hspc"
-specs = pickle.load(open(folder_root.parent / "code/8-postprocessing/specs.pkl", "rb"))
-dataset_name = "myeloid"
-dataset_name = "simulated"
-dataset_name = specs['dataset_name']
-dataset_name_sub = "MV2"
-fragment_dir = folder_data_preproc / f"MV2_fragments_{dataset_name}"
-df_latent_file = folder_data_preproc / f"MV2_latent_time_{dataset_name}.csv"
+models_dir = folder_data_preproc / "models"
+fragment_dir = folder_data_preproc / f"{dataset_name_sub}_fragments_{dataset_name}"
+df_latent_file = folder_data_preproc / f"{dataset_name_sub}_latent_time_{dataset_name}.csv"
 
 #%%
 promoter_name, window = "10k10k", np.array([-10000, 10000])
@@ -44,22 +54,18 @@ latent_times = torch.linspace(0, 1, 101)
 latent_times = torch.flip(latent_times, [0])
 
 #%%
-nbins = (128, 64, 32, )
-nbins = specs['nbins']
-dir_models = folder_root.parent / f"code/7-pseudotime/models"
-model_pattern = f"3-lt_continuous{dataset_name}_{'_'.join(str(n) for n in nbins)}_fold_"
-models = sorted([file for file in os.listdir(dir_models) if model_pattern in file])
-models_name = [x.replace('3-lt_continuous_', '').replace('.pkl', '') for x in models]
+model_pattern = f"{dataset_name_sub}_{dataset_name}_{model_type}_{'_'.join(str(n) for n in nbins)}"
+models = sorted([file for file in os.listdir(models_dir) if model_pattern in file])
+csv_dir = folder_data_preproc / f"{dataset_name_sub}_LC" / model_pattern
+os.makedirs(csv_dir, exist_ok=True)
+
+# csv_dict = {model: {x: None for x in range(promoters.shape[0])} for model in models}
+csv_dict = {x: torch.zeros((101, 1000)) for x in range(promoters.shape[0])}
 
 #%%
-for index in range(len(models)):
-    print(index)
-
-    model = pickle.load(open(dir_models / models[index], "rb"))
-
-    csv_dir = folder_data_preproc / f"likelihood_continuous_{models_name[index]}"
-    print(csv_dir)
-    os.makedirs(csv_dir, exist_ok=True)
+for model_name in models:
+    print(model_name)
+    model = pickle.load(open(models_dir / model_name, "rb"))
 
     for gene_oi in range(promoters.shape[0]):
         print(gene_oi)
@@ -78,11 +84,19 @@ for index in range(len(models)):
         probs = torch.exp(probs)
         probs = torch.reshape(probs, (101, 1000))
 
-        np.savetxt(f"{csv_dir}/{gene_name}.csv", probs, delimiter=',')
+        csv_dict[gene_oi] = csv_dict[gene_oi] + probs
 
-print('Inference complete, csv files saved')
+for gene, tensor in csv_dict.items():
+    gene_name = promoters.index[gene]
+    filename = f"{csv_dir}/{gene_name}.csv.gz"
+    tensor = tensor / len(models)
 
-# #%%
+    with gzip.open(filename, 'wt') as file:
+        np.savetxt(file, tensor, delimiter=',')
+
+print('End of 3-lt_continuous_infer.py')
+
+#%%
 # transcriptome = chd.data.Transcriptome(folder_data_preproc / "transcriptome")
 
 # gene_name = 'MPO'

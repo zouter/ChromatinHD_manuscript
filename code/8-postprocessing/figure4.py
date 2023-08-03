@@ -26,8 +26,6 @@ annotation = pickle.load(open(folder_data_preproc / f"{dataset_name_sub}_celltyp
 transcriptome = chd.data.Transcriptome(folder_data_preproc / f"{dataset_name_sub}_transcriptome")
 adata = transcriptome.adata
 
-pseudocoordinates = torch.linspace(0, 1, 1000)
-
 #%%
 lineage_gene = {'lin_myeloid': 'MPO', 'lin_erythroid': 'HBB', 'lin_platelet': 'CD74'}
 lineage_objects = {}
@@ -35,7 +33,6 @@ lineage_objects = {}
 for lineage_name, gene_name in lineage_gene.items():
 
     dataset_name = lineage_name.replace('lin_', '')
-    gene_name = gene_name
 
     fragments = chd.data.Fragments(folder_data_preproc / f"{dataset_name_sub}_fragments_{dataset_name}/10k10k")
     fragments.window = window
@@ -188,9 +185,6 @@ for lineage, c1, c2, c3, c4, c5 in zip(df['lineage'], col_cutsites, col_likeliho
     ax_3 = plot_exp_heatmap(fig, c3, dfll[[gene_name]])
     ax_4 = plot_lt_heatmap(fig, c4, dfll[['celltype_numerical']], annotation_lin)
     ax_5 = plot_legend(fig, c5, annotation_lin, celltypes, ax_3, ax_2)
-
-
-    # add colorbars for likelihood and expression
 
 x1, x2, x3, x4 = 0.1, 0.4, 0.68, 0.72
 y1, y2, y3 = 0.905, 0.63, 0.36

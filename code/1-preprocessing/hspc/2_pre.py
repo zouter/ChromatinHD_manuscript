@@ -78,7 +78,7 @@ print(unspliced.sum() / matrix_sum, 'unspliced')
 print(ambiguous.sum() / matrix_sum, 'ambiguous')
 
 #%%
-adata_atac = sc.read_10x_mtx(folder_data_preproc / dataset_name_sub, var_names='gene_symbols', cache=True, gex_only=False)
+adata_atac = sc.read_10x_mtx(folder_data_preproc / dataset_name_sub, var_names='gene_symbols', cache=False, gex_only=False)
 adata_atac = adata_atac[:,adata_atac.var['feature_types'] == "Peaks"]
 
 #%%
@@ -142,16 +142,16 @@ sc.tl.umap(adata_rna2, n_components=2)
 # plt.ioff()
 
 sc.pl.umap(adata_rna2, color="leiden", legend_loc="on data", show=False)
-plt.savefig(folder_plots / f'{dataset_name_sub}_basic.pdf')
+plt.savefig(folder_plots / f'{dataset_name_sub}_basic.pdf', bbox_inches='tight')
 
 sc.pl.umap(adata_rna2, color=hspc_marker_genes, title=hspc_marker_genes, show=False)
-plt.savefig(folder_plots / f'{dataset_name_sub}_basic_hspc_genes.pdf')
+plt.savefig(folder_plots / f'{dataset_name_sub}_basic_hspc_genes.pdf', bbox_inches='tight')
 
 sc.pl.umap(adata_rna2, color=s_genes_sub, title=s_genes_sub, show=False)
-plt.savefig(folder_plots / f'{dataset_name_sub}_basic_s_genes.pdf')
+plt.savefig(folder_plots / f'{dataset_name_sub}_basic_s_genes.pdf', bbox_inches='tight')
 
 sc.pl.umap(adata_rna2, color=g2m_genes_sub, title=g2m_genes_sub, show=False)
-plt.savefig(folder_plots / f'{dataset_name_sub}_basic_g2m_genes.pdf')
+plt.savefig(folder_plots / f'{dataset_name_sub}_basic_g2m_genes.pdf', bbox_inches='tight')
 
 #%%
 scv.tl.score_genes_cell_cycle(adata_rna2, s_genes=s_genes_sub, g2m_genes=g2m_genes_sub)
@@ -161,13 +161,13 @@ sc.pp.regress_out(adata_rna2, keys=['S_score', 'G2M_score'], n_jobs=4)
 
 #%%
 sc.pl.umap(adata_rna2, color=hspc_marker_genes, title=hspc_marker_genes, show=False)
-plt.savefig(folder_plots / f'{dataset_name_sub}_basic_hspc_genes_ro.pdf')
+plt.savefig(folder_plots / f'{dataset_name_sub}_basic_hspc_genes_ro.pdf', bbox_inches='tight')
 
 sc.pl.umap(adata_rna2, color=s_genes_sub, title=s_genes_sub, show=False)
-plt.savefig(folder_plots / f'{dataset_name_sub}_basic_s_genes_ro.pdf')
+plt.savefig(folder_plots / f'{dataset_name_sub}_basic_s_genes_ro.pdf', bbox_inches='tight')
 
 sc.pl.umap(adata_rna2, color=g2m_genes_sub, title=g2m_genes_sub, show=False)
-plt.savefig(folder_plots / f'{dataset_name_sub}_basic_g2m_genes_ro.pdf')
+plt.savefig(folder_plots / f'{dataset_name_sub}_basic_g2m_genes_ro.pdf', bbox_inches='tight')
 
 #%%
 del adata_rna2.uns
@@ -184,16 +184,16 @@ sc.tl.umap(adata_rna2, n_components=2)
 
 #%%
 sc.pl.umap(adata_rna2, color="leiden", legend_loc="on data", show=False)
-plt.savefig(folder_plots / f'{dataset_name_sub}_ro.pdf')
+plt.savefig(folder_plots / f'{dataset_name_sub}_ro.pdf', bbox_inches='tight')
 
 sc.pl.umap(adata_rna2, color=hspc_marker_genes, title=hspc_marker_genes, show=False)
-plt.savefig(folder_plots / f'{dataset_name_sub}_ro_hspc_genes.pdf')
+plt.savefig(folder_plots / f'{dataset_name_sub}_ro_hspc_genes.pdf', bbox_inches='tight')
 
 sc.pl.umap(adata_rna2, color=s_genes_sub, title=s_genes_sub, show=False)
-plt.savefig(folder_plots / f'{dataset_name_sub}_ro_s_genes.pdf')
+plt.savefig(folder_plots / f'{dataset_name_sub}_ro_s_genes.pdf', bbox_inches='tight')
 
 sc.pl.umap(adata_rna2, color=g2m_genes_sub, title=g2m_genes_sub, show=False)
-plt.savefig(folder_plots / f'{dataset_name_sub}_ro_g2m_genes.pdf')
+plt.savefig(folder_plots / f'{dataset_name_sub}_ro_g2m_genes.pdf', bbox_inches='tight')
 
 # %%
 # sc.pl.umap(adata_rna2, color=['CD34', 'ATXN1'], title=['CD34', 'ATXN1'], use_raw=True)

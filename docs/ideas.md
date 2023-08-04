@@ -1,5 +1,15 @@
 # Ideas
 
+## Do we have less power?
+
+It may be that using peaks is important as to maintain power. Perhaps our models have less power.
+Of course, this is balanced with an increase in power outside/inside of peaks
+Still, could we measure this somehow? Perhaps using synthetic data where we put in a real peak structure and check whether we need more cells to detect it as differential?
+
+## Easy regulatory network
+
+Would it be possible to get an "easy" regulatory network from the data? Something like weighting different regions based on how predictive they are on a per-cell basis?
+
 ## Features of activation
 
 Can we learn what feautures of active transcription are shared across genes?
@@ -39,13 +49,13 @@ Other Tn5 techniques are super scalable as well to profile local protein binding
 
 However, the Tn5 insertion propensity will be correlation with the local accessibility. Meaning that we do not actually see where a protein binds, but rather a smoothened variant of protein binding (probably correlated with DNA proximity?) combined with the insertion site probability.
 
-I thin this is by definition a convolution, i.e. P(X) = P(TF) * P(cut site), and we want P(TF)
+I think this is by definition a convolution, i.e. P(X) = P(TF) * P(cut site), and we want P(TF)
 
 Could we deconvolve to get P(TF)? This way we would be able to more accurately get where the protein binds, in single cells perhaps?
 
 ## Fragment size advanced
 
-Is the ratio of TF footprint vs submono really the only thing that counts? Isn't there just a linear relationship between fragment length 
+Is the ratio of TF footprint vs submono really the only thing that counts? Isn't there just a linear relationship between fragment length
 
 Perhaps this relationship even continues into mono fragments => ambiguous meaning of these fragments. Could this ambiguous meaning be detected e.g. by also seeing smaller fragments if the gene is slightly lower expressed?
 
@@ -74,6 +84,5 @@ Alternatively, we can look at the forcasting literature to see how they do this.
 Different questions we could try to answer:
 
 - What is the distribution of information content of fragments. Likely the one at the time point itself are most informative
-- What is the earliest you could start predicting that a gene is going to be upregulated
-- Can we built a across-genes model, to learn whether these features are shared across genes
+- Can we built a across-genes model, to learn whether these features are shared across genes. What is the earliest you could start predicting that a gene is going to be upregulated
 - Does a non-peak approach detect more than a peak approach. We will need to implement a peak loader in that case.

@@ -32,7 +32,6 @@ folder_root = chd.get_output()
 folder_data_preproc = folder_root / "data" / "hspc"
 models_dir = folder_data_preproc / "models"
 fragment_dir = folder_data_preproc / f"{dataset_name_sub}_fragments_{dataset_name}"
-df_latent_file = folder_data_preproc / f"{dataset_name_sub}_latent_time_{dataset_name}.csv"
 
 #%%
 promoter_name, window = "10k10k", np.array([-10000, 10000])
@@ -41,12 +40,6 @@ promoters = pd.read_csv(folder_data_preproc / f"{dataset_name_sub}_promoters_{pr
 fragments = chd.data.Fragments(fragment_dir / promoter_name)
 fragments.window = window
 fragments.create_cut_data()
-
-folds = pd.read_pickle(fragment_dir / promoter_name / "folds.pkl")
-
-# torch works by default in float32
-df_latent = pd.read_csv(df_latent_file, index_col = 0)
-latent = torch.tensor(df_latent['latent_time'].values.astype(np.float32))
 
 #%%
 pseudocoordinates = torch.linspace(0, 1, 1000)
@@ -59,14 +52,19 @@ models = sorted([file for file in os.listdir(models_dir) if model_pattern in fil
 csv_dir = folder_data_preproc / f"{dataset_name_sub}_LC" / model_pattern
 os.makedirs(csv_dir, exist_ok=True)
 
-# csv_dict = {model: {x: None for x in range(promoters.shape[0])} for model in models}
 csv_dict = {x: torch.zeros((101, 1000)) for x in range(promoters.shape[0])}
 
 #%%
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+pseudocoordinates = pseudocoordinates.to(device)
+latent_times = latent_times.to(device)
+
 for model_name in models:
     print(model_name)
     model = pickle.load(open(models_dir / model_name, "rb"))
-
+    model = model.to(device)
+    
     for gene_oi in range(promoters.shape[0]):
         print(gene_oi)
         gene_name = promoters.index[gene_oi]
@@ -84,7 +82,7 @@ for model_name in models:
         probs = torch.exp(probs)
         probs = torch.reshape(probs, (101, 1000))
 
-        csv_dict[gene_oi] = csv_dict[gene_oi] + probs
+        csv_dict[gene_oi] = csv_dict[gene_oi] + probs.cpu()
 
 for gene, tensor in csv_dict.items():
     gene_name = promoters.index[gene]

@@ -27,4 +27,6 @@ for arg in combinations:
     # subprocess.call([sys.executable, '3-lt_continuous_train.py', str(arg), 'external'])
     subprocess.call([sys.executable, '3-lt_continuous_infer.py', str(arg), 'external'])
 
+print("3-lt_runner.py done!")
+
 # %%

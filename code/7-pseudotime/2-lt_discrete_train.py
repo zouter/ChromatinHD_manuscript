@@ -20,7 +20,7 @@ import chromatinhd.models.likelihood.v9 as vae_model
 # %%
 folder_root = chd.get_output()
 folder_data_preproc = folder_root / "data" / "hspc"
-dataset_name = "platelet"
+dataset_name = "erythroid"
 dataset_name_sub = "MV2"
 model_type = 'quantile'
 nbins = (128, 64, 32, )

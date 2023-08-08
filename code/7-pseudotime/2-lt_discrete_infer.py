@@ -16,9 +16,9 @@ import chromatinhd as chd
 # %%
 folder_root = chd.get_output()
 folder_data_preproc = folder_root / "data" / "hspc"
-dataset_name = "myeloid"
+dataset_name = "erythroid"
 dataset_name_sub = "MV2"
-model_type = 'celltype'
+model_type = 'quantile'
 nbins = (128, 64, 32, )
 models_dir = folder_data_preproc / "models"
 fragment_dir = folder_data_preproc / f"{dataset_name_sub}_fragments_{dataset_name}"
@@ -81,6 +81,6 @@ for gene, tensor in csv_dict.items():
     probs_df = pd.DataFrame(tensor.cpu(), index = pseudocoordinates.tolist(), columns = latent.columns)
     probs_df.to_csv(filename, compression='gzip')
 
-print("Done \n")
+print("2-lt_discrete_infer.py done")
 
 # %%

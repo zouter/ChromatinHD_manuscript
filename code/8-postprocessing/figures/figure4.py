@@ -13,11 +13,13 @@ import matplotlib.pyplot as plt
 
 from matplotlib.gridspec import GridSpec
 from matplotlib.colors import ListedColormap
+from matplotlib.patches import FancyArrowPatch
 
 # %%
 folder_root = chd.get_output()
 folder_data_preproc = folder_root / "data" / "hspc"
 dataset_name_sub = "MV2"
+model_type = 'sigmoid'
 
 promoter_name, window = "10k10k", np.array([-10000, 10000])
 info_genes_cells = pd.read_csv(folder_data_preproc / "info_genes_cells.csv")
@@ -47,9 +49,9 @@ for lineage_name, gene_name in lineage_gene.items():
     adata_oi = adata[list(df_latent.index), gene_name]
     df_latent[gene_name] = pd.DataFrame(adata_oi.X, index=adata_oi.obs.index, columns=[gene_name])
 
-    dir_likelihood = folder_data_preproc / f"{dataset_name_sub}_LC/lc_{dataset_name}_128_64_32_fold_0"
-    probs = pd.read_csv(dir_likelihood / (gene_id + '.csv'), header=None)
-
+    dir_likelihood = folder_data_preproc / f"{dataset_name_sub}_LC/{dataset_name_sub}_{dataset_name}_{model_type}_128_64_32"
+    probs = pd.read_csv(dir_likelihood / (gene_id + '.csv.gz'), header=None)
+    print(dir_likelihood)
     mapping = fragments.mapping
     coordinates = fragments.coordinates
     coordinates = (coordinates + 10000) / 20000
@@ -147,6 +149,7 @@ def plot_legend(fig, gridspec, annotation_lin, celltypes, heatmap_ax, likelihood
 
     return ax_object
 
+#%%
 # Create the grid layout
 height, width = 17, 15
 fig = plt.figure(figsize=(width, height))
@@ -166,7 +169,6 @@ col_expression = [grid[i:i+19, 43:44] for i in df['plot_row']]
 col_latent = [grid[i:i+19, 46:47] for i in df['plot_row']]
 col_legend = [grid[i:i+19, 49:68] for i in df['plot_row']]
 
-#%%
 for lineage, c1, c2, c3, c4, c5 in zip(df['lineage'], col_cutsites, col_likelihood, col_expression, col_latent, col_legend):
     print(lineage, c1, c2, c3, c4, c5)
 
@@ -204,20 +206,24 @@ fig.text(x2, y3, 'J', fontsize=16, fontweight='bold', va='top')
 fig.text(x3, y3, 'K', fontsize=16, fontweight='bold', va='top')
 fig.text(x4, y3, 'L', fontsize=16, fontweight='bold', va='top')
 
-fig.savefig(folder_data_preproc / 'plots' / "fig4.pdf", bbox_inches='tight', pad_inches=0.01)
+arrow = FancyArrowPatch(posA=(0.1, 0.88), posB=(0.1, 0.67), arrowstyle='<-, head_width=0.3', connectionstyle=f'arc3, rad=0', mutation_scale=10, lw=1, color='gray')
+fig.add_artist(arrow)
+fig.text(0.09, 0.77, 'Direction of differentiation', fontsize=8, va='center', rotation=90)
+
+fig.savefig(folder_data_preproc / 'plots' / f"fig4_{model_type}.pdf", bbox_inches='tight', pad_inches=0.01)
 fig
 
 #%%
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 
-colormaps = ['viridis', 'plasma', 'inferno', 'magma', 'cividis', 'Greys', 'Purples', 'Blues', 'Greens', 'Oranges', 'Reds', 'YlOrBr', 'YlOrRd', 'OrRd', 'PuRd', 'RdPu', 'BuPu', 'GnBu', 'PuBu', 'YlGnBu', 'PuBuGn', 'BuGn', 'YlGn']
-colormaps = ['Greys', 'Purples', 'Blues', 'Reds', 'PuRd', 'BuPu']
+# colormaps = ['viridis', 'plasma', 'inferno', 'magma', 'cividis', 'Greys', 'Purples', 'Blues', 'Greens', 'Oranges', 'Reds', 'YlOrBr', 'YlOrRd', 'OrRd', 'PuRd', 'RdPu', 'BuPu', 'GnBu', 'PuBu', 'YlGnBu', 'PuBuGn', 'BuGn', 'YlGn']
+# colormaps = ['Greys', 'Purples', 'Blues', 'Reds', 'PuRd', 'BuPu']
 
-df =  data['probs']
-for cmap in colormaps:
-    fig, ax = plt.subplots()
-    ax.imshow(df, cmap=cmap, aspect='auto', interpolation='none')
-    ax.set_title(f'Colormap: {cmap}')
-    plt.show()
+# df =  data['probs']
+# for cmap in colormaps:
+#     fig, ax = plt.subplots()
+#     ax.imshow(df, cmap=cmap, aspect='auto', interpolation='none')
+#     ax.set_title(f'Colormap: {cmap}')
+#     plt.show()
 
 # %%

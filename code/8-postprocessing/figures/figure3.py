@@ -18,6 +18,7 @@ from matplotlib.gridspec import GridSpec
 folder_root = chd.get_output()
 folder_data_preproc = folder_root / "data" / "hspc"
 dataset_name_sub = "MV2"
+model_type = 'quantile'
 
 promoter_name, window = "10k10k", np.array([-10000, 10000])
 info_genes_cells = pd.read_csv(folder_data_preproc / "info_genes_cells.csv")
@@ -55,8 +56,9 @@ for lineage_name, gene_name in lineage_gene.items():
     df_latent[gene_name] = pd.DataFrame(adata_oi.X, index=adata_oi.obs.index, columns=[gene_name])
     exp_xmin, exp_xmax = df_latent[gene_name].min(), df_latent[gene_name].max()
 
-    dir_likelihood = folder_data_preproc / f"{dataset_name_sub}_LQ/lq_{dataset_name}_128_64_32_fold_0"
-    probs = pd.read_csv(dir_likelihood / (gene_id + '.csv'), index_col=0)
+    dir_likelihood = folder_data_preproc / f"{dataset_name_sub}_LQ/{dataset_name_sub}_{dataset_name}_{model_type}_128_64_32"
+    probs = pd.read_csv(dir_likelihood / (gene_id + '.csv.gz'), index_col=0)
+    probs = probs.T
 
     df_bincounts = pd.DataFrame()
     for i, celltype in enumerate(latent.columns):

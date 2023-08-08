@@ -19,6 +19,7 @@ from matplotlib.colors import ListedColormap
 folder_root = chd.get_output()
 folder_data_preproc = folder_root / "data" / "hspc"
 dataset_name_sub = "MV2"
+model_type = 'sigmoid'
 
 promoter_name, window = "10k10k", np.array([-10000, 10000])
 info_genes_cells = pd.read_csv(folder_data_preproc / "info_genes_cells.csv")
@@ -29,7 +30,7 @@ adata = transcriptome.adata
 
 #%%
 variables = {
-    'lineages': ["myeloid", ],
+    'lineages': ["myeloid", "erythroid", "platelet"],
     'genes': hspc_genes,
 }
 
@@ -47,8 +48,8 @@ for key in lineage_gene.keys():
     gene_id = adata.var.loc[gene_name]['Accession']
     gene_ix = fragments.var.index.get_loc(gene_id)
 
-    dir_likelihood = folder_data_preproc / f"{dataset_name_sub}_LC/lc_{dataset_name_sub}_sigmoid_{dataset_name}_128_64_32_fold_0"
-    probs = pd.read_csv(dir_likelihood / (gene_id + '.csv'), header=None)
+    dir_likelihood = folder_data_preproc / f"{dataset_name_sub}_LC/{dataset_name_sub}_{dataset_name}_{model_type}_128_64_32"
+    probs = pd.read_csv(dir_likelihood / (gene_id + '.csv.gz'), header=None)
 
     lineage_gene[key] = probs
 

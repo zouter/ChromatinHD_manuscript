@@ -16,11 +16,13 @@ import matplotlib.pyplot as plt
 
 from scipy.interpolate import interp1d
 from matplotlib.gridspec import GridSpec
+from matplotlib.patches import FancyArrowPatch
 
 # %%
 folder_root = chd.get_output()
 folder_data_preproc = folder_root / "data" / "hspc"
 dataset_name_sub = "MV2"
+model_type = 'quantile'
 
 promoter_name, window = "10k10k", np.array([-10000, 10000])
 info_genes_cells = pd.read_csv(folder_data_preproc / "info_genes_cells.csv")
@@ -35,7 +37,7 @@ binsize = binmids[1] - binmids[0]
 pseudocoordinates = torch.linspace(0, 1, 1000)
 
 #%%
-lineage_gene = {'lin_myeloid': 'MPO', 'lin_erythroid': 'HBB', 'lin_platelet': 'ADCYAP1'}
+lineage_gene = {'lin_myeloid': 'MPO', 'lin_erythroid': 'HBB', 'lin_platelet': 'CD74'}
 if len(sys.argv) > 2 and sys.argv[2] == 'from_fig_runner':
     lineage_gene = sys.argv[1]
     lineage_gene = dict([eval(lineage_gene)])
@@ -64,6 +66,7 @@ for lineage_name, gene_name in lineage_gene.items():
     adata_oi = adata[list(df_latent.index), gene_name]
     df_latent[gene_name] = pd.DataFrame(adata_oi.X, index=adata_oi.obs.index, columns=[gene_name])
     exp_xmin, exp_xmax = df_latent[gene_name].min(), df_latent[gene_name].max()
+    df_latent['reads'] = pd.DataFrame(adata_oi.layers['matrix'].todense()).values
 
     whisker_limits = {}
     for quantile in df_latent['quantile'].unique():
@@ -81,17 +84,22 @@ for lineage_name, gene_name in lineage_gene.items():
     exp_xmin = max(w_min, exp_xmin)
     exp_xmax = min(w_max, exp_xmax)
 
-    dir_likelihood = folder_data_preproc / f"{dataset_name_sub}_LQ/lq_{dataset_name}_128_64_32_fold_0"
-    probs = pd.read_csv(dir_likelihood / (gene_id + '.csv'), index_col=0)
+    dir_likelihood = folder_data_preproc / f"{dataset_name_sub}_LQ/{dataset_name_sub}_{dataset_name}_{model_type}_128_64_32"
+    probs = pd.read_csv(dir_likelihood / (gene_id + '.csv.gz'), index_col=0)
+    probs = probs.T
+    probs.index = probs.index.astype(int)
 
     df_bincounts = pd.DataFrame()
+    n_fr = []
     for i, celltype in enumerate(latent.columns):
         fragments_oi = (latent_torch[fragments.cut_local_cell_ix, i] != 0) & (fragments.cut_local_gene_ix == gene_ix)
+        n_frags = fragments_oi.sum().item()
         bincounts, _ = np.histogram(fragments.cut_coordinates[fragments_oi].cpu().numpy(), bins=bins)
         n_cells = latent_torch[:, i].sum()
         bincounts = bincounts / n_cells * len(bins)
 
         df_bincounts[celltype] = bincounts
+        n_fr.append(n_frags)
 
     probs.index.name = "cluster"
     probs.columns.name = "position"
@@ -124,6 +132,7 @@ for lineage_name, gene_name in lineage_gene.items():
         'probs': probs,
         'plotdata': plotdata,
         'df_bincounts': df_bincounts,
+        'n_fr': n_fr,
         'exp_xmin': exp_xmin,
         'exp_xmax': exp_xmax,
     }
@@ -138,17 +147,17 @@ def gradient(colors):
     result = {i+1: result[i] for i in range(len(result))}
     return result
 
-def plot_differential(fig, gridspec, data, ymax, celltype, n_cells):
+def plot_differential(fig, gridspec, data, ymax, celltype, n_cells, n_fr, n_exp):
     ax_object = fig.add_subplot(gridspec)
     ax_object.plot(data["position"], (data["prob"]), color="gray", lw=0.5, zorder=1, linestyle="solid")
     ax_object.plot(data["position"], (data["baseline"]), color="black", lw=0.5, zorder=1, linestyle="solid")
-    ax_object.set_ylabel(f"q{celltype}, n={int(n_cells)} \n n_fr.=2000 \n n_exp.=200 ", rotation=0, ha="right", va="center")
+    ax_object.set_ylabel(f"q{celltype}, n={int(n_cells)} \n n_fr.={n_fr} \n n_exp.={n_exp} ", rotation=0, ha="right", va="center")
     ax_object.spines['top'].set_visible(False)
     ax_object.spines['right'].set_visible(False)  
     ax_object.set_ylim(0, ymax)
-    ax_object.set_xlim(0, 1000)
+    ax_object.set_xlim(0, 1)
     new_ticks = [-10000, -5000, 0, 5000, 10000]
-    old_ticks = [(x/20000 + 0.5) * 1000 for x in new_ticks]
+    old_ticks = [(x/20000 + 0.5) for x in new_ticks]
     ax_object.set_xticks(old_ticks)
     ax_object.set_xticklabels(new_ticks)
 
@@ -236,11 +245,12 @@ for lineage in lineage_objects.keys():
 
         # 2. data for expression
         expression = data['df_latent'].loc[data['df_latent']['quantile'] == celltype, data['gene_name']].values
-        
+        n_exp = (data['df_latent'].loc[data['df_latent']['quantile'] == celltype, 'reads'] != 0).sum(axis=0)
+
         # 3. data for latent time
         lt = data['df_latent'].loc[data['df_latent']['quantile'] == celltype, 'latent_time'].values
 
-        ax_1 = plot_differential(fig, c1, diff, ymax, celltype, n_cells)
+        ax_1 = plot_differential(fig, c1, diff, ymax, celltype, n_cells, data['n_fr'][index], n_exp)
         ax_2 = plot_expression(fig, c2, expression, data['celltypes'][index], annotation, data['exp_xmin'], data['exp_xmax'])
         ax_3 = plot_lt(fig, c3, lt, data['celltypes'][index], annotation)
 
@@ -254,12 +264,16 @@ for lineage in lineage_objects.keys():
             ax_2.set_xticklabels([])
             ax_3.set_xticklabels([])
 
-    x1, x2, x3 = 0.05, 0.52, 0.73
+    x1, x2, x3 = 0.03, 0.52, 0.73
     y1, y2, y3 = 0.905, 0.58, 0.32
 
     fig.text(x1, y1, 'A', fontsize=16, fontweight='bold', va='top')
     fig.text(x2, y1, 'B', fontsize=16, fontweight='bold', va='top')
     fig.text(x3, y1, 'C', fontsize=16, fontweight='bold', va='top')
+
+    arrow = FancyArrowPatch(posA=(0.03, 0.87), posB=(0.03, 0.12), arrowstyle='<-, head_width=0.3', connectionstyle=f'arc3, rad=0', mutation_scale=10, lw=1, color='gray')
+    fig.add_artist(arrow)
+    fig.text(0.02, 0.495, 'Direction of differentiation', fontsize=8, va='center', rotation=90)
 
     if fig_runner:
         os.makedirs(folder_data_preproc / 'plots' / lineage, exist_ok=True)

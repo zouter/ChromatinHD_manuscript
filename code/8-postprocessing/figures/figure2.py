@@ -12,11 +12,13 @@ import chromatinhd as chd
 import matplotlib.pyplot as plt
 
 from matplotlib.gridspec import GridSpec
+from matplotlib.patches import FancyArrowPatch
 
 # %%
 folder_root = chd.get_output()
 folder_data_preproc = folder_root / "data" / "hspc"
 dataset_name_sub = "MV2"
+model_type = 'celltype'
 
 promoter_name, window = "10k10k", np.array([-10000, 10000])
 info_genes_cells = pd.read_csv(folder_data_preproc / "info_genes_cells.csv")
@@ -54,8 +56,8 @@ for lineage_name, gene_name in lineage_gene.items():
     df_latent[gene_name] = pd.DataFrame(adata_oi.X, index=adata_oi.obs.index, columns=[gene_name])
     exp_xmin, exp_xmax = df_latent[gene_name].min(), df_latent[gene_name].max()
 
-    dir_likelihood = folder_data_preproc / f"{dataset_name_sub}_LCT/lct_{dataset_name}_128_64_32_fold_0"
-    probs = pd.read_csv(dir_likelihood / (gene_id + '.csv'), index_col=0)
+    dir_likelihood = folder_data_preproc / f"{dataset_name_sub}_LCT/{dataset_name_sub}_{dataset_name}_{model_type}_128_64_32"
+    probs = pd.read_csv(dir_likelihood / (gene_id + '.csv.gz'), index_col=0)
 
     df_bincounts = pd.DataFrame()
     for i, celltype in enumerate(latent.columns):
@@ -106,9 +108,9 @@ col_lt = [grid[i, 16:20] for i in df['plot_row']]
 def plot_accessibility(fig, gridspec, binmids, bincounts, n_cells, bins, binsize, pseudocoordinates, data, index, annotation, ymax):
     ax_object = fig.add_subplot(gridspec)
     ax_object.bar(binmids, bincounts, width=binsize, color="#888888", lw=0)
-    ax_object.plot(pseudocoordinates.numpy(), data['probs'].iloc[index, :], label=index, color=annotation[data['celltypes'][index]], lw=2, zorder=20)
-    ax_object.plot(pseudocoordinates.numpy(), data['probs'].iloc[index, :], label=index, color="#FFFFFF", lw=3, zorder=10)
-    ax_object.set_ylabel(f"{data['probs'].index[index]}  \n n={int(n_cells)}  ", rotation=0, ha="right", va="center")
+    ax_object.plot(pseudocoordinates.numpy(), data['probs'].iloc[:, index], label=index, color=annotation[data['celltypes'][index]], lw=2, zorder=20)
+    ax_object.plot(pseudocoordinates.numpy(), data['probs'].iloc[:, index], label=index, color="#FFFFFF", lw=3, zorder=10)
+    ax_object.set_ylabel(f"{data['probs'].columns[index]}  \n n={int(n_cells)}  ", rotation=0, ha="right", va="center")
     ax_object.spines['top'].set_visible(False)
     ax_object.spines['right'].set_visible(False)
     ax_object.set_ylim(0, ymax)
@@ -172,7 +174,7 @@ for lineage, celltype, index, plot_row, xaxis, title, c1, c2, c3 in zip(df['line
         ax_2.set_xticklabels([])
         ax_3.set_xticklabels([])
 
-x1, x2, x3 = 0.05, 0.52, 0.73
+x1, x2, x3 = 0.04, 0.52, 0.73
 y1, y2, y3 = 0.905, 0.58, 0.32
 
 fig.text(x1, y1, 'A', fontsize=16, fontweight='bold', va='top')
@@ -186,6 +188,10 @@ fig.text(x3, y2, 'F', fontsize=16, fontweight='bold', va='top')
 fig.text(x1, y3, 'G', fontsize=16, fontweight='bold', va='top')
 fig.text(x2, y3, 'H', fontsize=16, fontweight='bold', va='top')
 fig.text(x3, y3, 'I', fontsize=16, fontweight='bold', va='top')
+
+arrow = FancyArrowPatch(posA=(0.05, 0.88), posB=(0.05, 0.63), arrowstyle='<-, head_width=0.3', connectionstyle=f'arc3, rad=0', mutation_scale=10, lw=1, color='gray')
+fig.add_artist(arrow)
+fig.text(0.04, 0.755, 'Direction of differentiation', fontsize=8, va='center', rotation=90)
 
 fig.savefig(folder_data_preproc / 'plots' / "fig2.pdf", bbox_inches='tight', pad_inches=0.01)
 

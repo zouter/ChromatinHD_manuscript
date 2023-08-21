@@ -18,14 +18,19 @@ variables = {
     'dataset_name_sub': ["MV2"],
     'dataset_name': ["myeloid", "erythroid", "platelet"],
     'nbins': [(128, 64, 32,), (128,)],
-    'model_type': ['sigmoid', 'linear']
+    'model_type': ['sigmoid', 'linear'],
+    'time_values': ['latent_time'],
 }
+
+config = sys.argv[1:]
 
 combinations = [dict(zip(variables.keys(), values)) for values in itertools.product(*variables.values())]
 for arg in combinations:
     print(arg)
-    # subprocess.call([sys.executable, '3-lt_continuous_train.py', str(arg), 'external'])
-    subprocess.call([sys.executable, '3-lt_continuous_infer.py', str(arg), 'external'])
+    if 'train' in config:
+        subprocess.call([sys.executable, '3-lt_continuous_train.py', str(arg), 'external'])
+    if 'infer' in config:
+        subprocess.call([sys.executable, '3-lt_continuous_infer.py', str(arg), 'external'])
 
 print("3-lt_runner.py done!")
 

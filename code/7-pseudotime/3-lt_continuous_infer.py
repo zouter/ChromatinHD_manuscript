@@ -26,6 +26,7 @@ else:
     dataset_name = "myeloid"
     nbins = (128, 64, 32, )
     model_type = 'sigmoid'
+    time_values = 'latent_time'
     external = False
 
 folder_root = chd.get_output()
@@ -47,7 +48,7 @@ latent_times = torch.linspace(0, 1, 101)
 latent_times = torch.flip(latent_times, [0])
 
 #%%
-model_pattern = f"{dataset_name_sub}_{dataset_name}_{model_type}_{'_'.join(str(n) for n in nbins)}"
+model_pattern = f"{dataset_name_sub}_{dataset_name}_{model_type}_{time_values}_{'_'.join(str(n) for n in nbins)}"
 models = sorted([file for file in os.listdir(models_dir) if model_pattern in file])
 csv_dir = folder_data_preproc / f"{dataset_name_sub}_LC" / model_pattern
 os.makedirs(csv_dir, exist_ok=True)

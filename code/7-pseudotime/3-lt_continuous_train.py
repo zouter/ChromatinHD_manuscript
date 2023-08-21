@@ -7,6 +7,7 @@ if IPython.get_ipython() is not None:
 import sys
 import ast
 import torch
+import torch_scatter
 import pickle
 import numpy as np
 import pandas as pd
@@ -23,8 +24,9 @@ if len(sys.argv) > 2 and sys.argv[2] == 'external':
 else:
     dataset_name_sub = "MV2"
     dataset_name = "myeloid"
-    nbins = (128, 64, 32, )
-    model_type = 'sigmoid'
+    nbins = (64, )
+    model_type = 'linear'
+    time_values = 'pr'
     external = False
 
 if model_type == 'linear':
@@ -48,10 +50,9 @@ fragments.create_cut_data()
 
 folds = pd.read_pickle(fragment_dir / promoter_name / "folds.pkl")
 
-# torch works by default in float32
 df_latent = pd.read_csv(df_latent_file, index_col = 0)
 df_latent['pr'] = (df_latent['latent_time'].rank() - 1) / (len(df_latent) - 1)
-latent = torch.tensor(df_latent['pr'].values.astype(np.float32))
+latent = torch.tensor(df_latent[time_values].values.astype(np.float32))
 
 #%%
 n_cells_step = 100
@@ -60,7 +61,7 @@ n_genes_step = 5000
 #%%
 for index, fold in enumerate(folds):
     print(f"Training fold {index}")
-    model_name = f"{dataset_name_sub}_{dataset_name}_{model_type}_{'_'.join(str(n) for n in nbins)}_fold_{index}"
+    model_name = f"{dataset_name_sub}_{dataset_name}_{model_type}_{time_values}_{'_'.join(str(n) for n in nbins)}_fold_{index}"
     model_name_pickle = folder_data_preproc / f"models/{model_name}.pkl"
     print(model_name_pickle)
 
@@ -113,16 +114,19 @@ for index, fold in enumerate(folds):
 
     pickle.dump(model.to("cpu"), open(model_name_pickle, "wb"))
     
-    # likelihood_per_gene = torch.zeros(fragments.n_genes)
-    # for data in loaders_validation:
-    #     with torch.no_grad():
-    #         model.forward(data)
-    #     loaders_validation.submit_next()
 
-    #     cut_gene_ix = data.genes_oi_torch[data.cut_local_gene_ix]
-    #     torch_scatter.scatter_add(model.track["likelihood"], cut_gene_ix, out = likelihood_per_gene).detach().cpu() # check dict key
+    likelihood_per_gene = torch.zeros(fragments.n_genes)
+    for data in loaders_validation:
+        with torch.no_grad():
+            likelihood = model.forward(data, return_likelihood=True)
+        loaders_validation.submit_next()
 
-    # np.savetxt(folder_data_preproc / f'3-lt_continuous_{model_name}_likelihood_per_gene.csv', likelihood_per_gene.numpy(), delimiter=',')
+        cut_gene_ix = data.genes_oi_torch[data.cut_local_gene_ix]
+        torch_scatter.scatter_add(likelihood.total, cut_gene_ix, out = likelihood_per_gene).detach().cpu()
+
+    out_dir = folder_data_preproc / f"{dataset_name_sub}_LC_gene"
+    out_dir.mkdir(exist_ok=True)
+    np.savetxt(out_dir / f'{model_name}_likelihood_per_gene.csv', likelihood_per_gene.numpy(), delimiter=',')
 
 print('End of 3-lt_continuous_train.py')
 

@@ -40,7 +40,7 @@ import scanpy as sc
 
 import pathlib
 
-# export LD_LIBRARY_PATH=/data/peak_free_atac/software/peak_free_atac/lib
+
 import torch
 import torch_sparse
 
@@ -62,9 +62,7 @@ folder_data_preproc = folder_data / dataset_name
 # %%
 # promoter_name, window = "4k2k", (2000, 4000)
 promoter_name, window = "10k10k", np.array([-10000, 10000])
-promoters = pd.read_csv(
-    folder_data_preproc / ("promoters_" + promoter_name + ".csv"), index_col=0
-)
+promoters = pd.read_csv(folder_data_preproc / ("promoters_" + promoter_name + ".csv"), index_col=0)
 window_width = window[1] - window[0]
 
 # %%
@@ -121,9 +119,7 @@ genes_oi = np.arange(0, n_genes)
 
 cellxgene_oi = (cells_oi[:, None] * fragments.n_genes + genes_oi).flatten()
 
-minibatch = chromatinhd.loaders.minibatching.Minibatch(
-    cellxgene_oi=cellxgene_oi, cells_oi=cells_oi, genes_oi=genes_oi
-)
+minibatch = chromatinhd.loaders.minibatches.Minibatch(cellxgene_oi=cellxgene_oi, cells_oi=cells_oi, genes_oi=genes_oi)
 data = loader.load(minibatch)
 
 # %%
@@ -143,9 +139,7 @@ fragments_oi = fragments.coordinates[:, 0] > 0
 n_cells = 1000
 n_genes = 100
 cutwindow = np.array([-150, 150])
-loader = chromatinhd.loaders.fragments.FragmentsCounting(
-    fragments, n_cells * n_genes, window
-)
+loader = chromatinhd.loaders.fragments.FragmentsCounting(fragments, n_cells * n_genes, window)
 
 # %%
 cells_oi = np.arange(0, n_cells)
@@ -153,9 +147,7 @@ genes_oi = np.arange(0, n_genes)
 
 cellxgene_oi = (cells_oi[:, None] * fragments.n_genes + genes_oi).flatten()
 
-minibatch = chromatinhd.loaders.minibatching.Minibatch(
-    cellxgene_oi=cellxgene_oi, cells_oi=cells_oi, genes_oi=genes_oi
-)
+minibatch = chromatinhd.loaders.minibatches.Minibatch(cellxgene_oi=cellxgene_oi, cells_oi=cells_oi, genes_oi=genes_oi)
 data = loader.load(minibatch)
 
 # %%
@@ -195,11 +187,11 @@ cutwindow = np.array([-150, 150])
 import chromatinhd.loaders.fragments
 
 # %%
-loaders = chromatinhd.loaders.pool.LoaderPool(
+loaders = chromatinhd.loaders.pool.LoaderPoolOld(
     chromatinhd.loaders.fragments.Fragments,
     {
         "fragments": fragments,
-        "cellxgene_batch_size": n_cells * n_genes,
+        "cellxregion_batch_size": n_cells * n_genes,
         "window": window,
     },
     n_workers=2,
@@ -218,11 +210,7 @@ for i in range(2):
 
     cellxgene_oi = (cells_oi[:, None] * fragments.n_genes + genes_oi).flatten()
 
-    data.append(
-        chd.loaders.minibatching.Minibatch(
-            cells_oi=cells_oi, genes_oi=genes_oi, cellxgene_oi=cellxgene_oi
-        )
-    )
+    data.append(chd.loaders.minibatching.Minibatch(cells_oi=cells_oi, genes_oi=genes_oi, cellxgene_oi=cellxgene_oi))
 loaders.initialize(data)
 
 # %%
@@ -261,9 +249,7 @@ fig.savefig("hi.png", bbox_inches="tight", transparent=True, dpi=300)
 # %%
 fig, ax = plt.subplots(figsize=(4, 3))
 sns.heatmap(encoding.numpy())
-ax.collections[0].colorbar.set_label(
-    "embedding\nvalue", rotation=0, ha="left", va="center"
-)
+ax.collections[0].colorbar.set_label("embedding\nvalue", rotation=0, ha="left", va="center")
 ax.set_ylabel("fragment", rotation=0, ha="right")
 ax.set_yticks([])
 ax.set_xlabel("components")
@@ -450,13 +436,9 @@ if "loaders_validation" in globals():
 
     gc.collect()
 print("collected")
-loaders = chd.loaders.LoaderPool(
-    design_row["loader_cls"], design_row["loader_parameters"], n_workers=20
-)
+loaders = chd.loaders.LoaderPoolOld(design_row["loader_cls"], design_row["loader_parameters"], n_workers=20)
 print("haha!")
-loaders_validation = chd.loaders.LoaderPool(
-    design_row["loader_cls"], design_row["loader_parameters"], n_workers=5
-)
+loaders_validation = chd.loaders.LoaderPoolOld(design_row["loader_cls"], design_row["loader_parameters"], n_workers=5)
 loaders_validation.shuffle_on_iter = False
 
 # %%
@@ -473,9 +455,7 @@ folds = get_folds_training(fragments, folds)
 
 def paircor(x, y, dim=0, eps=0.1):
     divisor = (y.std(dim) * x.std(dim)) + eps
-    cor = ((x - x.mean(dim, keepdims=True)) * (y - y.mean(dim, keepdims=True))).mean(
-        dim
-    ) / divisor
+    cor = ((x - x.mean(dim, keepdims=True)) * (y - y.mean(dim, keepdims=True))).mean(dim) / divisor
     return cor
 
 
@@ -489,19 +469,14 @@ loss = lambda x, y: -paircor(x, y).mean() * 100
 # mse_loss = torch.nn.MSELoss()
 # loss = lambda x, y: mse_loss(zscore(x), zscore(y)) * 10.
 
+
 # %%
 class Prediction(chd.flow.Flow):
     pass
 
 
 print(prediction_name)
-prediction = chd.flow.Flow(
-    chd.get_output()
-    / "prediction_sequence"
-    / dataset_name
-    / promoter_name
-    / prediction_name
-)
+prediction = chd.flow.Flow(chd.get_output() / "prediction_sequence" / dataset_name / promoter_name / prediction_name)
 
 # %%
 fold_ix = 0
@@ -560,14 +535,10 @@ trainer = chd.train.Trainer(
 trainer.train()
 
 # %%
-pd.DataFrame(trainer.trace.validation_steps).groupby("checkpoint").mean()["loss"].plot(
-    label="validation"
-)
+pd.DataFrame(trainer.trace.validation_steps).groupby("checkpoint").mean()["loss"].plot(label="validation")
 
 # %%
-pd.DataFrame(trainer.trace.train_steps).groupby("checkpoint").mean()["loss"].plot(
-    label="train"
-)
+pd.DataFrame(trainer.trace.train_steps).groupby("checkpoint").mean()["loss"].plot(label="train")
 
 # %%
 # model = model.to("cpu")
@@ -637,9 +608,7 @@ plotdata = pd.DataFrame(
     }
 )
 plotdata["dispersions_norm"] = pd.Series(
-    transcriptome.var["dispersions_norm"][
-        transcriptome.gene_id(motifs_oi["gene_label"]).values
-    ].values,
+    transcriptome.var["dispersions_norm"][transcriptome.gene_id(motifs_oi["gene_label"]).values].values,
     index=motifs_oi.index,
 )
 
@@ -654,9 +623,7 @@ sns.stripplot(plotdata, y="linear_score", x="is_variable")
 
 # %%
 exp = pd.DataFrame(
-    transcriptome.adata[
-        :, transcriptome.gene_id(motifs_oi["gene_label"].values).values
-    ].X.todense(),
+    transcriptome.adata[:, transcriptome.gene_id(motifs_oi["gene_label"].values).values].X.todense(),
     index=transcriptome.adata.obs.index,
     columns=motifs_oi.index,
 )
@@ -664,9 +631,7 @@ exp = pd.DataFrame(
 # %%
 
 # %%
-sc.get.obs_df(
-    transcriptome.adata, transcriptome.gene_id(motifs_oi["gene_label"].values).values
-)
+sc.get.obs_df(transcriptome.adata, transcriptome.gene_id(motifs_oi["gene_label"].values).values)
 
 # %%
 transcriptome.var

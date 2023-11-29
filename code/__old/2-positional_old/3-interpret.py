@@ -95,7 +95,7 @@ for dataset_name in [
 
             gc.collect()
 
-        loaders = chd.loaders.LoaderPool(
+        loaders = chd.loaders.LoaderPoolOld(
             design_row["loader_cls"],
             design_row["loader_parameters"],
             n_workers=10,

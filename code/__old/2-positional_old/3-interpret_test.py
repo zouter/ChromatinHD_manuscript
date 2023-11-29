@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 
 import chromatinhd as chd
-import chromatinhd.loaders.minibatching
+import chromatinhd.loaders.minibatches
 import chromatinhd.scorer
 
 import pickle
@@ -26,9 +26,7 @@ for dataset_name_train, dataset_name in [
     # promoter_name, window = "1k1k", np.array([-1000, 1000])
     promoter_name, window = "10k10k", np.array([-10000, 10000])
     # promoter_name, window = "20kpromoter", np.array([-10000, 0])
-    promoters = pd.read_csv(
-        folder_data_preproc / ("promoters_" + promoter_name + ".csv"), index_col=0
-    )
+    promoters = pd.read_csv(folder_data_preproc / ("promoters_" + promoter_name + ".csv"), index_col=0)
     window_width = window[1] - window[0]
 
     fragments = chd.data.Fragments(folder_data_preproc / "fragments" / promoter_name)
@@ -74,18 +72,10 @@ for dataset_name_train, dataset_name in [
     for prediction_name, design_row in design.items():
         print(prediction_name)
         prediction_train = Prediction(
-            chd.get_output()
-            / "prediction_positional"
-            / dataset_name_train
-            / promoter_name
-            / prediction_name
+            chd.get_output() / "prediction_positional" / dataset_name_train / promoter_name / prediction_name
         )
         prediction = chd.flow.Flow(
-            chd.get_output()
-            / "prediction_positional"
-            / dataset_name
-            / promoter_name
-            / prediction_name
+            chd.get_output() / "prediction_positional" / dataset_name / promoter_name / prediction_name
         )
 
         # loaders
@@ -96,7 +86,7 @@ for dataset_name_train, dataset_name in [
 
             gc.collect()
 
-        loaders = chd.loaders.LoaderPool(
+        loaders = chd.loaders.LoaderPoolOld(
             design_row["loader_cls"],
             design_row["loader_parameters"],
             n_workers=10,
@@ -105,9 +95,7 @@ for dataset_name_train, dataset_name in [
 
         # load all models
         models = [
-            pickle.load(
-                open(prediction_train.path / ("model_" + str(fold_ix) + ".pkl"), "rb")
-            )
+            pickle.load(open(prediction_train.path / ("model_" + str(fold_ix) + ".pkl"), "rb"))
             for fold_ix, fold in enumerate(folds[fold_slice])
         ]
 
@@ -121,9 +109,7 @@ for dataset_name_train, dataset_name in [
             device=device,
             gene_ids=fragments.var.index,
         )
-        transcriptome_predicted_full, scores, genescores = scorer.score(
-            return_prediction=True
-        )
+        transcriptome_predicted_full, scores, genescores = scorer.score(return_prediction=True)
 
         scores_dir = prediction.path / "scoring" / "overall"
         scores_dir.mkdir(parents=True, exist_ok=True)

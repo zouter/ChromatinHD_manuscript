@@ -11,7 +11,7 @@ import pickle
 import numpy as np
 
 n_cells_step = 2000
-n_genes_step = 1000
+n_regions_step = 1000
 
 
 def get_design(dataset_name, transcriptome, fragments, window):
@@ -23,7 +23,7 @@ def get_design(dataset_name, transcriptome, fragments, window):
 
     general_loader_parameters = {
         "fragments": fragments,
-        "cellxgene_batch_size": n_cells_step * n_genes_step,
+        "cellxregion_batch_size": n_cells_step * n_regions_step,
         "window": window,
     }
 
@@ -33,10 +33,7 @@ def get_design(dataset_name, transcriptome, fragments, window):
         "model_parameters": {**general_model_parameters},
         "loader_cls": chromatinhd.loaders.fragments.Fragments,
         "loader_parameters": {
-            **{
-                k: general_loader_parameters[k]
-                for k in ["fragments", "cellxgene_batch_size", "window"]
-            }
+            **{k: general_loader_parameters[k] for k in ["fragments", "cellxregion_batch_size", "window"]}
         },
     }
     design["counter_binary"] = {
@@ -44,10 +41,7 @@ def get_design(dataset_name, transcriptome, fragments, window):
         "model_parameters": {**general_model_parameters, "reduce": "mean"},
         "loader_cls": chromatinhd.loaders.fragments.Fragments,
         "loader_parameters": {
-            **{
-                k: general_loader_parameters[k]
-                for k in ["fragments", "cellxgene_batch_size", "window"]
-            }
+            **{k: general_loader_parameters[k] for k in ["fragments", "cellxregion_batch_size", "window"]}
         },
     }
     design["v1"] = {
@@ -55,10 +49,7 @@ def get_design(dataset_name, transcriptome, fragments, window):
         "model_parameters": {**general_model_parameters, "window": window},
         "loader_cls": chromatinhd.loaders.fragments.Fragments,
         "loader_parameters": {
-            **{
-                k: general_loader_parameters[k]
-                for k in ["fragments", "cellxgene_batch_size", "window"]
-            }
+            **{k: general_loader_parameters[k] for k in ["fragments", "cellxregion_batch_size", "window"]}
         },
     }
     design["v14"] = {
@@ -66,10 +57,7 @@ def get_design(dataset_name, transcriptome, fragments, window):
         "model_parameters": {**general_model_parameters},
         "loader_cls": chromatinhd.loaders.fragments.Fragments,
         "loader_parameters": {
-            **{
-                k: general_loader_parameters[k]
-                for k in ["fragments", "cellxgene_batch_size", "window"]
-            }
+            **{k: general_loader_parameters[k] for k in ["fragments", "cellxregion_batch_size", "window"]}
         },
     }
     design["v14_dummy"] = {
@@ -77,10 +65,7 @@ def get_design(dataset_name, transcriptome, fragments, window):
         "model_parameters": {**general_model_parameters, "dummy": True},
         "loader_cls": chromatinhd.loaders.fragments.Fragments,
         "loader_parameters": {
-            **{
-                k: general_loader_parameters[k]
-                for k in ["fragments", "cellxgene_batch_size", "window"]
-            }
+            **{k: general_loader_parameters[k] for k in ["fragments", "cellxregion_batch_size", "window"]}
         },
     }
     design["v14_5freq"] = {
@@ -88,10 +73,7 @@ def get_design(dataset_name, transcriptome, fragments, window):
         "model_parameters": {**general_model_parameters, "n_frequencies": 5},
         "loader_cls": chromatinhd.loaders.fragments.Fragments,
         "loader_parameters": {
-            **{
-                k: general_loader_parameters[k]
-                for k in ["fragments", "cellxgene_batch_size", "window"]
-            }
+            **{k: general_loader_parameters[k] for k in ["fragments", "cellxregion_batch_size", "window"]}
         },
     }
     design["v14_20freq"] = {
@@ -99,10 +81,7 @@ def get_design(dataset_name, transcriptome, fragments, window):
         "model_parameters": {**general_model_parameters, "n_frequencies": 20},
         "loader_cls": chromatinhd.loaders.fragments.Fragments,
         "loader_parameters": {
-            **{
-                k: general_loader_parameters[k]
-                for k in ["fragments", "cellxgene_batch_size", "window"]
-            }
+            **{k: general_loader_parameters[k] for k in ["fragments", "cellxregion_batch_size", "window"]}
         },
     }
     design["v14_3freq"] = {
@@ -110,10 +89,7 @@ def get_design(dataset_name, transcriptome, fragments, window):
         "model_parameters": {**general_model_parameters, "n_frequencies": 3},
         "loader_cls": chromatinhd.loaders.fragments.Fragments,
         "loader_parameters": {
-            **{
-                k: general_loader_parameters[k]
-                for k in ["fragments", "cellxgene_batch_size", "window"]
-            }
+            **{k: general_loader_parameters[k] for k in ["fragments", "cellxregion_batch_size", "window"]}
         },
     }
     design["v14_50freq"] = {
@@ -121,10 +97,7 @@ def get_design(dataset_name, transcriptome, fragments, window):
         "model_parameters": {**general_model_parameters, "n_frequencies": 50},
         "loader_cls": chromatinhd.loaders.fragments.Fragments,
         "loader_parameters": {
-            **{
-                k: general_loader_parameters[k]
-                for k in ["fragments", "cellxgene_batch_size", "window"]
-            }
+            **{k: general_loader_parameters[k] for k in ["fragments", "cellxregion_batch_size", "window"]}
         },
     }
     design["v14_50freq_sum"] = {
@@ -136,10 +109,7 @@ def get_design(dataset_name, transcriptome, fragments, window):
         },
         "loader_cls": chromatinhd.loaders.fragments.Fragments,
         "loader_parameters": {
-            **{
-                k: general_loader_parameters[k]
-                for k in ["fragments", "cellxgene_batch_size", "window"]
-            }
+            **{k: general_loader_parameters[k] for k in ["fragments", "cellxregion_batch_size", "window"]}
         },
     }
     design["v14_50freq_linear"] = {
@@ -151,10 +121,7 @@ def get_design(dataset_name, transcriptome, fragments, window):
         },
         "loader_cls": chromatinhd.loaders.fragments.Fragments,
         "loader_parameters": {
-            **{
-                k: general_loader_parameters[k]
-                for k in ["fragments", "cellxgene_batch_size", "window"]
-            }
+            **{k: general_loader_parameters[k] for k in ["fragments", "cellxregion_batch_size", "window"]}
         },
     }
     design["v14_50freq_sigmoid"] = {
@@ -166,10 +133,7 @@ def get_design(dataset_name, transcriptome, fragments, window):
         },
         "loader_cls": chromatinhd.loaders.fragments.Fragments,
         "loader_parameters": {
-            **{
-                k: general_loader_parameters[k]
-                for k in ["fragments", "cellxgene_batch_size", "window"]
-            }
+            **{k: general_loader_parameters[k] for k in ["fragments", "cellxregion_batch_size", "window"]}
         },
     }
     design["v14_50freq_sum_sigmoid"] = {
@@ -182,10 +146,7 @@ def get_design(dataset_name, transcriptome, fragments, window):
         },
         "loader_cls": chromatinhd.loaders.fragments.Fragments,
         "loader_parameters": {
-            **{
-                k: general_loader_parameters[k]
-                for k in ["fragments", "cellxgene_batch_size", "window"]
-            }
+            **{k: general_loader_parameters[k] for k in ["fragments", "cellxregion_batch_size", "window"]}
         },
     }
     design["v14_50freq_sum_elu"] = {
@@ -198,10 +159,7 @@ def get_design(dataset_name, transcriptome, fragments, window):
         },
         "loader_cls": chromatinhd.loaders.fragments.Fragments,
         "loader_parameters": {
-            **{
-                k: general_loader_parameters[k]
-                for k in ["fragments", "cellxgene_batch_size", "window"]
-            }
+            **{k: general_loader_parameters[k] for k in ["fragments", "cellxregion_batch_size", "window"]}
         },
     }
     design["v14_50freq_sum_sigmoid_initdefault"] = {
@@ -215,10 +173,7 @@ def get_design(dataset_name, transcriptome, fragments, window):
         },
         "loader_cls": chromatinhd.loaders.fragments.Fragments,
         "loader_parameters": {
-            **{
-                k: general_loader_parameters[k]
-                for k in ["fragments", "cellxgene_batch_size", "window"]
-            }
+            **{k: general_loader_parameters[k] for k in ["fragments", "cellxregion_batch_size", "window"]}
         },
     }
     design["v14_50freq_sum"] = {
@@ -230,10 +185,7 @@ def get_design(dataset_name, transcriptome, fragments, window):
         },
         "loader_cls": chromatinhd.loaders.fragments.Fragments,
         "loader_parameters": {
-            **{
-                k: general_loader_parameters[k]
-                for k in ["fragments", "cellxgene_batch_size", "window"]
-            }
+            **{k: general_loader_parameters[k] for k in ["fragments", "cellxregion_batch_size", "window"]}
         },
     }
     design["v14_50freq_sum_1emb_sigmoid"] = {
@@ -247,10 +199,7 @@ def get_design(dataset_name, transcriptome, fragments, window):
         },
         "loader_cls": chromatinhd.loaders.fragments.Fragments,
         "loader_parameters": {
-            **{
-                k: general_loader_parameters[k]
-                for k in ["fragments", "cellxgene_batch_size", "window"]
-            }
+            **{k: general_loader_parameters[k] for k in ["fragments", "cellxregion_batch_size", "window"]}
         },
     }
     design["v14_50freq_sum_sigmoid_drop05"] = {
@@ -264,10 +213,7 @@ def get_design(dataset_name, transcriptome, fragments, window):
         },
         "loader_cls": chromatinhd.loaders.fragments.Fragments,
         "loader_parameters": {
-            **{
-                k: general_loader_parameters[k]
-                for k in ["fragments", "cellxgene_batch_size", "window"]
-            }
+            **{k: general_loader_parameters[k] for k in ["fragments", "cellxregion_batch_size", "window"]}
         },
     }
     design["v15"] = {
@@ -275,10 +221,7 @@ def get_design(dataset_name, transcriptome, fragments, window):
         "model_parameters": {**general_model_parameters},
         "loader_cls": chromatinhd.loaders.fragments.FragmentsCounting,
         "loader_parameters": {
-            **{
-                k: general_loader_parameters[k]
-                for k in ["fragments", "cellxgene_batch_size", "window"]
-            }
+            **{k: general_loader_parameters[k] for k in ["fragments", "cellxregion_batch_size", "window"]}
         },
     }
     design["v15_noselfatt"] = {
@@ -286,10 +229,7 @@ def get_design(dataset_name, transcriptome, fragments, window):
         "model_parameters": {**general_model_parameters, "selfatt": False},
         "loader_cls": chromatinhd.loaders.fragments.FragmentsCounting,
         "loader_parameters": {
-            **{
-                k: general_loader_parameters[k]
-                for k in ["fragments", "cellxgene_batch_size", "window"]
-            }
+            **{k: general_loader_parameters[k] for k in ["fragments", "cellxregion_batch_size", "window"]}
         },
     }
     design["v15_att3"] = {
@@ -297,10 +237,7 @@ def get_design(dataset_name, transcriptome, fragments, window):
         "model_parameters": {**general_model_parameters},
         "loader_cls": chromatinhd.loaders.fragments.FragmentsCounting,
         "loader_parameters": {
-            **{
-                k: general_loader_parameters[k]
-                for k in ["fragments", "cellxgene_batch_size", "window"]
-            },
+            **{k: general_loader_parameters[k] for k in ["fragments", "cellxregion_batch_size", "window"]},
             "n": (2, 3),
         },
     }
@@ -311,17 +248,14 @@ def get_design(dataset_name, transcriptome, fragments, window):
         },
         "loader_cls": chromatinhd.loaders.fragments.Fragments,
         "loader_parameters": {
-            **{
-                k: general_loader_parameters[k]
-                for k in ["fragments", "cellxgene_batch_size", "window"]
-            }
+            **{k: general_loader_parameters[k] for k in ["fragments", "cellxregion_batch_size", "window"]}
         },
     }
     return design
 
 
 import chromatinhd as chd
-import chromatinhd.loaders.minibatching
+import chromatinhd.loaders.minibatches
 
 
 def get_folds_training(fragments, folds):
@@ -331,7 +265,7 @@ def get_folds_training(fragments, folds):
             fold["cells_train"],
             list(fold["genes_train"]) + list(fold["genes_validation"]),
             n_cells_step=n_cells_step,
-            n_genes_step=n_genes_step,
+            n_regions_step=n_regions_step,
             n_genes_total=fragments.n_genes,
             use_all=True,
             rg=rg,
@@ -340,7 +274,7 @@ def get_folds_training(fragments, folds):
             fold["cells_validation"],
             list(fold["genes_train"]) + list(fold["genes_validation"]),
             n_cells_step=n_cells_step,
-            n_genes_step=n_genes_step,
+            n_regions_step=n_regions_step,
             n_genes_total=fragments.n_genes,
             use_all=True,
             rg=rg,
@@ -362,7 +296,7 @@ def get_folds_inference(fragments, folds):
             cells_train + cells_validation,
             genes_train,
             n_cells_step=n_cells_step,
-            n_genes_step=n_genes_step,
+            n_regions_step=n_regions_step,
             n_genes_total=fragments.n_genes,
             use_all=True,
             rg=rg,
@@ -387,7 +321,7 @@ def get_folds_test(fragments, folds):
             cells_test,
             genes_test,
             n_cells_step=n_cells_step,
-            n_genes_step=n_genes_step,
+            n_regions_step=n_regions_step,
             n_genes_total=fragments.n_genes,
             use_all=True,
             rg=rg,

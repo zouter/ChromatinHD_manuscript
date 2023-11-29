@@ -40,7 +40,7 @@ import scanpy as sc
 
 import pathlib
 
-# export LD_LIBRARY_PATH=/data/peak_free_atac/software/peak_free_atac/lib
+
 import torch
 import torch_sparse
 
@@ -63,18 +63,12 @@ folder_data_preproc = folder_data / dataset_name
 # %%
 # promoter_name, window = "4k2k", (2000, 4000)
 promoter_name, window = "10k10k", np.array([-10000, 10000])
-promoters = pd.read_csv(
-    folder_data_preproc / ("promoters_" + promoter_name + ".csv"), index_col=0
-)
+promoters = pd.read_csv(folder_data_preproc / ("promoters_" + promoter_name + ".csv"), index_col=0)
 window_width = window[1] - window[0]
 
 # %%
-transcriptome = chromatinhd.transcriptome.Transcriptome(
-    folder_data_preproc / "transcriptome"
-)
-fragments = chromatinhd.fragments.Fragments(
-    folder_data_preproc / "fragments" / promoter_name
-)
+transcriptome = chromatinhd.transcriptome.Transcriptome(folder_data_preproc / "transcriptome")
+fragments = chromatinhd.fragments.Fragments(folder_data_preproc / "fragments" / promoter_name)
 
 # %%
 motifscores = pickle.load(open(folder_data_preproc / "motifscores.pkl", "rb"))
@@ -109,12 +103,7 @@ n_fragmentxlocus = n_fragments * 600
 
 # %%
 n_gigs = (
-    (
-        (n_fragmentxlocus * 32)
-        + (n_fragmentxlocus * 32)
-        + (n_fragmentxlocus * 32)
-        + (n_fragmentxlocus * 32)
-    )
+    ((n_fragmentxlocus * 32) + (n_fragmentxlocus * 32) + (n_fragmentxlocus * 32) + (n_fragmentxlocus * 32))
     / 8
     / 1024
     / 1024
@@ -187,6 +176,7 @@ n_gigs
 # %% [markdown]
 # What is the fastest way to do this?
 
+
 # %%
 def time_indexing(x, idx, n_idx=1, n=1000):
     time = timeit.Timer("x[idx]", globals=locals()).timeit(n) / n
@@ -212,6 +202,7 @@ time_indexing(motifscores, idx=slice(0, 150))
 # %% [markdown]
 # Based on this, we can look how a manual slice would work, without creating a new scipy sparse csr object
 
+
 # %%
 class X:
     def __init__(self, csr):
@@ -234,6 +225,7 @@ time_indexing(motifscores_fast, idx=slice(0, 150))
 
 # %% [markdown]
 # Is the speedup because of using a slice to select from indices/data, or because we use a slice as input? Because if we want to be able to select multiple slices (for multiple fragments), we may have to go replace the `start:end` with some index array
+
 
 # %%
 class X:
@@ -328,6 +320,7 @@ def test_indexing(indptr, indices, data, distance=None):
 # %% [markdown]
 # First using multiple slices
 
+
 # %%
 class X:
     csr = None
@@ -337,22 +330,9 @@ class X:
 
     def __getitem__(self, idx):
         return (
-            np.cumsum(
-                [0]
-                + [self.csr.indptr[end] - self.csr.indptr[start] for start, end in idx]
-            ),
-            np.hstack(
-                [
-                    self.csr.indices[self.csr.indptr[start] : (self.csr.indptr[end])]
-                    for start, end in idx
-                ]
-            ),
-            np.hstack(
-                [
-                    self.csr.data[self.csr.indptr[start] : (self.csr.indptr[end])]
-                    for start, end in idx
-                ]
-            ),
+            np.cumsum([0] + [self.csr.indptr[end] - self.csr.indptr[start] for start, end in idx]),
+            np.hstack([self.csr.indices[self.csr.indptr[start] : (self.csr.indptr[end])] for start, end in idx]),
+            np.hstack([self.csr.data[self.csr.indptr[start] : (self.csr.indptr[end])] for start, end in idx]),
         )
 
 
@@ -369,23 +349,16 @@ test_indexing(*motifscores_fast[idx])
 # %% [markdown]
 # Let's try to convert the slices to indices
 
+
 # %%
 class X:
     def __init__(self, csr):
         self.csr = csr
 
     def __getitem__(self, k):
-        idx = np.hstack(
-            [
-                np.arange(self.csr.indptr[start], (self.csr.indptr[end]))
-                for start, end in k
-            ]
-        )
+        idx = np.hstack([np.arange(self.csr.indptr[start], (self.csr.indptr[end])) for start, end in k])
         return (
-            np.cumsum(
-                [0]
-                + [self.csr.indptr[end] - self.csr.indptr[start] for start, end in k]
-            ),
+            np.cumsum([0] + [self.csr.indptr[end] - self.csr.indptr[start] for start, end in k]),
             self.csr.indices[idx],
             self.csr.data[idx],
         )
@@ -443,9 +416,7 @@ class X:
         self.csr = csr
 
     def __getitem__(self, k):
-        new_indptr = np.cumsum(
-            [0] + [self.csr.indptr[end] - self.csr.indptr[start] for start, end in k]
-        )
+        new_indptr = np.cumsum([0] + [self.csr.indptr[end] - self.csr.indptr[start] for start, end in k])
         idx = n_ranges_nb(motifscores.indptr[k[:, 0]], motifscores.indptr[k[:, 1]])
         return (new_indptr, self.csr.indices[idx], self.csr.data[idx])
 
@@ -454,9 +425,7 @@ motifscores_fast = X(motifscores)
 
 # %% tags=[]
 idx = np.array([(0, 301)] * 100)
-time_indexing(
-    motifscores_fast, idx=idx, n_idx=idx.shape[0]
-)  # first run for jit compile
+time_indexing(motifscores_fast, idx=idx, n_idx=idx.shape[0])  # first run for jit compile
 time_indexing(motifscores_fast, idx=idx, n_idx=idx.shape[0])
 
 # %%
@@ -469,15 +438,14 @@ test_indexing(*motifscores_fast[idx])
 # %% [markdown]
 # Let's try to optimize the `new_indptr`, because now it's a major time sink (60% of total time!)
 
+
 # %%
 class X:
     def __init__(self, csr):
         self.csr = csr
 
     def __getitem__(self, k):
-        new_indptr = np.cumsum(
-            np.insert(motifscores.indptr[k[:, 1]] - motifscores.indptr[k[:, 0]], 0, 0)
-        )
+        new_indptr = np.cumsum(np.insert(motifscores.indptr[k[:, 1]] - motifscores.indptr[k[:, 0]], 0, 0))
         idx = n_ranges_nb(motifscores.indptr[k[:, 0]], motifscores.indptr[k[:, 1]])
         return (new_indptr, self.csr.indices[idx], self.csr.data[idx])
 
@@ -517,9 +485,7 @@ class X:
         self.csr = csr
 
     def __getitem__(self, k):
-        new_indptr = np.cumsum(
-            np.insert(motifscores.indptr[k[:, 1]] - motifscores.indptr[k[:, 0]], 0, 0)
-        )
+        new_indptr = np.cumsum(np.insert(motifscores.indptr[k[:, 1]] - motifscores.indptr[k[:, 0]], 0, 0))
         idx = n_ranges_nb(motifscores.indptr[k[:, 0]], motifscores.indptr[k[:, 1]])
         return (
             torch.tensor(new_indptr, device="cuda"),
@@ -542,6 +508,7 @@ time_indexing(motifscores_fast, idx=idx, n_idx=idx.shape[0], n=10)
 # %% [markdown]
 # Let's try to create a torch version
 
+
 # %%
 class X:
     def __init__(self, csr, device="cpu"):
@@ -550,12 +517,8 @@ class X:
         self.data = torch.tensor(csr.data).to(device)
 
     def __getitem__(self, k):
-        new_indptr = torch.nn.functional.pad(
-            torch.cumsum(self.indptr[k[:, 1]] - self.indptr[k[:, 0]], 0), (1, 0)
-        )
-        idx = n_ranges_nb(
-            self.indptr[k[:, 0]].cpu().numpy(), self.indptr[k[:, 1]].cpu().numpy()
-        )
+        new_indptr = torch.nn.functional.pad(torch.cumsum(self.indptr[k[:, 1]] - self.indptr[k[:, 0]], 0), (1, 0))
+        idx = n_ranges_nb(self.indptr[k[:, 0]].cpu().numpy(), self.indptr[k[:, 1]].cpu().numpy())
         return (new_indptr, self.indices[idx], self.data[idx])
 
 
@@ -583,6 +546,7 @@ test_indexing(*motifscores_fast[idx])
 # %% [markdown]
 # So let's do it on cpu/numpy instead
 
+
 # %%
 class X:
     indptr: torch.tensor
@@ -594,12 +558,8 @@ class X:
         self.data = torch.tensor(csr.data).to(device)
 
     def __getitem__(self, k):
-        new_indptr = torch.nn.functional.pad(
-            torch.cumsum(self.indptr[k[:, 1]] - self.indptr[k[:, 0]], 0), (1, 0)
-        )
-        idx = n_ranges_nb(
-            self.indptr[k[:, 0]].cpu().numpy(), self.indptr[k[:, 1]].cpu().numpy()
-        )
+        new_indptr = torch.nn.functional.pad(torch.cumsum(self.indptr[k[:, 1]] - self.indptr[k[:, 0]], 0), (1, 0))
+        idx = n_ranges_nb(self.indptr[k[:, 0]].cpu().numpy(), self.indptr[k[:, 1]].cpu().numpy())
 
         # new_indptr = np.pad(np.cumsum(self.indptr[k[:, 1]] - self.indptr[k[:, 0]], 0), (1, 0))
         # idx = n_ranges_nb(self.indptr[k[:, 0]], self.indptr[k[:, 1]])
@@ -652,6 +612,7 @@ torch_scatter.segment_mean_csr(indices, indptr)[:10]
 # %% [markdown]
 # Now extract for each slice it's position within the slice as well.
 
+
 # %%
 class X:
     def __init__(self, csr, device="cpu", cutwindow_width=300):
@@ -662,12 +623,8 @@ class X:
         self.cutindices = np.arange(cutwindow_width + 1)
 
     def __getitem__(self, k):
-        new_indptr = torch.nn.functional.pad(
-            torch.cumsum(self.indptr[k[:, 1]] - self.indptr[k[:, 0]], 0), (1, 0)
-        )
-        idx = n_ranges_nb(
-            self.indptr[k[:, 0]].cpu().numpy(), self.indptr[k[:, 1]].cpu().numpy()
-        )
+        new_indptr = torch.nn.functional.pad(torch.cumsum(self.indptr[k[:, 1]] - self.indptr[k[:, 0]], 0), (1, 0))
+        idx = n_ranges_nb(self.indptr[k[:, 0]].cpu().numpy(), self.indptr[k[:, 1]].cpu().numpy())
         diff = torch.tensor(
             np.hstack(
                 [
@@ -697,6 +654,7 @@ test_indexing(*motifscores_fast[idx])
 # %% [markdown]
 # We can fix this by simply storing a combined coo and csr tensor. We use the row indices (as in coo) to directly return the row index. However, we still don't know ther relative distance of each motif to the input key
 
+
 # %%
 def expandptr(indptr, n=None):
     """
@@ -719,9 +677,7 @@ assert np.array_equal(expandptr(indptr), np.array([2, 5, 5]))
 
 # %%
 indptr = torch.cumsum(torch.tensor([0, 0, 0, 1, 0, 0, 2, 0]), 0)
-assert np.array_equal(
-    torch.ops.torch_sparse.ptr2ind(indptr, indptr[-1]), torch.tensor([2, 5, 5])
-)
+assert np.array_equal(torch.ops.torch_sparse.ptr2ind(indptr, indptr[-1]), torch.tensor([2, 5, 5]))
 
 # %%
 # %%timeit -n 10000 -r 1
@@ -745,12 +701,8 @@ class X:
         self.row_indices = expandptr(self.indptr)
 
     def __getitem__(self, k):
-        new_indptr = torch.nn.functional.pad(
-            torch.cumsum(self.indptr[k[:, 1]] - self.indptr[k[:, 0]], 0), (1, 0)
-        )
-        idx = n_ranges_nb(
-            self.indptr[k[:, 0]].cpu().numpy(), self.indptr[k[:, 1]].cpu().numpy()
-        )
+        new_indptr = torch.nn.functional.pad(torch.cumsum(self.indptr[k[:, 1]] - self.indptr[k[:, 0]], 0), (1, 0))
+        idx = n_ranges_nb(self.indptr[k[:, 0]].cpu().numpy(), self.indptr[k[:, 1]].cpu().numpy())
 
         return (new_indptr, self.indices[idx], self.data[idx], self.row_indices[idx])
 
@@ -764,6 +716,7 @@ time_indexing(motifscores_fast, idx=idx, n_idx=len(idx), n=10)
 # %% [markdown]
 # For that we need to extract for each output motif the window left position of the window, and substract from that the actual position. For that we need to convert the output indptr to coo as well
 
+
 # %%
 class X:
     def __init__(self, csr, device="cpu"):
@@ -772,20 +725,14 @@ class X:
         self.data = torch.tensor(csr.data).to(device)
 
         # stores indptr but in coo format
-        self.row_indices = torch.tensor(
-            expandptr(self.indptr.cpu().numpy()), device=device
-        )
+        self.row_indices = torch.tensor(expandptr(self.indptr.cpu().numpy()), device=device)
 
     def __getitem__(self, k):
-        new_indptr = torch.nn.functional.pad(
-            torch.cumsum(self.indptr[k[:, 1]] - self.indptr[k[:, 0]], 0), (1, 0)
-        )
+        new_indptr = torch.nn.functional.pad(torch.cumsum(self.indptr[k[:, 1]] - self.indptr[k[:, 0]], 0), (1, 0))
         new_row_indices = torch.ops.torch_sparse.ptr2ind(new_indptr, new_indptr[-1])
         # new_row_indices = expandptr(new_indptr.cpu().numpy())
 
-        idx = n_ranges_nb(
-            self.indptr[k[:, 0]].cpu().numpy(), self.indptr[k[:, 1]].cpu().numpy()
-        )
+        idx = n_ranges_nb(self.indptr[k[:, 0]].cpu().numpy(), self.indptr[k[:, 1]].cpu().numpy())
 
         return (
             new_indptr,
@@ -809,14 +756,13 @@ test_indexing(*motifscores_fast[idx])
 # %%
 motifscores_fast = X(motifscores, "cuda:0")
 # idx = np.array([(0, 301)] * 1000000)
-idx = torch.tensor(
-    np.array([(0, 301)] * 1000000), device=motifscores_fast.indices.device
-)
+idx = torch.tensor(np.array([(0, 301)] * 1000000), device=motifscores_fast.indices.device)
 time_indexing(motifscores_fast, idx=idx, n_idx=len(idx), n=1)
 
 
 # %% [markdown]
 # How fast is the numpy/CPU version, with a subsequent transfer to torch?
+
 
 # %% tags=[]
 class X:
@@ -829,9 +775,7 @@ class X:
         self.row_indices = expandptr(self.indptr)
 
     def __getitem__(self, k):
-        new_indptr = np.pad(
-            np.cumsum(self.indptr[k[:, 1]] - self.indptr[k[:, 0]], 0), (1, 0)
-        )
+        new_indptr = np.pad(np.cumsum(self.indptr[k[:, 1]] - self.indptr[k[:, 0]], 0), (1, 0))
         new_row_indices = expandptr(new_indptr, new_indptr[-1])
 
         idx = n_ranges_nb(self.indptr[k[:, 0]], self.indptr[k[:, 1]])
@@ -887,29 +831,19 @@ class X:
         self.row_indices = expandptr(self.indptr)
 
         self.max_len = 37000000
-        self.data_pinned = torch.empty(
-            (self.max_len,), dtype=torch.float32
-        ).pin_memory()
-        self.indices_pinned = torch.empty(
-            (self.max_len,), dtype=torch.int32
-        ).pin_memory()
-        self.distances_pinned = torch.empty(
-            (self.max_len,), dtype=torch.float32
-        ).pin_memory()
+        self.data_pinned = torch.empty((self.max_len,), dtype=torch.float32).pin_memory()
+        self.indices_pinned = torch.empty((self.max_len,), dtype=torch.int32).pin_memory()
+        self.distances_pinned = torch.empty((self.max_len,), dtype=torch.float32).pin_memory()
 
     def __getitem__(self, k):
-        new_indptr = np.pad(
-            np.cumsum(self.indptr[k[:, 1]] - self.indptr[k[:, 0]], 0), (1, 0)
-        )
+        new_indptr = np.pad(np.cumsum(self.indptr[k[:, 1]] - self.indptr[k[:, 0]], 0), (1, 0))
         new_row_indices = expandptr(new_indptr, new_indptr[-1])
 
         idx = n_ranges_nb(self.indptr[k[:, 0]], self.indptr[k[:, 1]])
 
         self.indices_pinned.copy_(torch.from_numpy(self.indices[idx]))
         self.data_pinned.copy_(torch.from_numpy(self.data[idx]))
-        self.distances_pinned.copy_(
-            torch.from_numpy(self.row_indices[idx] - k[new_row_indices, 0])
-        )
+        self.distances_pinned.copy_(torch.from_numpy(self.row_indices[idx] - k[new_row_indices, 0]))
 
         return (
             torch.tensor(new_indptr).cuda(),
@@ -930,6 +864,7 @@ time_indexing(motifscores_fast, idx=idx, n_idx=len(idx), n=2)
 # %% [markdown]
 # We can speed this up a bit by not creating an intermediate array/tensor (`self.indices[idx]`) but just using index_select and filling the existing tensor
 
+
 # %%
 class X:
     def __init__(self, csr):
@@ -941,25 +876,15 @@ class X:
         self.row_indices = torch.tensor(expandptr(self.indptr), dtype=torch.int64)
 
         self.max_len = 37000000
-        self.indices_pinned = torch.empty(
-            (self.max_len,), dtype=self.indices.dtype
-        ).pin_memory()
-        self.data_pinned = torch.empty(
-            (self.max_len,), dtype=self.data.dtype
-        ).pin_memory()
-        self.distances_pinned = torch.empty(
-            (self.max_len,), dtype=torch.int64
-        ).pin_memory()
+        self.indices_pinned = torch.empty((self.max_len,), dtype=self.indices.dtype).pin_memory()
+        self.data_pinned = torch.empty((self.max_len,), dtype=self.data.dtype).pin_memory()
+        self.distances_pinned = torch.empty((self.max_len,), dtype=torch.int64).pin_memory()
 
     def __getitem__(self, k):
-        new_indptr = np.pad(
-            np.cumsum(self.indptr[k[:, 1]] - self.indptr[k[:, 0]], 0), (1, 0)
-        )
+        new_indptr = np.pad(np.cumsum(self.indptr[k[:, 1]] - self.indptr[k[:, 0]], 0), (1, 0))
         new_row_indices = expandptr(new_indptr, new_indptr[-1])
 
-        idx = torch.from_numpy(
-            n_ranges_nb(self.indptr[k[:, 0]], self.indptr[k[:, 1]])
-        ).to(torch.int64)
+        idx = torch.from_numpy(n_ranges_nb(self.indptr[k[:, 0]], self.indptr[k[:, 1]])).to(torch.int64)
 
         self.indices_pinned.resize_(len(idx))
         self.data_pinned.resize_(len(idx))
@@ -987,6 +912,7 @@ time_indexing(motifscores_fast, idx=idx, n_idx=len(idx), n=2)
 # %% [markdown]
 # We could also resize the pinned memory. Not sure whether this has a cost?
 
+
 # %%
 class X:
     def __init__(self, csr):
@@ -998,25 +924,15 @@ class X:
         self.row_indices = torch.tensor(expandptr(self.indptr), dtype=torch.int64)
 
         self.max_len = 100000000
-        self.indices_pinned = torch.empty(
-            (self.max_len,), dtype=self.indices.dtype
-        ).pin_memory()
-        self.data_pinned = torch.empty(
-            (self.max_len,), dtype=self.data.dtype
-        ).pin_memory()
-        self.distances_pinned = torch.empty(
-            (self.max_len,), dtype=torch.int64
-        ).pin_memory()
+        self.indices_pinned = torch.empty((self.max_len,), dtype=self.indices.dtype).pin_memory()
+        self.data_pinned = torch.empty((self.max_len,), dtype=self.data.dtype).pin_memory()
+        self.distances_pinned = torch.empty((self.max_len,), dtype=torch.int64).pin_memory()
 
     def __getitem__(self, k):
-        new_indptr = np.pad(
-            np.cumsum(self.indptr[k[:, 1]] - self.indptr[k[:, 0]], 0), (1, 0)
-        )
+        new_indptr = np.pad(np.cumsum(self.indptr[k[:, 1]] - self.indptr[k[:, 0]], 0), (1, 0))
         new_row_indices = expandptr(new_indptr, new_indptr[-1])
 
-        idx = torch.from_numpy(
-            n_ranges_nb(self.indptr[k[:, 0]], self.indptr[k[:, 1]])
-        ).to(torch.int64)
+        idx = torch.from_numpy(n_ranges_nb(self.indptr[k[:, 0]], self.indptr[k[:, 1]])).to(torch.int64)
 
         self.indices_pinned.resize_(len(idx))
         self.data_pinned.resize_(len(idx))
@@ -1036,9 +952,7 @@ class X:
 
 
 # %%
-motifscores_fast = X(
-    motifscores
-)  # setup can take a bit longer here, because tensors are preallocated and pinned
+motifscores_fast = X(motifscores)  # setup can take a bit longer here, because tensors are preallocated and pinned
 
 # %%
 idx = np.array([(0, 301)] * 100000)
@@ -1079,14 +993,10 @@ class X:
         self.counts = torch.zeros((1000 * self.n_cols))
 
     def __getitem__(self, k):
-        new_indptr = torch.nn.functional.pad(
-            torch.cumsum(self.indptr[k[:, 1]] - self.indptr[k[:, 0]], 0), (1, 0)
-        )
+        new_indptr = torch.nn.functional.pad(torch.cumsum(self.indptr[k[:, 1]] - self.indptr[k[:, 0]], 0), (1, 0))
         new_row_indices = torch.ops.torch_sparse.ptr2ind(new_indptr, new_indptr[-1])
 
-        idx = n_ranges_nb(
-            self.indptr[k[:, 0]].cpu().numpy(), self.indptr[k[:, 1]].cpu().numpy()
-        )
+        idx = n_ranges_nb(self.indptr[k[:, 0]].cpu().numpy(), self.indptr[k[:, 1]].cpu().numpy())
 
         # calculate the rowxcol indices
         # inplace operation seems quite a bit faster...
@@ -1146,11 +1056,7 @@ x = prof.key_averages(group_by_input_shape=True)
 # %%
 import IPython.display
 
-print(
-    prof.key_averages(group_by_input_shape=True).table(
-        sort_by="cpu_time_total", row_limit=10
-    )
-)
+print(prof.key_averages(group_by_input_shape=True).table(sort_by="cpu_time_total", row_limit=10))
 # IPython.display.HTML("<div style='white-space: nowrap;height:500px'>" + prof.key_averages(group_by_input_shape=True).table(sort_by="cuda_time_total", row_limit=10).replace("\n", "<br>") + "<\div>")
 
 # %%
@@ -1181,25 +1087,15 @@ class X:
         # stores the row indices in coo format
         self.row_indices = torch.tensor(expandptr(self.indptr), dtype=torch.int64)
 
-        self.indices_pinned = torch.empty(
-            (self.max_len,), dtype=self.indices.dtype
-        ).pin_memory()
-        self.data_pinned = torch.empty(
-            (self.max_len,), dtype=self.data.dtype
-        ).pin_memory()
-        self.distances_pinned = torch.empty(
-            (self.max_len,), dtype=torch.int64
-        ).pin_memory()
+        self.indices_pinned = torch.empty((self.max_len,), dtype=self.indices.dtype).pin_memory()
+        self.data_pinned = torch.empty((self.max_len,), dtype=self.data.dtype).pin_memory()
+        self.distances_pinned = torch.empty((self.max_len,), dtype=torch.int64).pin_memory()
 
     def __getitem__(self, k):
-        new_indptr = np.pad(
-            np.cumsum(self.indptr[k[:, 1]] - self.indptr[k[:, 0]], 0), (1, 0)
-        )
+        new_indptr = np.pad(np.cumsum(self.indptr[k[:, 1]] - self.indptr[k[:, 0]], 0), (1, 0))
         new_row_indices = expandptr(new_indptr, new_indptr[-1])
 
-        idx = torch.from_numpy(
-            n_ranges_nb(self.indptr[k[:, 0]], self.indptr[k[:, 1]])
-        ).to(torch.int64)
+        idx = torch.from_numpy(n_ranges_nb(self.indptr[k[:, 0]], self.indptr[k[:, 1]])).to(torch.int64)
 
         self.indices_pinned.resize_(len(idx))
         self.data_pinned.resize_(len(idx))
@@ -1219,9 +1115,7 @@ class X:
 
 
 # %%
-motifscores_fast = X(
-    motifscores
-)  # setup can take a bit longer here, because tensors are preallocated and pinned
+motifscores_fast = X(motifscores)  # setup can take a bit longer here, because tensors are preallocated and pinned
 
 # %%
 idx = np.array([gene_ix * window_width, (gene_ix + 1) * window_width])[None, :]
@@ -1243,11 +1137,7 @@ motif_scores = pd.DataFrame(
 # ingene_mid = int(best["locus_distance"])
 
 # select the site that scores best overall
-best = (
-    motif_scores.sort_values("locus_score", ascending=False)
-    .iloc[[1]]
-    .to_dict(orient="records")[0]
-)
+best = motif_scores.sort_values("locus_score", ascending=False).iloc[[1]].to_dict(orient="records")[0]
 ingene_mid = int(best["locus_distance"])
 motif_ix = int(best["motif_index"])
 
@@ -1276,9 +1166,7 @@ if "genome" not in globals():
     genome = pickle.load(gzip.GzipFile((folder_data_preproc / "genome.pkl.gz"), "rb"))
 
 # %%
-chromosome, promoter_start, promoter_end, strand = promoters.iloc[gene_ix][
-    ["chr", "start", "end", "strand"]
-]
+chromosome, promoter_start, promoter_end, strand = promoters.iloc[gene_ix][["chr", "start", "end", "strand"]]
 strand
 
 # %%
@@ -1290,9 +1178,7 @@ seq = seq[::strand]
 onehot = create_onehot(seq[site_start:site_end])
 
 # %%
-fig, (ax_score, ax_onehot, ax_pwm, ax_onehotrev, ax_scorerev) = plt.subplots(
-    5, 1, figsize=(3, 4), sharex=True
-)
+fig, (ax_score, ax_onehot, ax_pwm, ax_onehotrev, ax_scorerev) = plt.subplots(5, 1, figsize=(3, 4), sharex=True)
 
 ntscores = pwm.flatten()[onehot.flatten().to(bool)]
 ax_score.fill_between(np.arange(onehot.shape[0]), ntscores, color="#55555533")
@@ -1323,9 +1209,7 @@ reverse_score = (onehot.numpy()[::-1, [3, 2, 1, 0]] * pwm.numpy()).sum()
 forward_score, reverse_score
 
 # %%
-assert np.isclose(best["locus_score"], reverse_score) or np.isclose(
-    best["locus_score"], forward_score
-)
+assert np.isclose(best["locus_score"], reverse_score) or np.isclose(best["locus_score"], forward_score)
 
 # %% [markdown]
 # ## Creating the windows
@@ -1368,9 +1252,7 @@ def unwrap_idx(coordinates, genemapping, window, cutwindow):
 
 
 # %%
-motifscores_fast = X(
-    motifscores
-)  # setup can take a bit longer here for pinning I think
+motifscores_fast = X(motifscores)  # setup can take a bit longer here for pinning I think
 
 # %%
 motifscores_fast[idx]
@@ -1410,26 +1292,19 @@ genes_oi = np.arange(0, 100)
 
 cellxgene_oi = (cells_oi[:, None] * fragments.n_genes + genes_oi).flatten()
 cellxgene_oi_indptr = np.pad(
-    np.cumsum(
-        fragments.cellxgene_indptr[cellxgene_oi + 1]
-        - fragments.cellxgene_indptr[cellxgene_oi]
-    ),
+    np.cumsum(fragments.cellxgene_indptr[cellxgene_oi + 1] - fragments.cellxgene_indptr[cellxgene_oi]),
     (1, 0),
     "constant",
 )
 
-fragments_oi = torch.isin(
-    fragments.mapping[:, 0], torch.from_numpy(cells_oi)
-) & torch.isin(fragments.mapping[:, 1], torch.from_numpy(genes_oi))
+fragments_oi = torch.isin(fragments.mapping[:, 0], torch.from_numpy(cells_oi)) & torch.isin(
+    fragments.mapping[:, 1], torch.from_numpy(genes_oi)
+)
 n_fragments = fragments_oi.sum()
 
-coordinates = np.ascontiguousarray(
-    fragments.coordinates[fragments_oi].to(torch.int64).numpy()
-)
+coordinates = np.ascontiguousarray(fragments.coordinates[fragments_oi].to(torch.int64).numpy())
 mapping = np.ascontiguousarray(fragments.mapping[fragments_oi].to(torch.int64).numpy())
-genemapping = np.ascontiguousarray(
-    fragments.mapping[fragments_oi, 1].to(torch.int64).numpy()
-)
+genemapping = np.ascontiguousarray(fragments.mapping[fragments_oi, 1].to(torch.int64).numpy())
 
 # %%
 n_motifs = motifscores.shape[1]
@@ -1445,9 +1320,7 @@ out_fragment_indptr = torch.from_numpy(np.zeros(buffer_size, dtype=int)).numpy()
 out_motif_ix = torch.from_numpy(np.zeros(buffer_size, dtype=int)).numpy()
 out_score = torch.from_numpy(np.zeros(buffer_size, dtype=np.float64)).numpy()
 out_distance = torch.from_numpy(np.zeros(buffer_size, dtype=int)).numpy()
-out_motifcounts = torch.from_numpy(
-    np.ascontiguousarray(np.zeros((n_fragments, n_motifs), dtype=int))
-).numpy()
+out_motifcounts = torch.from_numpy(np.ascontiguousarray(np.zeros((n_fragments, n_motifs), dtype=int))).numpy()
 
 # %%
 out_n = extract_motifs.extract_all(
@@ -1480,22 +1353,14 @@ motif_scores = pd.DataFrame(
         "motif_index": out_motif_ix[:out_n],
         "locus_score": out_score[:out_n],
         "locus_distance": out_distance[:out_n],
-        "fragment_ix": np.repeat(
-            np.arange(n_fragments), np.diff(out_fragment_indptr[: n_fragments + 1])
-        ),
+        "fragment_ix": np.repeat(np.arange(n_fragments), np.diff(out_fragment_indptr[: n_fragments + 1])),
     }
 )
 motif_scores["gene_ix"] = mapping[motif_scores["fragment_ix"].values, 1]
 motif_scores["cell_ix"] = mapping[motif_scores["fragment_ix"].values, 0]
-motif_scores["local_gene_ix"] = pd.Series(np.arange(len(genes_oi)), index=genes_oi)[
-    motif_scores["gene_ix"]
-].values
-motif_scores["local_cell_ix"] = pd.Series(np.arange(len(cells_oi)), index=cells_oi)[
-    motif_scores["cell_ix"]
-].values
-motif_scores["locall_cellxgene_ix"] = (
-    motif_scores["local_cell_ix"] * len(genes_oi) + motif_scores["local_gene_ix"]
-)
+motif_scores["local_gene_ix"] = pd.Series(np.arange(len(genes_oi)), index=genes_oi)[motif_scores["gene_ix"]].values
+motif_scores["local_cell_ix"] = pd.Series(np.arange(len(cells_oi)), index=cells_oi)[motif_scores["cell_ix"]].values
+motif_scores["locall_cellxgene_ix"] = motif_scores["local_cell_ix"] * len(genes_oi) + motif_scores["local_gene_ix"]
 
 # %%
 # select the site that scores best on a particular motif
@@ -1504,11 +1369,7 @@ motif_scores["locall_cellxgene_ix"] = (
 # ingene_mid = int(best["locus_distance"])
 
 # select the site that scores best overall
-best = (
-    motif_scores.sort_values("locus_score", ascending=False)
-    .iloc[[1]]
-    .to_dict(orient="records")[0]
-)
+best = motif_scores.sort_values("locus_score", ascending=False).iloc[[1]].to_dict(orient="records")[0]
 ingene_mid = int(best["locus_distance"])
 motif_ix = int(best["motif_index"])
 gene_ix = best["gene_ix"]
@@ -1538,9 +1399,7 @@ if "genome" not in globals():
     genome = pickle.load(gzip.GzipFile((folder_data_preproc / "genome.pkl.gz"), "rb"))
 
 # %%
-chromosome, promoter_start, promoter_end, strand = promoters.iloc[gene_ix][
-    ["chr", "start", "end", "strand"]
-]
+chromosome, promoter_start, promoter_end, strand = promoters.iloc[gene_ix][["chr", "start", "end", "strand"]]
 strand
 
 # %%
@@ -1552,9 +1411,7 @@ seq = seq[::strand]
 onehot = create_onehot(seq[site_start:site_end])
 
 # %%
-fig, (ax_score, ax_onehot, ax_pwm, ax_onehotrev, ax_scorerev) = plt.subplots(
-    5, 1, figsize=(3, 4), sharex=True
-)
+fig, (ax_score, ax_onehot, ax_pwm, ax_onehotrev, ax_scorerev) = plt.subplots(5, 1, figsize=(3, 4), sharex=True)
 
 ntscores = pwm.flatten()[onehot.flatten().to(bool)]
 ax_score.fill_between(np.arange(onehot.shape[0]), ntscores, color="#55555533")
@@ -1585,9 +1442,7 @@ reverse_score = (onehot.numpy()[::-1, [3, 2, 1, 0]] * pwm.numpy()).sum()
 forward_score, reverse_score
 
 # %%
-assert np.isclose(best["locus_score"], reverse_score) or np.isclose(
-    best["locus_score"], forward_score
-)
+assert np.isclose(best["locus_score"], reverse_score) or np.isclose(best["locus_score"], forward_score)
 
 # %% [markdown]
 # ## Subsetting cellxgene
@@ -1684,15 +1539,9 @@ class FragmentMotifLoader:
         n_fragment_per_cellxgene = 2
         fragment_buffer_size = batch_size * n_fragment_per_cellxgene
 
-        self.out_coordinates = torch.from_numpy(
-            np.zeros((fragment_buffer_size, 2), dtype=np.int64)
-        )  # .pin_memory()
-        self.out_genemapping = torch.from_numpy(
-            np.zeros(fragment_buffer_size, dtype=np.int64)
-        )  # .pin_memory()
-        self.out_local_cellxgene_ix = torch.from_numpy(
-            np.zeros(fragment_buffer_size, dtype=np.int64)
-        )  # .pin_memory()
+        self.out_coordinates = torch.from_numpy(np.zeros((fragment_buffer_size, 2), dtype=np.int64))  # .pin_memory()
+        self.out_genemapping = torch.from_numpy(np.zeros(fragment_buffer_size, dtype=np.int64))  # .pin_memory()
+        self.out_local_cellxgene_ix = torch.from_numpy(np.zeros(fragment_buffer_size, dtype=np.int64))  # .pin_memory()
 
         # create buffers for motifs
         n_motifs = motifscores.shape[1]
@@ -1703,18 +1552,10 @@ class FragmentMotifLoader:
         self.motifscores_indices = motifscores.indices.astype(np.int64)
         self.motifscores_data = motifscores.data.astype(np.float64)
 
-        self.out_fragment_indptr = torch.from_numpy(
-            np.zeros(motif_buffer_size, dtype=int)
-        )  # .pin_memory()
-        self.out_motif_ix = torch.from_numpy(
-            np.zeros(motif_buffer_size, dtype=int)
-        )  # .pin_memory()
-        self.out_score = torch.from_numpy(
-            np.zeros(motif_buffer_size, dtype=np.float64)
-        )  # .pin_memory()
-        self.out_distance = torch.from_numpy(
-            np.zeros(motif_buffer_size, dtype=int)
-        )  # .pin_memory()
+        self.out_fragment_indptr = torch.from_numpy(np.zeros(motif_buffer_size, dtype=int))  # .pin_memory()
+        self.out_motif_ix = torch.from_numpy(np.zeros(motif_buffer_size, dtype=int))  # .pin_memory()
+        self.out_score = torch.from_numpy(np.zeros(motif_buffer_size, dtype=np.float64))  # .pin_memory()
+        self.out_distance = torch.from_numpy(np.zeros(motif_buffer_size, dtype=int))  # .pin_memory()
         self.out_motifcounts = torch.from_numpy(
             np.ascontiguousarray(np.zeros((fragment_buffer_size, n_motifs), dtype=int))
         )  # .pin_memory()
@@ -1764,9 +1605,7 @@ class FragmentMotifLoader:
 n_cells = 100
 n_genes = 100
 cutwindow = np.array([-150, 150])
-loader = FragmentMotifLoader(
-    fragments, motifscores, n_cells * n_genes, window, cutwindow
-)
+loader = FragmentMotifLoader(fragments, motifscores, n_cells * n_genes, window, cutwindow)
 
 # %%
 cells_oi = np.arange(0, n_cells)
@@ -1824,9 +1663,7 @@ n_embedding_dimensions = motifscores.shape[1]
 embedding_gene_pooler = EmbeddingGenePooler(n_embedding_dimensions, debug=True)
 
 # %%
-cell_gene_embedding = embedding_gene_pooler(
-    fragment_embedding, local_cellxgene_ix, n_cells, n_genes
-)
+cell_gene_embedding = embedding_gene_pooler(fragment_embedding, local_cellxgene_ix, n_cells, n_genes)
 
 # %%
 fig, axes = plt.subplots(1, 2, figsize=(10, 5), sharey=True)
@@ -1848,9 +1685,7 @@ embedding_to_expression = EmbeddingToExpression(
 # embedding_to_expression = EmbeddingToExpressionBias(fragments.n_genes, n_embedding_dimensions = n_embedding_dimensions, mean_gene_expression = mean_gene_expression)
 
 # %%
-expression_predicted = embedding_to_expression(
-    cell_gene_embedding, torch.from_numpy(genes_oi)
-)
+expression_predicted = embedding_to_expression(cell_gene_embedding, torch.from_numpy(genes_oi))
 
 # %% [markdown]
 # ### Whole model
@@ -1859,9 +1694,7 @@ expression_predicted = embedding_to_expression(
 from chromatinhd.models.promotermotif.v1 import FragmentEmbeddingToExpression
 
 # %%
-model = FragmentEmbeddingToExpression(
-    fragments.n_genes, mean_gene_expression, n_embedding_dimensions
-)
+model = FragmentEmbeddingToExpression(fragments.n_genes, mean_gene_expression, n_embedding_dimensions)
 
 # %%
 model(motifcounts.to(torch.float), local_cellxgene_ix, n_cells, n_genes, genes_oi)
@@ -1900,10 +1733,10 @@ prev_mse_test = None
 
 # %%
 cells_all = np.arange(fragments.n_cells)
-genes_all = np.arange(fragments.n_genes)
+genes_all = np.arange(fragments.n_regions)
 
 n_cells_step = 1000
-n_genes_step = 100
+n_regions_step = 100
 
 cells_train = cells_all[: int(len(cells_all) * 4 / 5)]
 genes_train = genes_all[: int(len(genes_all) * 4 / 5)]
@@ -1911,6 +1744,7 @@ genes_train = genes_all[: int(len(genes_all) * 4 / 5)]
 cells_validation = cells_all[[cell for cell in cells_all if cell not in cells_train]]
 genes_validation = genes_train
 # genes_validation = genes_all[[gene for gene in genes_all if gene not in genes_train]]
+
 
 # %%
 def cell_gene_to_cellxgene(cells_oi, genes_oi, n_genes):
@@ -1924,7 +1758,7 @@ def create_bins(cells, genes, rg=None):
     cells = rg.permutation(cells)
     genes = rg.permutation(genes)
 
-    gene_cuts = [*np.arange(0, len(genes), step=n_genes_step)] + [len(genes)]
+    gene_cuts = [*np.arange(0, len(genes), step=n_regions_step)] + [len(genes)]
     gene_bins = [genes[a:b] for a, b in zip(gene_cuts[:-1], gene_cuts[1:])]
 
     cell_cuts = [*np.arange(0, len(cells), step=n_cells_step)] + [len(cells)]
@@ -1956,9 +1790,7 @@ bins_validation = create_bins(cells_validation, genes_validation, rg=rg)
 bins_validation_trace = bins_validation[:2]
 
 # %%
-loader = FragmentMotifLoader(
-    fragments, motifscores, n_cells_step * n_genes_step, window, cutwindow
-)
+loader = FragmentMotifLoader(fragments, motifscores, n_cells_step * n_regions_step, window, cutwindow)
 
 # %%
 step_ix = 0
@@ -1967,9 +1799,7 @@ trace_validation = []
 
 for epoch in tqdm.tqdm(range(n_epochs)):
     # train
-    for cells_oi, genes_oi, cellxgene_oi, n_cells, n_genes in tqdm.tqdm(
-        bins_train, leave=False
-    ):
+    for cells_oi, genes_oi, cellxgene_oi, n_cells, n_genes in tqdm.tqdm(bins_train, leave=False):
         if (step_ix % trace_every_step) == 0:
             with torch.no_grad():
                 print("tracing")
@@ -1986,9 +1816,7 @@ for epoch in tqdm.tqdm(range(n_epochs)):
                     motifcounts = motifcounts.to(device)
                     local_cellxgene_ix = local_cellxgene_ix.to(device)
 
-                    transcriptome_subset = transcriptome_X_dense[cells_oi, :][
-                        :, genes_oi
-                    ]
+                    transcriptome_subset = transcriptome_X_dense[cells_oi, :][:, genes_oi]
 
                     transcriptome_predicted = model(
                         motifcounts.to(torch.float),
@@ -2002,13 +1830,7 @@ for epoch in tqdm.tqdm(range(n_epochs)):
 
                     mse_validation.append(mse.item())
                     mse_validation_dummy.append(
-                        (
-                            (
-                                transcriptome_subset
-                                - transcriptome_subset.mean(0, keepdim=True)
-                            )
-                            ** 2
-                        ).mean()
+                        ((transcriptome_subset - transcriptome_subset.mean(0, keepdim=True)) ** 2).mean()
                     )
                 mse_validation = np.mean(mse_validation)
                 mse_validation_dummy = np.mean(mse_validation_dummy)
@@ -2031,9 +1853,7 @@ for epoch in tqdm.tqdm(range(n_epochs)):
 
         transcriptome_subset = transcriptome_X_dense[cells_oi, :][:, genes_oi]
 
-        transcriptome_predicted = model(
-            motifcounts.to(torch.float), local_cellxgene_ix, n_cells, n_genes, genes_oi
-        )
+        transcriptome_predicted = model(motifcounts.to(torch.float), local_cellxgene_ix, n_cells, n_genes, genes_oi)
 
         mse = loss(transcriptome_predicted, transcriptome_subset)
 
@@ -2045,16 +1865,10 @@ for epoch in tqdm.tqdm(range(n_epochs)):
         step_ix += 1
 
     # reshuffle the order of the bins
-    bins_train = [
-        bins_train[i]
-        for i in np.random.choice(len(bins_train), len(bins_train), replace=False)
-    ]
+    bins_train = [bins_train[i] for i in np.random.choice(len(bins_train), len(bins_train), replace=False)]
 
 # %%
-bins_train = [
-    bins_train[i]
-    for i in np.random.choice(len(bins_train), len(bins_train), replace=False)
-]
+bins_train = [bins_train[i] for i in np.random.choice(len(bins_train), len(bins_train), replace=False)]
 
 # %%
 if isinstance(trace_validation, list):
@@ -2072,14 +1886,10 @@ pwms = pickle.load((folder_motifs / "pwms.pkl").open("rb"))
 motifs_oi = pickle.load((folder_data_preproc / "motifs_oi.pkl").open("rb"))
 
 # %%
-pd.Series(
-    model.embedding_to_expression.weight1.detach().cpu().numpy(), index=motifs_oi.index
-).sort_values()
+pd.Series(model.embedding_to_expression.weight1.detach().cpu().numpy(), index=motifs_oi.index).sort_values()
 
 # %%
-pd.Series(
-    model.embedding_to_expression.weight1.detach().cpu().numpy(), index=motifs_oi.index
-).sort_values()
+pd.Series(model.embedding_to_expression.weight1.detach().cpu().numpy(), index=motifs_oi.index).sort_values()
 
 # %%
 sc.pl.umap(transcriptome.adata, color=transcriptome.gene_id(["IRF1", "STAT2"]))

@@ -1,4 +1,4 @@
-from . import designs
+from . import designs_pred, designs_diff
 from .peakcallers import peakcallers, diffexps
 from . import methods
 from . import plotting

@@ -42,12 +42,12 @@ import tqdm.auto as tqdm
 
 import pysam
 
-chd.set_default_device("cuda:1")
 
 # %%
 import chromatinhd as chd
 data_folder = chd.get_output() /"data"/"glas_2019"
 dataset_folder = chd.get_output() / "datasets" / "glas_2019"
+chd.set_default_device("cuda:0")
 
 # %% [markdown]
 # ## Download
@@ -260,8 +260,9 @@ fragments.var["symbol"] = transcripts["symbol"]
 symbol = "Nr1h3"
 # symbol = "Tfec"
 symbol = "Clec4f"
+symbol = "Id3"
 # symbol = "Spic"
-symbol = "Cbr2"
+# symbol = "Cbr2"
 
 gene_id = fragments.var.index[fragments.var["symbol"] == symbol][0]
 gene_ix = fragments.var.index.get_loc(gene_id)
@@ -275,24 +276,33 @@ cluster_info_oi = obs.query("condition in ['liver_kc_Smad4 flox/flox Clecf4-cre'
 cluster_info_oi["label"] = pd.Series({"liver_kc_Smad4 flox/flox":"Control", "liver_kc_Smad4 flox/flox Clecf4-cre":"Smad4 -/-"})[cluster_info_oi["condition"]].values
 
 # %%
-mmc5.sort_values("smadCTRt4.vs.smadKOt4n.log2FoldChange", ascending = True).query("significant").head(20)
+mmc5.query("symbol == 'Nr1h3'")[["significant"]]
 
 # %%
 fig = chd.grid.Figure(chd.grid.Grid(padding_height=0.05, padding_width=0.05))
 
 window = fragments.regions.window
 
-symbol = "Apoc1"
+symbol = "Clec4f"
 gene_id = fragments.var.index[fragments.var["symbol"] == symbol][0]
-window = [-5000, -2000]
+# window = [-5000, 5000]
+window = [-100000, 100000]
 
 # symbol = "Cx3cr1"
 # gene_id = fragments.var.index[fragments.var["symbol"] == symbol][0]
 # window = [-5000, 0]
 
-symbol = "Lepr"
-gene_id = fragments.var.index[fragments.var["symbol"] == symbol][0]
-window = [-100000, 100000]
+# symbol = "Lepr"
+# gene_id = fragments.var.index[fragments.var["symbol"] == symbol][0]
+# window = [-100000, 100000]
+
+# symbol = "Nr1h3"
+# gene_id = fragments.var.index[fragments.var["symbol"] == symbol][0]
+# window = [-12000, -10000]
+
+# symbol = "Id3"
+# gene_id = fragments.var.index[fragments.var["symbol"] == symbol][0]
+# window = [-5000, 3000]
 
 # symbol = "Slco2b1"
 # gene_id = fragments.var.index[fragments.var["symbol"] == symbol][0]
@@ -306,8 +316,8 @@ width = (window[1] - window[0])/1000/20*10
 # window = [10000, 50000]
 
 region = fragments.regions.coordinates.loc[gene_id]
-panel_genes = chd.plot.genome.genes.Genes.from_region(region, width=width, window = window, genome = "mm10")
-panel_genes.ax.set_xlabel("Distance to "+ symbol + " TSS")
+panel_genes = chd.plot.genome.genes.Genes.from_region(region, width=width, window = window, genome = "mm10", label_genome = True, symbol = symbol)
+# panel_genes.ax.set_xlabel("Distance to "+ symbol + " TSS")
 fig.main.add_under(panel_genes)
 
 plotdata, plotdata_mean = genepositional.get_plotdata(gene_id)
@@ -325,8 +335,11 @@ panel_peaks = chd.data.peakcounts.plot.Peaks.from_bed(fragments.regions.coordina
     {"path":[
         data_folder / "peaks" / "Smad4KO_KC_ATAC_NoTx_366.bed",
         # data_folder / "peaks" / "Smad4KO_KC_ATAC_NoTx_382.bed",
+        # data_folder / "peaks" / "KC_mouse216_ATAC_PBS.bed.bed",
+        # data_folder / "peaks" / "KC_mouse60_ATAC_PBS.bed.bed",
     ], "label":[
         "Peaks",
+        # "Peaks",
         # "Smad4KO_KC_ATAC_NoTx_382.bed",
     ]}
 ), width = width, window = window)
@@ -341,13 +354,21 @@ motifs_oi = pd.DataFrame([
     # [motifs.index[motifs.index.str.contains("HEY1")][0], "Notch-->Hey1"],
     # [motifs.index[motifs.index.str.contains("HES1")][0], "Notch-->Hes1"],
     [motifs.index[motifs.index.str.contains("SMAD4")][0], "Smad4 motifs"],
-    [motifs.index[motifs.index.str.contains("NR1H3")][0], "LXRa motifs"],
+    [motifs.index[motifs.index.str.contains("NR1H3")][0], "Lxr-α motifs"],
 ], columns = ["motif", "label"]
 ).set_index("motif")
 panel_motifs = chd.data.motifscan.plot.Motifs(motifscan, gene_id, motifs_oi, width = width, window = window)
 fig.main.add_under(panel_motifs)
 
 fig.plot()
+
+# %%
+# !ls {data_folder}/peaks
+
+# %%
+contingency = [[26, 40], [31, 76]]
+import scipy.stats
+scipy.stats.fisher_exact(contingency)
 
 # %% [markdown]
 # ## Enrichment

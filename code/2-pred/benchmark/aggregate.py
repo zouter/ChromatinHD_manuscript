@@ -172,7 +172,7 @@ plotdata.index = pd.MultiIndex.from_frame(design.loc[plotdata.index, main_featur
 
 plotdata_grouped = plotdata.groupby(main_features)
 
-fig, ax = plt.subplots(figsize=(4, len(plotdata_grouped) * 0.25))
+fig, ax = plt.subplots(figsize=(4, len(plotdata_grouped) * 0.4))
 
 score = "r2"
 # score = "scored"
@@ -212,7 +212,7 @@ ax.set_xlabel("R2")
 ax.xaxis.set_major_formatter(mpl.ticker.PercentFormatter(1.0))
 
 # %%
-plotdata.loc["hspc"].loc["100k100k"].loc["5x1"].loc["magic"].sort_values("r2")
+plotdata.loc["pbmc10k"].loc["10k10k"].loc["5x1"].loc["magic"].sort_values("r2")
 
 # %%
 fig, ax = plt.subplots()
@@ -222,8 +222,9 @@ plt.scatter(r2s.sel(design_ix = 358).to_pandas().dropna(), r2s.sel(design_ix = 3
 ax.plot([0, 1], [0, 1])
 
 # %%
-# dataset_name = "pbmc10k"
-dataset_name = "hspc"
+dataset_name = "pbmc10k"
+# dataset_name = "e18brain"
+# dataset_name = "hspc"
 # dataset_name = "lymphoma"
 regions_name = "100k100k"
 # regions_name = "10k10k"
@@ -239,10 +240,11 @@ plotdata.columns = design_oi["method"]
 plotdata = plotdata.loc[~pd.isnull(plotdata["v33"])]
 
 # %%
-# a = "macs2_leiden_0.1_merged/lasso"
+a = "macs2_leiden_0.1_merged/lasso"
 # a = "macs2_leiden_0.1_merged/xgboost"
-a = "rolling_500/lasso"
+# a = "rolling_500/lasso"
 # a = "rolling_500/xgboost"
+# a = "rolling_100/lasso"
 b = "v33"
  
 plotdata = plotdata.loc[(plotdata[a] > 0.) & (plotdata[b] > 0.)]
@@ -420,3 +422,36 @@ genes_oi = transcriptome.gene_id(symbols_oi)
 
 import scanpy as sc
 sc.pl.umap(transcriptome.adata, color = genes_oi, layer = "magic", title = symbols_oi)
+
+# %%
+design = chd.utils.crossing(
+    pd.DataFrame({
+        "differentiation":np.linspace(0, 1, 10),
+    }),
+    pd.DataFrame({
+        "cellcycle":np.linspace(0, 1, 10),
+    })
+)
+design["proliferating"] = scipy.stats.norm.pdf(design["differentiation"], 0.4, 0.2)
+design["proliferating"] = design["proliferating"] / design["proliferating"].max()
+
+design["prob_a"] = 1 * (scipy.stats.norm.pdf(design["cellcycle"], 0., 0.1) * (1-design["proliferating"]) + scipy.stats.uniform.pdf(design["cellcycle"]) * design["proliferating"] * 2)
+# design["prob_a"] = design["prob_a"] / design["prob_a"].max()
+
+design["proliferating_b"] = design["proliferating"]
+design["prob_b"] = 1 * (scipy.stats.norm.pdf(design["cellcycle"], 0., 0.1) * (design["differentiation"] < 0.5) * (1-design["proliferating_b"]) + scipy.stats.uniform.pdf(design["cellcycle"]) * design["proliferating_b"] * 2)
+# design["prob_b"] = design["prob_b"] / design["prob_b"].max()
+
+design["prob_diff"] = design["prob_b"] - design["prob_a"]
+
+plotdata = design.set_index(["differentiation", "cellcycle"])["prob_a"].unstack().T
+fig, ax = plt.subplots(figsize = (1, 1))
+cmap = mpl.colormaps["Blues"]
+ax.matshow(plotdata, cmap=cmap)
+ax.axis("off")
+
+plotdata = design.set_index(["differentiation", "cellcycle"])["prob_b"].unstack().T
+fig, ax = plt.subplots(figsize = (1, 1))
+cmap = mpl.colormaps["Blues"]
+ax.matshow(plotdata, cmap=cmap)
+ax.axis("off")

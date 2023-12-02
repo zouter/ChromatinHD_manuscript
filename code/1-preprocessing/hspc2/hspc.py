@@ -440,9 +440,12 @@ folder_data_preproc2.mkdir(exist_ok = True, parents = True)
 # !ln -s {chd.get_output()}/peaks/hspc/cellranger {chd.get_output()}/peaks/{dataset_name}/cellranger
 
 # %%
-desired_genes = ["GATA1", "KLF1", "CALR"]
+desired_genes = ["GATA1", "KLF1", "CALR", "H1FX"]
 genes_oi = adata.var.reset_index().set_index("symbol").loc[desired_genes, "gene"].values
 transcriptome = chd.data.transcriptome.Transcriptome.from_adata(adata[:, genes_oi], path=dataset_folder / "transcriptome")
+
+# %%
+genes_oi
 
 # %%
 selected_transcripts = pickle.load((folder_data_preproc / "selected_transcripts.pkl").open("rb")).loc[transcriptome.adata.var.index]
@@ -459,7 +462,10 @@ fragments = chd.data.Fragments.from_fragments_tsv(
     regions=regions,
     obs=transcriptome.obs,
     path=fragments.path,
+    overwrite = True
 )
 
 # %%
-fragments.create_regionxcell_indptr()
+fragments.create_regionxcell_indptr(overwrite = True)
+
+# %%

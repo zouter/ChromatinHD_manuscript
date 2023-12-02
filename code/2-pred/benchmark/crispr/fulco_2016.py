@@ -47,16 +47,17 @@ chd.set_default_device("cuda:0")
 # ### Download CRISPRi data
 
 # %%
+# doesn't work, science sucks
+import pathlib
+url = "https://www.science.org/doi/suppl/10.1126/science.aag2445/suppl_file/aag2445_table_s2.xlsx"
+# file = "aag2445_table_s2.xlsx"
 file = chd.get_output() / "data" / "crispri" / "fulco_2016" / "aag2445_table_s2.xlsx"
 file.parent.mkdir(parents=True, exist_ok=True)
-import pathlib
-file = pathlib.Path("aag2445_table_s2_2.xlsx")
 
-import requests
+import urllib.request
 if not file.exists():
-    response = requests.get("https://www.science.org/doi/suppl/10.1126/science.aag2445/suppl_file/aag2445_table_s2.xlsx")
-    with open(file, "wb") as f:
-        f.write(response.content)
+    pass
+    # urllib.request.urlretrieve(url, file)
 
 # %%
 data_orig = pd.read_excel(file, skiprows=1, sheet_name="Table S2")
@@ -86,32 +87,26 @@ data["Significant"] = np.abs(data["CRISPRi Score"]) > 0.5
 dataset_name = "hspc"
 transcriptome = chd.data.Transcriptome(chd.get_output() / "datasets" / dataset_name / "transcriptome")
 fragments = chd.data.Fragments(chd.get_output() / "datasets" / dataset_name / "fragments" / "100k100k")
+splitter = "5x5"
+folds = chd.data.folds.Folds(chd.get_output() / "datasets" / dataset_name / "folds" / splitter)
 
-# dataset_name = "hspc_focus"
-# transcriptome = chd.data.Transcriptome(chd.get_output() / "datasets" / dataset_name / "transcriptome")
-# fragments = chd.data.Fragments(chd.get_output() / "datasets" / dataset_name / "fragments" / "500k500k")
-
-# %%
-folds = chd.data.folds.Folds(chd.get_output() / "datasets" / dataset_name / "folds" / "5x1")
-# folds.sample_cells(fragments, 5, 5)
-# fold = folds[0]
-# folds = chd.data.folds.Folds(chd.get_output() / "datasets" / dataset_name / "folds" / "1")
-# folds.folds = [fold]
-
-# %%
 symbols_oi = transcriptome.var["symbol"][transcriptome.var["symbol"].isin(data["Gene"])].tolist()
 genes_oi = transcriptome.gene_id(symbols_oi)
+genes_oi = transcriptome.gene_id(["GATA1", "H1FX", "KLF1", "CALR"])
 
 data = data.loc[data["Gene"].isin(symbols_oi)].copy()
 data["gene"] = transcriptome.gene_id(data["Gene"]).values
 
 # %%
 import chromatinhd.models.pred.model.better
-model_folder = chd.get_output() / "pred" / dataset_name / "100k100k" / "5x1" / "magic" / "v30"
+# model_folder = chd.get_output() / "pred" / dataset_name / "100k100k" / splitter / "magic" / "v30"
+model_folder = chd.get_output() / "pred" / dataset_name / "100k100k" / splitter / "magic" / "v31"
+model_folder = chd.get_output() / "pred" / dataset_name / "100k100k" / splitter / "magic" / "v33"
+models = chd.models.pred.model.better.Models(model_folder)
 
-# %%
-performance = chd.models.pred.interpret.Performance(model_folder / "scoring" / "performance")
-regionmultiwindow = chd.models.pred.interpret.RegionMultiWindow(model_folder / "scoring" / "regionmultiwindow",)
+regionmultiwindow = chd.models.pred.interpret.RegionMultiWindow(
+    models.path / "scoring" / "crispri" / "fulco_2019" / "regionmultiwindow",
+)
 
 # %% [markdown]
 # ## Check enrichment
@@ -120,10 +115,8 @@ regionmultiwindow = chd.models.pred.interpret.RegionMultiWindow(model_folder / "
 genes_oi = genes_oi[regionmultiwindow.scores["scored"].sel_xr(genes_oi).all("fold").values]
 
 # %%
-# joined_all = crispri.calculate_joined(regionmultiwindow, data, genes_oi, fragments.regions, window_size = 500)
 joined_all = crispri.calculate_joined(regionmultiwindow, data, genes_oi, fragments.regions, window_size = 100)
 joined_observed = joined_all.loc[~pd.isnull(joined_all["HS_LS_logratio"])].copy()
-joined_observed["deltacor_positive"] = np.where(joined_observed["effect"] > 0, joined_observed["deltacor"], 0)
 
 # %%
 deltacor_cutoff = -0.001
@@ -131,7 +124,7 @@ lfc_cutoff = np.log(1.5)
 
 # %%
 joined_observed["significant_expression"] = joined_observed["HS_LS_logratio"].abs() > lfc_cutoff
-joined_observed["significant_chd"] = joined_observed["deltacor_positive"] < deltacor_cutoff
+joined_observed["significant_chd"] = joined_observed["deltacor"] < deltacor_cutoff
 
 # %%
 genescores = []
@@ -161,6 +154,21 @@ genescores["dispersions_norm"] = transcriptome.var.loc[genescores.index, "disper
 genescores["dispersions"] = transcriptome.var.loc[genescores.index, "dispersions"].values
 
 genescores.style.bar()
+
+# %%
+confirmed_n  = (joined_observed["significant_expression"] & joined_observed["significant_chd"]).sum()
+total_n = joined_observed["significant_chd"].sum()
+confirmed = confirmed_n / total_n
+
+randoms = []
+for i in range(5000):
+    randoms.append((joined_observed.iloc[np.random.permutation(np.arange(len(joined_observed)))]["significant_expression"].values & joined_observed["significant_chd"]).sum() / joined_observed["significant_chd"].sum())
+randoms = np.array(randoms)
+
+fig, ax =plt.subplots(figsize = (5, 2))
+ax.hist(randoms, bins = np.linspace(0, 1, 20), density = True)
+ax.axvline(confirmed, color = "red")
+(randoms >= confirmed).mean(), f"{confirmed:.2%}", f"{randoms.mean():.2%}"
 
 # %%
 fig, ax =plt.subplots(figsize = (5, 2))
@@ -194,46 +202,24 @@ gene_oi = transcriptome.gene_id("GATA1")
 region = fragments.regions.coordinates.loc[gene_oi]
 symbol_oi = transcriptome.var.loc[gene_oi, "symbol"]
 
-# %%
 joined = joined_all.query("gene == @gene_oi").copy()
 joined["score"] = joined["HS_LS_logratio"] * joined["deltacor"]
 
 # %%
-regionmultiwindow2 = regionmultiwindow
-
-# %%
 fig = chd.grid.Figure(chd.grid.Grid(padding_height=0.1))
 
-binwidth = (regionmultiwindow.design["window_end"] - regionmultiwindow.design["window_start"]).iloc[0]
+# binwidth = (regionmultiwindow.design["window_end"] - regionmultiwindow.design["window_start"]).iloc[0]
+binwidth = 100
 
 window = [-10000, 20000]  # GATA1 region oi
 arrows = [{"position": 14000, "orientation": "right", "y": 0.5}]
-
-# window = [-20000, 20000]  # HDAC6 region oi
-# arrows = [{"position": 14000, "orientation": "right", "y": 0.5}]
-
-# window = [-260000, -250000]
-# arrows = []
-
-# window = [-10000, 10000] # KLF1 TSS
-# arrows = [
-#     {"position": -3500, "orientation": "left", "y": 0.5},
-#     {"position": 1000, "orientation": "left", "y": 0.5},
-#     {"position": -650, "orientation": "right", "y": 0.5},
-# ]
-
-# window = [-65000, -45000] # CALR upstream
-# arrows = []
-
-# window = fragments.regions.window  # all
-# arrows = []
 
 panel, ax = fig.main.add_under(chd.plot.genome.Genes.from_region(region, width=10, window=window))
 ax.set_xlim(*window)
 
 panel, ax = fig.main.add_under(
-    chd.models.pred.plot.Pileup(regionmultiwindow2.get_plotdata(gene_oi), window=window, width=10)
-)  # (regionmultiwindow2.get_plotdata(gene_oi), window = window, width = 10))
+    chd.models.pred.plot.Pileup(regionmultiwindow.get_plotdata(gene_oi), window=window, width=10)
+)
 
 panel, ax = fig.main.add_under(
     chdm.plotting.Peaks(
@@ -267,51 +253,41 @@ ax.step(
 ax.set_ylim(*ax.get_ylim()[::-1])
 ax.set_xlim(*window)
 ax.set_ylabel(f"CRISPRi\nfold enrichment\ngrowth selection", rotation=0, ha="right", va="center")
-# ax.set_ylabel(f"CRISPRi\nfold enrichment\nhigh vs low {transcriptome.symbol(gene_oi)}", rotation = 0, ha = "right", va = "center")
 ax.set_xticks([])
 ax.set_yticks(np.log([0.125, 0.25, 0.5, 1, 2]))
 ax.set_yticklabels(["⅛", "¼", "½", 1, 2])
 
+panel, ax = fig.main.add_under(chd.grid.Panel((10, 1)))
+joined["surprise"] = np.clip(joined["deltacor"], -np.inf, 0) / joined["lost"]
+ax.plot(
+    joined["window_mid"],
+    joined["surprise"],
+    lw=0,
+    marker="o",
+    markersize=2,
+    color="#333",
+)
+
 panel, ax = fig.main.add_under(
-    chd.models.pred.plot.Predictivity(regionmultiwindow2.get_plotdata(gene_oi), window=window, width=10)
+    chd.models.pred.plot.Predictivity(regionmultiwindow.get_plotdata(gene_oi), window=window, width=10, limit = -0.1)
 )
 for arrow in arrows:
     panel.add_arrow(**arrow)
 
-panel, ax = fig.main.add_under(chd.grid.Panel((10, 0.5)))
-# # !wget https://www.encodeproject.org/files/ENCFF010PHG/@@download/ENCFF010PHG.bigWig
-import pyBigWig
-file = pyBigWig.open("ENCFF010PHG.bigWig")
-plotdata = pd.DataFrame({"value":file.values(region["chrom"], region["start"], region["end"])})
-plotdata["position"] = np.arange(*fragments.regions.window)[::int(region["strand"])]
-ax.plot(plotdata["position"], plotdata["value"], color = "#333")
-ax.set_xlim(*window)
-ax.set_ylim(0, 20)
-ax.set_ylabel("H3K27ac\nsignal", rotation = 0, ha = "right", va = "center")
-
-panel, ax = fig.main.add_under(chd.grid.Panel((10, 0.5)))
-# # !wget https://www.encodeproject.org/files/ENCFF814IYI/@@download/ENCFF814IYI.bigWig
-import pyBigWig
-file = pyBigWig.open("ENCFF814IYI.bigWig")
-plotdata = pd.DataFrame({"value":file.values(region["chrom"], region["start"], region["end"])})
-plotdata["position"] = np.arange(*fragments.regions.window)[::int(region["strand"])]
-ax.plot(plotdata["position"], plotdata["value"], color = "#333")
-ax.set_xlim(*window)
-ax.set_ylim(0, 20)
-ax.set_ylabel("H3K4me3\nsignal", rotation = 0, ha = "right", va = "center")
-
-panel, ax = fig.main.add_under(chd.grid.Panel((10, 0.5)))
-# # !wget https://www.encodeproject.org/files/ENCFF242ENK/@@download/ENCFF242ENK.bigWig
-import pyBigWig
-file = pyBigWig.open("ENCFF242ENK.bigWig")
-plotdata = pd.DataFrame({"value":file.values(region["chrom"], region["start"], region["end"])})
-plotdata["position"] = np.arange(*fragments.regions.window)[::int(region["strand"])]
-ax.plot(plotdata["position"], plotdata["value"], color = "#333")
-ax.set_xlim(*window)
-ax.set_ylim(0, 20)
-ax.set_ylabel("H3K27me\nsignal", rotation = 0, ha = "right", va = "center")
-
 fig.plot()
+
+# %%
+plotdata = regionmultiwindow.get_plotdata(gene_oi)
+
+# %%
+joined["surprise"] = np.clip(joined["deltacor"], -99999, 0) / joined["lost"]
+
+# %%
+np.corrcoef(joined.dropna()["surprise"], joined.dropna()["HS_LS_logratio"])
+
+# %%
+fig, ax = plt.subplots()
+ax.scatter(joined["surprise"], joined["HS_LS_logratio"], s = 2)
 
 # %% [markdown]
 # ## Slices

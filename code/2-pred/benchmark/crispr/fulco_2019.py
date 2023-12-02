@@ -141,6 +141,12 @@ fragments = chd.data.Fragments(chd.get_output() / "datasets" / dataset_name / "f
 splitter = "5x5"
 folds = chd.data.folds.Folds(chd.get_output() / "datasets" / dataset_name / "folds" / splitter)
 
+# dataset_name = "hspc_focus"
+# transcriptome = chd.data.Transcriptome(chd.get_output() / "datasets" / dataset_name / "transcriptome")
+# fragments = chd.data.Fragments(chd.get_output() / "datasets" / dataset_name / "fragments" / "500k500k")
+# splitter = "5x5"
+# folds = chd.data.folds.Folds(chd.get_output() / "datasets" / dataset_name / "folds" / splitter)
+
 symbols_oi = transcriptome.var["symbol"][transcriptome.var["symbol"].isin(data["Gene"])].tolist()
 genes_oi = transcriptome.gene_id(symbols_oi)
 genes_oi = transcriptome.gene_id(["GATA1", "H1FX", "KLF1", "CALR"])
@@ -150,9 +156,8 @@ data["gene"] = transcriptome.gene_id(data["Gene"]).values
 
 # %%
 import chromatinhd.models.pred.model.better
-# model_folder = chd.get_output() / "pred" / dataset_name / "100k100k" / splitter / "magic" / "v30"
-model_folder = chd.get_output() / "pred" / dataset_name / "100k100k" / splitter / "magic" / "v31"
 model_folder = chd.get_output() / "pred" / dataset_name / "100k100k" / splitter / "magic" / "v33"
+# model_folder = chd.get_output() / "pred" / dataset_name / "500k500k" / splitter / "magic" / "v34"
 models = chd.models.pred.model.better.Models(model_folder)
 
 regionmultiwindow = chd.models.pred.interpret.RegionMultiWindow(
@@ -178,9 +183,6 @@ regionmultiwindow = chd.models.pred.interpret.RegionMultiWindow(
 # ## Check enrichment
 
 # %%
-# !ls /home/wsaelens/projects/chromatinhd/chromatinhd_manuscript/output/pred/hspc/100k100k/5x5/magic/v33/scoring/crispri/fulco_2019/regionmultiwindow
-
-# %%
 genes_oi = genes_oi[regionmultiwindow.scores["scored"].sel_xr(genes_oi).all("fold").values]
 
 # %%
@@ -195,7 +197,6 @@ lfc_cutoff = np.log(1.5)
 # %%
 joined_observed["significant_expression"] = joined_observed["HS_LS_logratio"].abs() > lfc_cutoff
 joined_observed["significant_chd"] = joined_observed["deltacor"] < deltacor_cutoff
-# joined_observed["significant_chd"] = (joined_observed["interaction"] > joined_observed["interaction"].quantile(1-(joined_observed["deltacor_positive"] < deltacor_cutoff).mean()))
 
 # %%
 genescores = []
@@ -275,8 +276,8 @@ print(odds)
 
 # %%
 # gene_oi = transcriptome.gene_id("H1FX")
-gene_oi = transcriptome.gene_id("KLF1")
-# gene_oi = transcriptome.gene_id("GATA1")
+# gene_oi = transcriptome.gene_id("KLF1")
+gene_oi = transcriptome.gene_id("GATA1")
 # gene_oi = transcriptome.gene_id("CALR")
 # gene_oi = transcriptome.gene_id("GATA1")
 # gene_oi = transcriptome.gene_id("MYO1D")
@@ -292,23 +293,12 @@ joined = joined_all.query("gene == @gene_oi").copy()
 joined["score"] = joined["HS_LS_logratio"] * joined["deltacor"]
 
 # %%
-# plotdata = pd.DataFrame(
-#     {
-#         "deltacor":regionpairwindow.scores[gene_oi].mean("fold")["deltacor"].to_pandas().values,
-#         "deltadeltacor":regionpairwindow.interaction[gene_oi].mean("fold").mean("window1").to_pandas()
-#     }
-# )
-# plotdata["window_mid"] = regionmultiwindow.design.loc[plotdata.index, "window_mid"]
-# plt.plot(plotdata["window_mid"], plotdata["deltadeltacor"])
-# ax2 = plt.gca().twinx()
-# ax2.plot(plotdata["window_mid"], -plotdata["deltacor"], color = "orange")
-
-# %%
 fig = chd.grid.Figure(chd.grid.Grid(padding_height=0.1))
 
 # binwidth = (regionmultiwindow.design["window_end"] - regionmultiwindow.design["window_start"]).iloc[0]
 binwidth = 100
 
+# gene_oi = transcriptome.gene_id("GATA1")
 # window = [-10000, 20000]  # GATA1 region oi
 # arrows = [{"position": 14000, "orientation": "right", "y": 0.5}]
 
@@ -320,6 +310,7 @@ binwidth = 100
 # window = [-260000, -250000]
 # arrows = []
 
+gene_oi = transcriptome.gene_id("KLF1")
 window = [-15000, 15000] # KLF1 TSS
 arrows = [
     # {"position": -3500, "orientation": "left", "y": 0.5},
@@ -330,7 +321,10 @@ arrows = [
 # window = [-70000, -50000] # KLF1 upstream
 # arrows = []
 
-# window = [-65000, -45000] # CALR upstream
+# window = [-65000, -40000] # CALR upstream
+# arrows = []
+
+# window = [-10000, 20000] # whatever
 # arrows = []
 
 # window = fragments.regions.window  # all
@@ -438,6 +432,17 @@ for arrow in arrows:
 # ax.set_ylabel("H3K27me\nsignal", rotation = 0, ha = "right", va = "center")
 
 fig.plot()
+
+# %%
+cummean = np.cumsum(~pd.isnull(joined_all.sort_values("deltacor")["HS_LS_logratio"])) / np.arange(1, len(joined_all) + 1)
+fig, ax = plt.subplots()
+plotdata = pd.DataFrame({
+    "deltacor":joined_all.sort_values("deltacor")["deltacor"].values,
+    "perc_crispr":cummean.values,
+}).iloc[::100]
+plotdata = plotdata.loc[plotdata["deltacor"] < -1e-5]
+ax.plot(plotdata["deltacor"], plotdata["perc_crispr"])
+ax.set_xscale("symlog", linthresh = 1e-5)
 
 # %%
 deltacor_bins = [-0.01, -0.005, -0.002, -0.001, -0.0005, -0.0002, -0.0001]
@@ -551,7 +556,8 @@ method_names = [
     # "v30/negative",
     # "v30/effect",
     "accessibility",
-    "v30",
+    "v33",
+    # "v34",
     # "v30/normalized",
     # "v30/interaction",
     # "v30/interaction_effect",
@@ -569,7 +575,7 @@ for method_name in method_names:
             joined_oi["significant_cor"] = joined_oi["deltacor"] < deltacor_cutoff
 
             joined_oi["score"] = -joined_oi["deltacor"]
-            if method_name == "v30":
+            if method_name in ["v30", "v33", "v34"]:
                 joined_oi["score"] = crispri.rolling_max(-joined_oi["deltacor_positive"].values, w)
             if method_name.endswith("normalized"):
                 joined_oi["score"] = crispri.rolling_max(-joined_oi["deltacor_positive"].values / (joined_oi["lost"]+0.00001), w)
@@ -591,6 +597,8 @@ for method_name in method_names:
                 joined_oi["score"] = crispri.rolling_max(joined_oi["effect"].values * (-joined_oi["deltacor2"].values), w)
             elif method_name == "accessibility":
                 joined_oi["score"] = crispri.rolling_max(joined_oi["lost"].values, w)
+            # else:
+            #     raise ValueError("Unknown method: {}".format(method_name))
 
             joined_oi = joined_oi.loc[~pd.isnull(joined_oi["HS_LS_logratio"])].copy()
             
@@ -658,15 +666,14 @@ ax.set_xlim([-10000, 20000])
 peakcallers = [
     "encode_screen",
     "macs2_leiden_0.1_merged",
-    # "macs2_leiden_0.1",
     "cellranger",
     "rolling_500",
     "rolling_100",
-    "rolling_50",
-    # "genrich",
+    # "rolling_50",
 ]
 
 # %%
+import statsmodels as sm
 for peakcaller in peakcallers:
     peakcounts = chd.flow.Flow.from_path(
         path=chromatinhd.get_output() / "datasets" / dataset_name / "peakcounts" / peakcaller / "100k100k"
@@ -676,8 +683,7 @@ for peakcaller in peakcallers:
     transcriptome.var["ix"] = np.arange(transcriptome.var.shape[0])
 
     # for method_name in [peakcaller + "/linear_absolute"]:
-    for method_name in [peakcaller + "/linear"]:
-    # for method_name in [peakcaller + "/linear", peakcaller + "/linear_absolute", peakcaller + "/linear_positive"]:
+    for method_name in [peakcaller + "/linear", peakcaller + "/linear_test"]:
         genescores[method_name] = []
         slicescores[method_name] = []
         allslicescores[method_name] = []
@@ -694,6 +700,15 @@ for peakcaller in peakcallers:
 
             cors = np.corrcoef(x, y)[:-1, -1]
             cors[np.isnan(cors)] = 0
+
+            if method_name.endswith("test"):
+                n = x.shape[1]
+                t = (cors * np.sqrt(n-2))/np.sqrt(1-cors**2)
+                p = scipy.stats.t.sf(np.abs(t), n-2)*2
+                q = sm.stats.multitest.multipletests(p, method = "fdr_bh")[1]
+                cors[q > 0.05] = 0
+            elif method_name.endswith("cutoff"):
+                cors[np.abs(cors) < 0.05] = 0.05
             peakscores = cors
             
             peak_gene_links_oi["cor"] = cors
@@ -709,12 +724,12 @@ for peakcaller in peakcallers:
             for w in ws:
                 joined_oi = joined.copy()
 
-                if method_name.endswith("linear"):
-                    joined_oi["score"] = crispri.rolling_max(joined_oi["cor"].values, w)
-                elif method_name.endswith("linear_absolute"):
+                if method_name.endswith("linear_absolute"):
                     joined_oi["score"] = crispri.rolling_max(np.abs(joined_oi["cor"].abs().values), w)
                 elif method_name.endswith("linear_positive"):
                     joined_oi["score"] = crispri.rolling_max(np.where(joined_oi["cor"] > 0, joined_oi["cor"].values, 0), w)
+                else:
+                    joined_oi["score"] = crispri.rolling_max(joined_oi["cor"].values, w)
 
                 joined_oi = joined_oi.loc[~pd.isnull(joined_oi["HS_LS_logratio"])].copy()
 
@@ -818,11 +833,14 @@ fig.plot()
 # %%
 fig = chd.grid.Figure(chd.grid.Wrap())
 
-w_oi = 10.
+w_oi = 5.
 for method_name, slicescores_oi in allslicescores_stacked.query("w == @w_oi").groupby("method"):
     panel, ax = fig.main.add(chd.grid.Panel((2, 2)))
 
+    # x = slicescores_oi["score"].abs()
     x = np.clip(slicescores_oi["score"].abs(), 0, np.inf)
+    # if method_name == "rolling_500/linear":
+        # x = np.clip(slicescores_oi["score"], 0.1, np.inf)
     # x = -slicescores_oi["score_rank"]
     # x = scipy.stats.rankdata(slicescores_oi["score"] + np.random.normal(scale = 1e-5, size = len(slicescores_oi)))
     y = -slicescores_oi["HS_LS_logratio"]
@@ -830,7 +848,7 @@ for method_name, slicescores_oi in allslicescores_stacked.query("w == @w_oi").gr
 
     cor = np.corrcoef(x, y)[0, 1]
     r2 = cor**2
-    ax.annotate(f"r2 = {r2:.2f}", (0.05, 0.95), xycoords = "axes fraction", ha = "left", va = "top")
+    ax.annotate(f"r2 = {r2*100:.0f}, cor = {cor*100:.0f}", (0.05, 0.95), xycoords = "axes fraction", ha = "left", va = "top")
     ax.scatter(x, y, s = 1)
     ax.set_title(method_name)
 
@@ -871,7 +889,7 @@ methodscores = pd.DataFrame(methodscores)
 methodscores["r2"] = methodscores["cor"]**2
 
 # %%
-w_oi = 10
+w_oi = 5.
 methodscores.loc[(methodscores["method"] == "all") | (methodscores["w"] == w_oi)].style.bar()
 
 # %%
@@ -884,7 +902,7 @@ prediction_methods.loc["accessibility"] = {
     "color":"grey",
     "label":"Accessibility"
 }
-for method_name in ["v30", "v30/positive", "v30/negative", "v30/effect", "v30/interaction", "v30/interaction_abs", "v30/deltacor2", "v30/interaction_effect", "v30/pure_effect", "v30/normalized"]:
+for method_name in ["v30", "v30/positive", "v30/negative", "v30/effect", "v30/interaction", "v30/interaction_abs", "v30/deltacor2", "v30/interaction_effect", "v30/pure_effect", "v30/normalized", "v33", "v34"]:
     prediction_methods.loc[method_name] = {
         "color":"blue",
         "label":"ChromatinHD " + (method_name.split("/")[1] if "/" in method_name else "")
@@ -895,6 +913,8 @@ for peakcaller in peakcallers:
     prediction_methods.loc[peakcaller + "/linear_absolute", "label"] += " abs"
     prediction_methods.loc[peakcaller + "/linear_positive"] = prediction_methods.loc[peakcaller + "/linear"].copy()
     prediction_methods.loc[peakcaller + "/linear_positive", "label"] += " pos"
+    prediction_methods.loc[peakcaller + "/linear_test"] = prediction_methods.loc[peakcaller + "/linear"].copy()
+    prediction_methods.loc[peakcaller + "/linear_test", "label"] += " test"
 
 # %%
 w_oi = 10
@@ -915,7 +935,7 @@ ax.set_yticklabels(prediction_methods.reindex(plotdata["method"])["label"])
 
 panel, ax = fig.main.add_right(chd.grid.Panel((2, len(methods)*0.3)))
 ax.barh(plotdata["method"], plotdata["auroc"], color = color)
-ax.set_xlim(0., 1)
+ax.set_xlim(0.5, 1)
 ax.set_yticks([])
 ax.set_xlabel("AUROC")
 ax.set_title("Fulco et al. 2019")
@@ -973,7 +993,7 @@ ax1.set_xlabel("w")
 
 # %%
 fig, (ax0, ax1) = plt.subplots(1, 2, figsize = (5, 2))
-genescores_oi = genescores_stacked.query("method == 'v30'")
+genescores_oi = genescores_stacked.query("method == 'v34'")
 for gene_name, plotdata in genescores_oi.groupby("gene"):
     ax0.plot(plotdata["w"], plotdata["aupr"], label = gene_name)
     ax1.plot(plotdata["w"], plotdata["auroc"], label = gene_name)
@@ -987,7 +1007,7 @@ sns.heatmap(genescores_stacked.groupby(["w", "method"])["cor"].mean().unstack().
 # %%
 gene_order = transcriptome.var["dispersions_norm"][genes_oi].sort_values(ascending=False).index
 
-w_oi = 25
+w_oi = 5
 
 plotdata = (
     genescores_stacked.loc[(genescores_stacked["w"] == w_oi) | (genescores_stacked["method"] == "all")]
@@ -1007,7 +1027,7 @@ ax.set_xticklabels(transcriptome.symbol(plotdata.columns), rotation=90)
 fig.colorbar(matshow, ax=ax, label="AUPRC")
 
 # %%
-w_oi = genescores_stacked.query("method == 'v30'").set_index("w")["cor"].idxmax()
+w_oi = genescores_stacked.query("method == 'v34'").set_index("w")["cor"].idxmax()
 w_oi
 
 # %%
@@ -1016,33 +1036,36 @@ fig = chd.grid.Figure(chd.grid.Grid(padding_width = 0.2))
 plotdata = genescores_stacked.loc[(genescores_stacked["w"] == w_oi) | (genescores_stacked["method"] == "all")].groupby("method").mean(numeric_only = True).reset_index()
 methods = prediction_methods.loc[plotdata["method"].unique()]
 
-panel, ax = fig.main.add_under(chd.grid.Panel((2, len(methods)*0.3)))
-color = prediction_methods.reindex(plotdata["method"])["color"]
-ax.barh(plotdata["method"], plotdata["aupr"], color = color)
+plotdata["color"] = prediction_methods.reindex(plotdata["method"])["color"].values
+
+panel, ax = fig.main.add_right(chd.grid.Panel((1.2, len(methods)*0.2)))
+
+ax.barh(plotdata["method"], plotdata["cor"], color = plotdata["color"], height = 0.9, lw = 0)
 ax.set_xlim(0., 1)
-ax.set_xlabel("AUPRC")
+ax.set_yticks([])
+ax.set_xlabel("Correlation between\nprediction and CRISPRi")
 ax.set_yticks(np.arange(len(plotdata["method"])))
 ax.set_yticklabels(prediction_methods.reindex(plotdata["method"])["label"])
 
-panel, ax = fig.main.add_right(chd.grid.Panel((2, len(methods)*0.3)))
-ax.barh(plotdata["method"], plotdata["auroc"], color = color)
-ax.set_xlim(0., 1)
-ax.set_yticks([])
-ax.set_xlabel("AUROC")
-ax.set_title("Fulco et al. 2019")
+# panel, ax = fig.main.add_right(chd.grid.Panel((2, len(methods)*0.3)))
+# ax.barh(plotdata["method"], plotdata["aupr"], color = plotdata["color"])
+# ax.set_xlim(0., 1)
+# ax.set_xlabel("AUPRC")
+# ax.set_yticks([])
 
-panel, ax = fig.main.add_right(chd.grid.Panel((2, len(methods)*0.3)))
-ax.barh(plotdata["method"], plotdata["cor"], color = color)
-ax.set_xlim(0., 1)
-ax.set_yticks([])
-ax.set_xlabel("cor")
+# panel, ax = fig.main.add_right(chd.grid.Panel((2, len(methods)*0.3)))
+# ax.barh(plotdata["method"], plotdata["auroc"], color = plotdata["color"])
+# ax.set_xlim(0.5, 1)
+# ax.set_yticks([])
+# ax.set_xlabel("AUROC")
+# ax.set_title("Fulco et al. 2019")
 
 fig.plot()
 
 # %%
 # explore the results of one gene, where is the increase in lfc coming from?
 gene_oi = transcriptome.gene_id("GATA1")
-allslicescores_stacked.query("method == 'v30'").query("w == 30").query("gene == @gene_oi").sort_values("HS_LS_logratio", ascending = False)
+allslicescores_stacked.query("method == 'v34'").query("w == 10").query("gene == @gene_oi").sort_values("HS_LS_logratio", ascending = False)
 
 # %%
 fig, ax = plt.subplots()
@@ -1058,27 +1081,22 @@ ax3.scatter(plotdata["mid"], plotdata["score"], color = "blue")
 # ## Examples
 
 # %%
-w_oi = 0.
+w_oi = 10.
 
 # %%
+m1 = "v34"
+# m1 = "v33"
+m2 = "cellranger/linear"
+
 position_scores = allslicescores_stacked.query("(w == @w_oi)").set_index(["gene", "start", "method"])["score"].unstack()
-position_scores["lfc"] = -allslicescores_stacked.query("(w == @w_oi)").set_index(["gene", "start", "method"])["HS_LS_logratio"].xs("v30", level = "method")
-position_scores["significant_expression"] = allslicescores_stacked.query("(w == 10)").set_index(["gene", "start", "method"])["significant_expression"].xs("v30", level = "method")
+position_scores["lfc"] = -allslicescores_stacked.query("(w == @w_oi)").set_index(["gene", "start", "method"])["HS_LS_logratio"].xs(m1, level = "method")
+position_scores["significant_expression"] = allslicescores_stacked.query("(w == 10)").set_index(["gene", "start", "method"])["significant_expression"].xs(m1, level = "method")
 
 # position_scores = position_scores.loc[position_scores["rolling_500/linear"] > 0.01]
 
 cmap = mpl.cm.Blues
 norm = mpl.colors.Normalize(vmin=-1, vmax=2)
 
-m1 = "v30"
-# m1 = "v30/interaction"
-
-# m2 = "v30"
-# m2 = "rolling_500/linear"
-# m2 = "macs2_leiden_0.1_merged/linear"
-m2 = "cellranger/linear"
-# m2 = "encode_screen/linear"
-# m2 = "rolling_100/linear"
 fig, (ax0, ax1, ax2, ax3) = plt.subplots(1, 4, figsize = (10, 2.5))
 ax0.scatter(
     position_scores[m1],
@@ -1102,9 +1120,11 @@ ax2.scatter(
 ax2.set_xlabel(m2)
 ax2.set_ylabel("lfc")
 
+# select false-positives
 idx_oi = (position_scores.loc[~position_scores["significant_expression"], m1]/position_scores[m1].std() - position_scores.loc[~position_scores["significant_expression"], m2]/position_scores[m2].std()).sort_values()
 position_scores["oi"] = idx_oi < -1.
 
+# select false-negatives
 idx_oi = (position_scores.loc[position_scores["significant_expression"], m1]/position_scores[m1].std() - position_scores.loc[position_scores["significant_expression"], m2]/position_scores[m2].std()).sort_values()
 position_scores["oi"] = idx_oi > 1.
 
@@ -1119,16 +1139,19 @@ ax3.scatter(
 print(np.corrcoef(position_scores["lfc"].abs(), position_scores[m1])[0, 1], np.corrcoef(position_scores["lfc"].abs(), position_scores[m2])[0, 1])
 
 # %%
-idx_oi.tail(20)
+idx_oi.loc[transcriptome.gene_id("CALR")].sort_values().tail(30)
+
+# %%
+idx_oi.tail(40)
 
 # %%
 # peakcaller = "rolling_500"
-# peakcaller = "macs2_leiden_0.1_merged"
-peakcaller = "cellranger"
+peakcaller = "macs2_leiden_0.1_merged"
+# peakcaller = "cellranger"
 # peakcaller = "encode_screen"
 peakcounts = chd.flow.Flow.from_path(
-    path=chromatinhd.get_output() / "datasets" / dataset_name / "peakcounts" / peakcaller / "100k100k"
-    # path=chromatinhd.get_output() / "datasets" / dataset_name / "peakcounts" / peakcaller / "500k500k"
+    # path=chromatinhd.get_output() / "datasets" / dataset_name / "peakcounts" / peakcaller / "100k100k"
+    path=chromatinhd.get_output() / "datasets" / dataset_name / "peakcounts" / peakcaller / "500k500k"
 )
 
 # %%
@@ -1141,9 +1164,10 @@ position_scores["oi"] = idx_oi < -1.
 # gene_oi, locus = idx_oi.index[10]
 # gene_oi, locus
 
-gene_oi, locus = transcriptome.gene_id("GATA1"), 14345
-# gene_oi, locus = transcriptome.gene_id("GATA1"), 15000
-# gene_oi, locus = transcriptome.gene_id("KLF1"), 0
+gene_oi, locus = transcriptome.gene_id("GATA1"), 13916
+# gene_oi, locus = transcriptome.gene_id("KLF1"), 800
+gene_oi, locus = transcriptome.gene_id("CALR"), -123209
+# gene_oi, locus = transcriptome.gene_id("GATA1"), -190302
 
 # %%
 region = fragments.regions.coordinates.loc[gene_oi]
@@ -1242,13 +1266,14 @@ def fill_between_gradient(x, y1, y2, y, ax, cmap, norm, **kwargs):
 # %%
 fig = chd.grid.Figure(chd.grid.Grid(padding_height=0.1))
 
-binwidth = (regionmultiwindow.design["window_end"] - regionmultiwindow.design["window_start"]).iloc[0]
+# binwidth = (regionmultiwindow.design["window_end"] - regionmultiwindow.design["window_start"]).iloc[0]
+binwidth = 100
 
 width = 2
 window = [locus - 2000, locus + 2000]
 arrows = [{"position": locus, "orientation": "right", "y": 0.5}]
 
-panel, ax = fig.main.add_under(chd.plot.genome.Genes.from_region(region, width=width, window=window))
+panel, ax = fig.main.add_under(chd.plot.genome.Genes.from_region(region, width=width, window=window, label_x = True))
 ax.set_xlim(*window)
 
 panel, ax = fig.main.add_under(
@@ -1261,7 +1286,15 @@ panel, ax = fig.main.add_under(
         chd.get_output() / "peaks" / dataset_name,
         window=fragments.regions.window,
         width=width,
-        peakcallers=["cellranger", "macs2_improved", "macs2_leiden_0.1", "macs2_leiden_0.1_merged", "encode_screen"],
+        peakcallers=[
+            "cellranger",
+            # "macs2_improved",
+            # "macs2_leiden_0.1",
+            # "macs2_leiden_0.1_merged",
+            # "encode_screen",
+        ],
+        label_rows = "Peaks",
+        label_methods = False,
     )
 )
 ax.set_xlim(*window)
@@ -1287,20 +1320,26 @@ ax.step(
 ax.set_ylim(*ax.get_ylim()[::-1])
 ax.set_xlim(*window)
 # ax.set_ylabel(f"CRISPRi\nfold enrichment\ngrowth selection", rotation=0, ha="right", va="center")
-ax.set_ylabel(f"CRISPRi\nfold enrichment\nhigh vs low {transcriptome.symbol(gene_oi)}", rotation = 0, ha = "right", va = "center")
+ax.set_ylabel(
+    f"CRISPRi\nfold enrichment\nhigh vs low {transcriptome.symbol(gene_oi)}", rotation=0, ha="right", va="center"
+)
 ax.set_xticks([])
 ax.set_yticks(np.log([0.125, 0.25, 0.5, 1, 2]))
 ax.set_yticklabels(["⅛", "¼", "½", 1, 2])
 
 panel, ax = fig.main.add_under(
-    chd.models.pred.plot.Predictivity(regionmultiwindow.get_plotdata(gene_oi), window=window, width=width, limit = -0.1)
+    chd.models.pred.plot.Predictivity(regionmultiwindow.get_plotdata(gene_oi), window=window, width=width, limit=-0.1, label_y = "ChromatinHD\nprediction")
 )
 for arrow in arrows:
     panel.add_arrow(**arrow)
 
 # difference
 
-for peakcaller in ["cellranger", "macs2_leiden_0.1_merged", "encode_screen"]:
+for peakcaller in [
+    # "cellranger",
+    # "macs2_leiden_0.1_merged",
+    # "encode_screen",
+    ]:
     peakcounts = chd.flow.Flow.from_path(
         path=chromatinhd.get_output() / "datasets" / dataset_name / "peakcounts" / peakcaller / "100k100k"
     )
@@ -1313,19 +1352,19 @@ for peakcaller in ["cellranger", "macs2_leiden_0.1_merged", "encode_screen"]:
 
     norm = mpl.colors.Normalize(vmin=-2, vmax=2)
     cmap = mpl.cm.PiYG
-    fill_between_gradient(joined["window_mid"], joined["peak_score_norm"], joined["chd_score_norm"], joined["peak_score_norm"] - joined["chd_score_norm"], ax, cmap, norm)
+    fill_between_gradient(
+        joined["window_mid"],
+        joined["peak_score_norm"],
+        joined["chd_score_norm"],
+        joined["peak_score_norm"] - joined["chd_score_norm"],
+        ax,
+        cmap,
+        norm,
+    )
 
     ax.set_xlim(*window)
+    ax.set_ylabel(peakcaller)
 # ax.set_ylim(0, 100)
-
-# difference
-# panel, ax = fig.main.add_under(chd.grid.Panel((width, 0.5)))
-
-# norm = mpl.colors.Normalize(vmin=-2, vmax=2)
-# cmap = mpl.cm.PiYG
-# ax.plot(joined["window_mid"], joined["deltacor_positive"].abs()/joined["lost"])
-
-# ax.set_xlim(*window)
 
 fig.plot()
 

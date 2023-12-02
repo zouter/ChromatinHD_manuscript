@@ -6,6 +6,12 @@ It may be that using peaks is important as to maintain power. Perhaps our models
 Of course, this is balanced with an increase in power outside/inside of peaks
 Still, could we measure this somehow? Perhaps using synthetic data where we put in a real peak structure and check whether we need more cells to detect it as differential?
 
+## Is regularization really required?
+
+We use some Bayesian prior to regularize the diff model. But is this really necessary? So far, we only saw this qualitatively.
+
+We have test cells available, so testing this should be easy.
+
 ## Easy regulatory network
 
 Would it be possible to get an "easy" regulatory network from the data? Something like weighting different regions based on how predictive they are on a per-cell basis?

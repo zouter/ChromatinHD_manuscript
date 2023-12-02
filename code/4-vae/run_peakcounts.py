@@ -6,7 +6,7 @@ import tqdm.auto as tqdm
 import chromatinhd as chd
 import chromatinhd.data
 import chromatinhd.loaders.fragmentmotif
-import chromatinhd.loaders.minibatching
+import chromatinhd.loaders.minibatches
 
 import pickle
 
@@ -21,7 +21,7 @@ import pickle
 import numpy as np
 
 n_cells_step = 200
-n_genes_step = 5000
+n_regions_step = 5000
 
 
 class Prediction(chd.flow.Flow):
@@ -37,28 +37,20 @@ for dataset_name in [
     # transcriptome
     folder_data_preproc = folder_data / dataset_name
 
-    transcriptome = chromatinhd.data.Transcriptome(
-        folder_data_preproc / "transcriptome"
-    )
+    transcriptome = chromatinhd.data.Transcriptome(folder_data_preproc / "transcriptome")
 
     # fragments
     # promoter_name, window = "1k1k", np.array([-1000, 1000])
     promoter_name, window = "10k10k", np.array([-10000, 10000])
     # promoter_name, window = "20kpromoter", np.array([-10000, 0])
-    promoters = pd.read_csv(
-        folder_data_preproc / ("promoters_" + promoter_name + ".csv"), index_col=0
-    )
+    promoters = pd.read_csv(folder_data_preproc / ("promoters_" + promoter_name + ".csv"), index_col=0)
 
-    fragments = chromatinhd.data.Fragments(
-        folder_data_preproc / "fragments" / promoter_name
-    )
+    fragments = chromatinhd.data.Fragments(folder_data_preproc / "fragments" / promoter_name)
     fragments.window = window
     fragments.create_cut_data()
 
     for peaks_name in ["cellranger", "macs2", "stack"]:
-        peakcounts = chd.peakcounts.FullPeak(
-            folder=chd.get_output() / "peakcounts" / dataset_name / peaks_name
-        )
+        peakcounts = chd.peakcounts.FullPeak(folder=chd.get_output() / "peakcounts" / dataset_name / peaks_name)
 
         # create design to run
         from design import get_design_peakcount
@@ -81,32 +73,21 @@ for dataset_name in [
         for prediction_name, design_row in design.items():
             print(f"{dataset_name=} {promoter_name=} {peaks_name=} {prediction_name=}")
             prediction = chd.flow.Flow(
-                chd.get_output()
-                / "prediction_vae"
-                / dataset_name
-                / promoter_name
-                / peaks_name
-                / prediction_name
+                chd.get_output() / "prediction_vae" / dataset_name / promoter_name / peaks_name / prediction_name
             )
 
             loader_train = design_row["loader_cls"](**design_row["loader_parameters"])
 
             models = []
-            for fold_ix, fold in [
-                (fold_ix, fold) for fold_ix, fold in enumerate(folds)
-            ][fold_slice]:
+            for fold_ix, fold in [(fold_ix, fold) for fold_ix, fold in enumerate(folds)][fold_slice]:
                 # model
                 model = design_row["model_cls"](**design_row["model_parameters"])
 
                 cells_oi = fold["cells_train"]
-                genes_oi = np.arange(fragments.n_genes)
-                cellxgene_oi = (
-                    cells_oi[:, None] * fragments.n_genes + genes_oi
-                ).flatten()
+                genes_oi = np.arange(fragments.n_regions)
+                cellxgene_oi = (cells_oi[:, None] * fragments.n_genes + genes_oi).flatten()
 
-                minibatch = chd.loaders.minibatching.Minibatch(
-                    cells_oi, genes_oi, cellxgene_oi
-                )
+                minibatch = chd.loaders.minibatching.Minibatch(cells_oi, genes_oi, cellxgene_oi)
                 data = loader_train.load(minibatch)
                 model.fit(data)
 

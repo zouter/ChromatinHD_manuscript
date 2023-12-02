@@ -6,7 +6,7 @@ import tqdm.auto as tqdm
 import chromatinhd as chd
 import chromatinhd.data
 import chromatinhd.loaders.fragmentmotif
-import chromatinhd.loaders.minibatching
+import chromatinhd.loaders.minibatches
 
 import pickle
 
@@ -62,14 +62,10 @@ for dataset_name, design_dataset in design.groupby("dataset"):
 
     promoter_name, window = "10k10k", np.array([-10000, 10000])
     # promoter_name, window = "20kpromoter", np.array([-10000, 0])
-    promoters = pd.read_csv(
-        folder_data_preproc / ("promoters_" + promoter_name + ".csv"), index_col=0
-    )
+    promoters = pd.read_csv(folder_data_preproc / ("promoters_" + promoter_name + ".csv"), index_col=0)
     window_width = window[1] - window[0]
 
-    fragments = chromatinhd.data.Fragments(
-        folder_data_preproc / "fragments" / promoter_name
-    )
+    fragments = chromatinhd.data.Fragments(folder_data_preproc / "fragments" / promoter_name)
     fragments.window = window
 
     # onehot_promoters is going to be loaded if necessary
@@ -82,12 +78,7 @@ for dataset_name, design_dataset in design.groupby("dataset"):
         for method_name, subdesign in subdesign.groupby("method"):
             print(f"{dataset_name=} {promoter_name=} {method_name=}")
             prediction = chd.flow.Flow(
-                chd.get_output()
-                / "prediction_likelihood"
-                / dataset_name
-                / promoter_name
-                / latent_name
-                / method_name
+                chd.get_output() / "prediction_likelihood" / dataset_name / promoter_name / latent_name / method_name
             )
 
             models = []
@@ -97,21 +88,10 @@ for dataset_name, design_dataset in design.groupby("dataset"):
 
                 basepair_ranking = None
 
-                for (peakcaller, diffexp), subdesign in subdesign.groupby(
-                    ["peakcaller", "diffexp"]
-                ):
-                    for ((motifscan_name, enricher), subdesign) in subdesign.groupby(
-                        ["motifscan", "enricher"]
-                    ):
+                for (peakcaller, diffexp), subdesign in subdesign.groupby(["peakcaller", "diffexp"]):
+                    for (motifscan_name, enricher), subdesign in subdesign.groupby(["motifscan", "enricher"]):
                         # create scores dir
-                        scores_dir = (
-                            prediction.path
-                            / "scoring"
-                            / peakcaller
-                            / diffexp
-                            / motifscan_name
-                            / enricher
-                        )
+                        scores_dir = prediction.path / "scoring" / peakcaller / diffexp / motifscan_name / enricher
                         scores_dir.mkdir(parents=True, exist_ok=True)
 
                         desired_outputs = [
@@ -119,12 +99,7 @@ for dataset_name, design_dataset in design.groupby("dataset"):
                             (scores_dir / "scores_regions.pkl"),
                         ]
                         force = subdesign["force"].iloc[0]
-                        if not all(
-                            [
-                                desired_output.exists()
-                                for desired_output in desired_outputs
-                            ]
-                        ):
+                        if not all([desired_output.exists() for desired_output in desired_outputs]):
                             force = True
 
                         if force:
@@ -133,11 +108,7 @@ for dataset_name, design_dataset in design.groupby("dataset"):
                             )
                             # load motifscan
                             motifscan_folder = (
-                                chd.get_output()
-                                / "motifscans"
-                                / dataset_name
-                                / promoter_name
-                                / motifscan_name
+                                chd.get_output() / "motifscans" / dataset_name / promoter_name / motifscan_name
                             )
                             motifscan = chd.data.Motifscan(motifscan_folder)
 
@@ -152,26 +123,18 @@ for dataset_name, design_dataset in design.groupby("dataset"):
                                 / peakcaller
                             )
                             try:
-                                peakresult = pickle.load(
-                                    (peak_scores_dir / "slices.pkl").open("rb")
-                                )
+                                peakresult = pickle.load((peak_scores_dir / "slices.pkl").open("rb"))
                             except FileNotFoundError as e:
                                 print(e)
                                 continue
 
-                            region_scores_dir = (
-                                prediction.path / "scoring" / peakcaller / diffexp
-                            )
-                            regionresult = pickle.load(
-                                (region_scores_dir / "slices.pkl").open("rb")
-                            )
+                            region_scores_dir = prediction.path / "scoring" / peakcaller / diffexp
+                            regionresult = pickle.load((region_scores_dir / "slices.pkl").open("rb"))
 
                             # enrichment of peak result
                             regions = peakresult.get_slicescores()
                             regions["cluster"] = pd.Categorical(
-                                cluster_info.reset_index().set_index("dimension")[
-                                    "cluster"
-                                ][regions["cluster_ix"]]
+                                cluster_info.reset_index().set_index("dimension")["cluster"][regions["cluster_ix"]]
                             )
 
                             if enricher == "cluster_vs_clusters":
@@ -188,14 +151,9 @@ for dataset_name, design_dataset in design.groupby("dataset"):
                             ]:
                                 if onehot_promoters is None:
                                     onehot_promoters = pickle.load(
-                                        (
-                                            folder_data_preproc
-                                            / (
-                                                "onehot_promoters_"
-                                                + promoter_name
-                                                + ".pkl"
-                                            )
-                                        ).open("rb")
+                                        (folder_data_preproc / ("onehot_promoters_" + promoter_name + ".pkl")).open(
+                                            "rb"
+                                        )
                                     ).flatten(0, 1)
                                 enrichmentscores = chd.models.diff.enrichment.enrich_cluster_vs_background(
                                     motifscan,
@@ -206,15 +164,13 @@ for dataset_name, design_dataset in design.groupby("dataset"):
                                     onehot_promoters=onehot_promoters,
                                 )
                             elif enricher in ["cluster_vs_all"]:
-                                enrichmentscores = (
-                                    chd.models.diff.enrichment.enrich_cluster_vs_all(
-                                        motifscan,
-                                        window,
-                                        regions,
-                                        "cluster",
-                                        fragments.n_genes,
-                                        gene_ids=fragments.var.index,
-                                    )
+                                enrichmentscores = chd.models.diff.enrichment.enrich_cluster_vs_all(
+                                    motifscan,
+                                    window,
+                                    regions,
+                                    "cluster",
+                                    fragments.n_genes,
+                                    gene_ids=fragments.var.index,
                                 )
 
                             pickle.dump(
@@ -225,9 +181,7 @@ for dataset_name, design_dataset in design.groupby("dataset"):
                             # enrichment of region result
                             regions = regionresult.get_slicescores()
                             regions["cluster"] = pd.Categorical(
-                                cluster_info.reset_index().set_index("dimension")[
-                                    "cluster"
-                                ][regions["cluster_ix"]]
+                                cluster_info.reset_index().set_index("dimension")["cluster"][regions["cluster_ix"]]
                             )
 
                             if enricher == "cluster_vs_clusters":
@@ -251,15 +205,13 @@ for dataset_name, design_dataset in design.groupby("dataset"):
                                     onehot_promoters=onehot_promoters,
                                 )
                             elif enricher in ["cluster_vs_all"]:
-                                enrichmentscores = (
-                                    chd.models.diff.enrichment.enrich_cluster_vs_all(
-                                        motifscan,
-                                        window,
-                                        regions,
-                                        "cluster",
-                                        fragments.n_genes,
-                                        gene_ids=fragments.var.index,
-                                    )
+                                enrichmentscores = chd.models.diff.enrichment.enrich_cluster_vs_all(
+                                    motifscan,
+                                    window,
+                                    regions,
+                                    "cluster",
+                                    fragments.n_genes,
+                                    gene_ids=fragments.var.index,
                                 )
                             pickle.dump(
                                 enrichmentscores,

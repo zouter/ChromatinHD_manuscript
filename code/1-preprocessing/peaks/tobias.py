@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.14.4
+#       jupytext_version: 1.14.7
 #   kernelspec:
 #     display_name: Python 3 (ipykernel)
 #     language: python
@@ -68,7 +68,7 @@ software_folder = chd.get_git_root() / "software"
 # %% [markdown]
 # ## MACS2
 
-# %% tags=[]
+# %%
 # loading
 latent_name = "leiden_1"
 latent_name = "leiden_0.1"
@@ -76,35 +76,35 @@ latent_name = "leiden_0.1"
 # latent_name = "overexpression"
 latent_folder = folder_data_preproc / "latent"
 
-# %% tags=[]
+# %%
 latent_folder.mkdir()
 
 # %%
 # !rsync -a wsaelens@updeplasrv7.epfl.ch:{latent_folder}/ {latent_folder}/ -v
 
-# %% tags=[]
+# %%
 peaks_folder = folder_root / "peaks" / dataset_name / "macs2_improved"
 
-# %% tags=[]
+# %%
 # !rsync -a wsaelens@updeplasrv7.epfl.ch:{peaks_folder}/ {peaks_folder}/ -v
 
-# %% tags=[]
+# %%
 genome_folder = chd.get_output() / "data" / "genomes" / genome
 
 
-# %% tags=[]
+# %%
 # !ls /data/genome/homo_sapiens/GRCh38.108/Homo_sapiens.GRCh38.dna.primary_assembly.fa
 
-# %% tags=[]
+# %%
 # !ln -s /data/genome/homo_sapiens/GRCh38.108/Homo_sapiens.GRCh38.dna.primary_assembly.fa {folder_data_preproc}/genome/primary_assembly.fa
 
-# %% tags=[]
+# %%
 # !cat {folder_data_preproc}/genome/dna.fa | sed -r 's/(N[CTW]_[0-9]*)/chr\1/g' > {folder_data_preproc}/genome/dna_chr.fa
 
 # %% [markdown]
 # https://github.com/10XGenomics/subset-bam/releases/download/v1.1.0/subset-bam_linux
 
-# %% tags=[]
+# %%
 # !TOBIAS ATACorrect -b {folder_data_preproc}/bam/atac_possorted_bam.bam -g {folder_data_preproc}/genome/dna_chr.fa -p {peaks_folder}/peaks.bed
 
 # %%

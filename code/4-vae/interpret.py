@@ -1,3 +1,18 @@
+# ---
+# jupyter:
+#   jupytext:
+#     text_representation:
+#       extension: .py
+#       format_name: percent
+#       format_version: '1.3'
+#       jupytext_version: 1.14.7
+#   kernelspec:
+#     display_name: Python 3 (ipykernel)
+#     language: python
+#     name: python3
+# ---
+
+# %%
 import pandas as pd
 import numpy as np
 
@@ -91,7 +106,7 @@ for dataset_name in [
 
             gc.collect()
 
-        loaders = chd.loaders.LoaderPool(
+        loaders = chd.loaders.LoaderPoolOld(
             design_row["loader_cls"],
             design_row["loader_parameters"],
             n_workers=10,

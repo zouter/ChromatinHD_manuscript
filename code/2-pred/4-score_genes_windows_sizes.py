@@ -50,9 +50,7 @@ prediction_name = "v20_initdefault"
 # outcome_source = "magic"
 # prediction_name = "v20"
 
-promoters = pd.read_csv(
-    folder_data_preproc / ("promoters_" + promoter_name + ".csv"), index_col=0
-)
+promoters = pd.read_csv(folder_data_preproc / ("promoters_" + promoter_name + ".csv"), index_col=0)
 window_width = window[1] - window[0]
 
 fragments = chd.data.Fragments(folder_data_preproc / "fragments" / promoter_name)
@@ -63,7 +61,7 @@ from design import get_design, get_folds_inference
 
 # folds & minibatching
 folds = pickle.load((fragments.path / "folds" / (splitter + ".pkl")).open("rb"))
-folds, cellxgene_batch_size = get_folds_inference(fragments, folds, n_cells_step=2000)
+folds, cellxregion_batch_size = get_folds_inference(fragments, folds, n_cells_step=2000)
 folds = folds  # [:1]
 
 # design
@@ -74,15 +72,10 @@ design = get_design(transcriptome, fragments)
 design_row = design[prediction_name]
 
 fragments.window = window
-design_row["loader_parameters"]["cellxgene_batch_size"] = cellxgene_batch_size
+design_row["loader_parameters"]["cellxregion_batch_size"] = cellxregion_batch_size
 print(prediction_name)
 prediction = chd.flow.Flow(
-    chd.get_output()
-    / "prediction_positional"
-    / dataset_name
-    / promoter_name
-    / splitter
-    / prediction_name
+    chd.get_output() / "prediction_positional" / dataset_name / promoter_name / splitter / prediction_name
 )
 
 # loaders
@@ -93,7 +86,7 @@ if "loaders" in globals():
 
     gc.collect()
 
-loaders = chd.loaders.LoaderPool(
+loaders = chd.loaders.LoaderPoolOld(
     design_row["loader_cls"],
     design_row["loader_parameters"],
     n_workers=20,
@@ -102,8 +95,7 @@ loaders = chd.loaders.LoaderPool(
 
 # load all models
 models = [
-    pickle.load(open(prediction.path / ("model_" + str(fold_ix) + ".pkl"), "rb"))
-    for fold_ix, fold in enumerate(folds)
+    pickle.load(open(prediction.path / ("model_" + str(fold_ix) + ".pkl"), "rb")) for fold_ix, fold in enumerate(folds)
 ]
 if outcome_source == "counts":
     outcome = transcriptome.X.dense()
@@ -113,7 +105,7 @@ else:
 scores_dir_overall = prediction.path / "scoring" / "overall"
 
 folds = pickle.load((fragments.path / "folds" / (splitter + ".pkl")).open("rb"))
-folds, cellxgene_batch_size = get_folds_inference(fragments, folds, n_cells_step=2000)
+folds, cellxregion_batch_size = get_folds_inference(fragments, folds, n_cells_step=2000)
 folds = folds  # [:1]
 
 # load nothing scoring
@@ -152,9 +144,7 @@ for gene, subdesign in design.groupby("gene", sort=False):
 
     if force:
         try:
-            window_scoring = chd.scoring.prediction.Scoring.load(
-                prediction.path / "scoring" / "window_gene" / gene
-            )
+            window_scoring = chd.scoring.prediction.Scoring.load(prediction.path / "scoring" / "window_gene" / gene)
         except FileNotFoundError:
             continue
 
@@ -171,16 +161,14 @@ for gene, subdesign in design.groupby("gene", sort=False):
         print(windows_oi)
 
         print(gene)
-        folds_filtered, cellxgene_batch_size = get_folds_inference(
+        folds_filtered, cellxregion_batch_size = get_folds_inference(
             fragments, folds, n_cells_step=2000, genes_oi=genes_oi
         )
 
         # filterer = chd.scoring.prediction.filterers.WindowSizeAll(
         #     window, window_size=100, sizes=sizes
         # )
-        filterer = chd.scoring.prediction.filterers.WindowSize(
-            windows=windows_oi, sizes=sizes
-        )
+        filterer = chd.scoring.prediction.filterers.WindowSize(windows=windows_oi, sizes=sizes)
         scorer = chd.scoring.prediction.Scorer2(
             models,
             folds_filtered[: len(models)],

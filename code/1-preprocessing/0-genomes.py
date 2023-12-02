@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.14.5
+#       jupytext_version: 1.14.7
 #   kernelspec:
 #     display_name: Python 3 (ipykernel)
 #     language: python
@@ -176,6 +176,9 @@ pickle.dump(
 
 # %% [markdown]
 # ### Genes
+
+# %% [markdown]
+# Get the gene annotaton from ensembl biomart
 
 # %%
 biomart_dataset_name = "mmusculus_gene_ensembl"

@@ -6,12 +6,15 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.14.5
+#       jupytext_version: 1.14.7
 #   kernelspec:
 #     display_name: Python 3
 #     language: python
 #     name: python3
 # ---
+
+# %% [markdown]
+# # Visualizing co-predictivity for individual genes
 
 # %%
 from IPython import get_ipython
@@ -51,41 +54,16 @@ folder_data = folder_root / "data"
 dataset_name = "pbmc10k"
 # dataset_name = "pbmc10k_gran"
 # dataset_name = "e18brain"
-folder_data_preproc = folder_data / dataset_name
+folder_dataset = chd.get_output() / "datasets" / dataset_name
 
-transcriptome = chd.data.Transcriptome(folder_data_preproc / "transcriptome")
+transcriptome = chd.data.Transcriptome(folder_dataset / "transcriptome")
 
-splitter = "random_5fold"
-promoter_name, window = "10k10k", np.array([-10000, 10000])
-prediction_name = "v20_initdefault"
-
-splitter = "permutations_5fold5repeat"
-promoter_name, window = "10k10k", np.array([-10000, 10000])
-prediction_name = "v20"
-
-splitter = "permutations_5fold5repeat"
-promoter_name, window = "100k100k", np.array([-100000, 100000])
-prediction_name = "v20_initdefault"
+splitter = "5x5"
+regions_name = "100k100k"
+prediction_name = "v30"
 
 # fragments
-promoters = pd.read_csv(
-    folder_data_preproc / ("promoters_" + promoter_name + ".csv"), index_col=0
-)
-window_width = window[1] - window[0]
-
-fragments = chd.data.Fragments(folder_data_preproc / "fragments" / promoter_name)
-fragments.obs.index.name = "cell"
-
-# %%
-print(prediction_name)
-prediction = chd.flow.Flow(
-    chd.get_output()
-    / "prediction_positional"
-    / dataset_name
-    / promoter_name
-    / splitter
-    / prediction_name
-)
+fragments = chd.data.Fragments(folder_dataset / "fragments" / regions_name)
 
 # %% [markdown]
 # ## Select gene
@@ -96,14 +74,13 @@ prediction = chd.flow.Flow(
 # symbol = "PAX5"
 # symbol = "IRF8"
 # symbol = "BCL2"
-symbol = "BACE2"
-symbol = "CD79A"
-symbol = "MAP4K2"
+# symbol = "BACE2"
+# symbol = "CD79A"
+# symbol = "MAP4K2"
 # symbol = "CD74"
 # symbol = "CXCR5"
 # symbol = "SPIB"
-# symbol = "BCL2"
-symbol = "CCL4"
+symbol = "BCL2"
 gene = transcriptome.var.query("symbol == @symbol").index[0]
 print(symbol)
 
@@ -129,9 +106,8 @@ step = 1000
 
 if cool_name == "rao_2014_1kb":
     c = cooler.Cooler(
-        str(chd.get_output() / "4DNFIXP4QG5B.mcool") + "::/resolutions/1000"
+        str(chd.get_output() / "HiC/4DNFIXP4QG5B.mcool") + "::/resolutions/1000"
     )
-elif cool_name == "gu_2021_500bp":
 
 hic, bins_hic = chdm.hic.extract_hic(promoter, c=c)
 import itertools
@@ -299,7 +275,7 @@ for distance1, distance2 in tqdm.tqdm(distslices[["distance1", "distance2"]].val
     width = len(matching_oi["windowmid"].unique()) * resolution
     height = len(matching_oi["dist"].unique()) * resolution
     panel = fig.main.add_under(chd.grid.Panel((width, height)), padding=0)
-    chd.plot.matshow45(
+    chd.plotting.matshow45(
         panel.ax,
         matching_oi["cor"],
         radius=1000 / 2,
@@ -314,7 +290,7 @@ for distance1, distance2 in tqdm.tqdm(distslices[["distance1", "distance2"]].val
     panel.ax.set_yticklabels([f"{distance1/1000:.0f}kb-{distance2/1000:.0f}kb"])
 
     panel = fig.main.add_under(chd.grid.Panel((width, height)))
-    chd.plot.matshow45(
+    chd.plotting.matshow45(
         panel.ax,
         matching_oi["balanced"],
         radius=1000 / 2,

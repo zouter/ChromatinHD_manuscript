@@ -6,7 +6,7 @@ import tqdm.auto as tqdm
 import chromatinhd as chd
 import chromatinhd.data
 import chromatinhd.loaders.fragmentmotif
-import chromatinhd.loaders.minibatching
+import chromatinhd.loaders.minibatches
 
 import pickle
 
@@ -63,9 +63,7 @@ def calculate_scores(
         X_validation = peakcounts_clusters[:, peak_ixs][[validation_cluster]]
 
         rmse = predictor_func(X, y, X_validation, y_validation)
-        scores.append(
-            {"gene_ix": gene_ix, "rmse": rmse, "validation_cluster": validation_cluster}
-        )
+        scores.append({"gene_ix": gene_ix, "rmse": rmse, "validation_cluster": validation_cluster})
     return pd.DataFrame(scores)
 
 
@@ -103,26 +101,19 @@ for dataset_name, subdesign in design.groupby("dataset"):
                 # check if outputs are already there
                 desired_outputs = [(scores_dir / "scores.pkl")]
                 force = subdesign["force"].iloc[0]
-                if not all(
-                    [desired_output.exists() for desired_output in desired_outputs]
-                ):
+                if not all([desired_output.exists() for desired_output in desired_outputs]):
                     force = True
 
                 if force:
                     # get peak counts
                     peakcounts = chd.peakcounts.FullPeak(
-                        folder=chd.get_output()
-                        / "peakcounts"
-                        / dataset_name
-                        / peakcaller
+                        folder=chd.get_output() / "peakcounts" / dataset_name / peakcaller
                     )
                     peakcounts_clusters = np.vstack(
                         pd.from_dummies(latent)
                         .rename(columns=lambda x: "latent")
                         .groupby("latent")
-                        .apply(
-                            lambda x: np.array(peakcounts.counts[x.index].mean(0))[0]
-                        )
+                        .apply(lambda x: np.array(peakcounts.counts[x.index].mean(0))[0])
                     )
 
                     # get y cluster
@@ -141,9 +132,7 @@ for dataset_name, subdesign in design.groupby("dataset"):
                     scores = []
 
                     for validation_cluster in np.arange(len(cluster_info)):
-                        train_clusters = (
-                            np.arange(len(cluster_info)) != validation_cluster
-                        )
+                        train_clusters = np.arange(len(cluster_info)) != validation_cluster
 
                         scores_validation_cluster = calculate_scores(
                             peakcounts,
@@ -153,13 +142,9 @@ for dataset_name, subdesign in design.groupby("dataset"):
                             validation_cluster,
                             predictor_func,
                         )
-                        scores_validation_cluster[
-                            "validation_cluster"
-                        ] = validation_cluster
+                        scores_validation_cluster["validation_cluster"] = validation_cluster
                         scores.append(scores_validation_cluster)
 
-                    scores = pd.concat(scores).set_index(
-                        ["gene_ix", "validation_cluster"]
-                    )
+                    scores = pd.concat(scores).set_index(["gene_ix", "validation_cluster"])
 
                     pickle.dump(scores, (scores_dir / "scores.pkl").open("wb"))

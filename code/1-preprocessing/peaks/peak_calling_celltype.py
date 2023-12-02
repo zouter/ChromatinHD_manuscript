@@ -46,7 +46,8 @@ dataset_name = "pbmc10k_gran"
 # dataset_name = "e18brain"
 # dataset_name = "alzheimer"
 # dataset_name = "brain"
-dataset_name = "morf_20"
+dataset_name = "hspc"
+dataset_name = "hspc_gmp"
 
 folder_data_preproc = folder_data / dataset_name
 folder_data_preproc.mkdir(exist_ok = True, parents = True)
@@ -58,19 +59,15 @@ software_folder = chd.get_git_root() / "software"
 # ## MACS2
 
 # %%
-# load latent space
-
-# %%
 # loading
 latent_name = "leiden_1"
 latent_name = "leiden_0.1"
 # latent_name = "celltype"
 # latent_name = "overexpression"
-folder_data_preproc = folder_data / dataset_name
-latent_folder = folder_data_preproc / "latent"
-latent = pickle.load((latent_folder / (latent_name + ".pkl")).open("rb"))
+dataset_folder = chd.get_output() / "datasets" / dataset_name
+latent_folder = dataset_folder / "latent"
 
-n_latent_dimensions = latent.shape[-1]
+clustering = chd.data.Clustering(latent_folder / latent_name)
 
 # %%
 peaks_folder = folder_root / "peaks" / dataset_name / ("macs2_" + latent_name)
@@ -84,10 +81,15 @@ tmp_fragments_folder.mkdir(exist_ok = True)
 import gzip
 
 # %%
+latent = pd.get_dummies(clustering.labels)
+
+# %%
+# extract fragments for each cluster
 # should take a couple of minutes for pbmc10k
-cluster_fragments = [(tmp_fragments_folder / (str(cluster_ix) + ".tsv")).open("w") for cluster_ix in range(n_latent_dimensions)]
+cluster_fragments = [(tmp_fragments_folder / (str(cluster_ix) + ".tsv")).open("w") for cluster_ix in range(clustering.n_clusters)]
 cell_to_cluster = dict(zip(latent.index, np.where(latent)[1]))
 
+n = 0
 for l in gzip.GzipFile((folder_data_preproc / "atac_fragments.tsv.gz"), "r"):
     l = l.decode("utf-8")
     if l.startswith("#"):
@@ -95,20 +97,22 @@ for l in gzip.GzipFile((folder_data_preproc / "atac_fragments.tsv.gz"), "r"):
     cell = l.split("\t")[3].strip()
     
     if cell in cell_to_cluster:
+        n += 1
         cluster_fragments[cell_to_cluster[cell]].write(l)
     else:
-        print("wat")
+        pass
+        # print("wat")
 
 # %%
 # !ls {peaks_folder}/tmp
 
 # %%
-for cluster_ix in range(n_latent_dimensions):
+for cluster_ix in range(clustering.n_clusters):
     # !echo 'cd {peaks_folder} && macs2 callpeak --nomodel -t {peaks_folder}/tmp/{cluster_ix}.tsv -f BEDPE && cp {peaks_folder}/NA_peaks.narrowPeak {peaks_folder}/peaks_{cluster_ix}.bed'
 
 # %%
 with (peaks_folder / "peaks.bed").open("w") as outfile:
-    for cluster_ix in range(n_latent_dimensions):
+    for cluster_ix in range(clustering.n_clusters):
         bed = pd.read_table(peaks_folder / ("peaks_" + str(cluster_ix) + ".bed"), names = ["chr", "start", "end"], usecols = range(3))
         bed["strand"] = cluster_ix
         outfile.write(bed.to_csv(sep = "\t", header = False, index = False))
@@ -136,7 +140,3 @@ pybedtools.BedTool(original_peaks_folder / "peaks.bed").sort().merge().saveas(pe
 # %%
 x = pybedtools.BedTool(original_peaks_folder / "peaks.bed").sort().merge()
 x.to_dataframe().to_csv(peaks_folder / "peaks.bed", header = False, index = False, sep = "\t")
-
-# %%
-
-# %%

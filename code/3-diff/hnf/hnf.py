@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.14.1
+#       jupytext_version: 1.14.7
 #   kernelspec:
 #     display_name: Python 3 (ipykernel)
 #     language: python
@@ -89,7 +89,7 @@ transform = likelihood_model.spline.DifferentialQuadraticSplineStack(
     nbins=nbins, n_genes=n_genes
 )
 
-# %% tags=[]
+# %%
 transform.unnormalized_widths.data = transform.unnormalized_widths.data.to(dtype)
 transform.unnormalized_heights.data = transform.unnormalized_heights.data.to(dtype)
 

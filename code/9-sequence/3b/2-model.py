@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.14.1
+#       jupytext_version: 1.14.7
 #   kernelspec:
 #     display_name: Python 3 (ipykernel)
 #     language: python
@@ -40,7 +40,7 @@ import scanpy as sc
 
 import pathlib
 
-# export LD_LIBRARY_PATH=/data/peak_free_atac/software/peak_free_atac/lib
+
 import torch
 import torch_sparse
 
@@ -64,9 +64,7 @@ folder_data_preproc = folder_data / dataset_name
 # %%
 # promoter_name, window = "4k2k", (2000, 4000)
 promoter_name, window = "10k10k", np.array([-10000, 10000])
-promoters = pd.read_csv(
-    folder_data_preproc / ("promoters_" + promoter_name + ".csv"), index_col=0
-)
+promoters = pd.read_csv(folder_data_preproc / ("promoters_" + promoter_name + ".csv"), index_col=0)
 window_width = window[1] - window[0]
 
 # %%
@@ -74,9 +72,7 @@ transcriptome = chd.data.Transcriptome(folder_data_preproc / "transcriptome")
 fragments = chd.data.Fragments(folder_data_preproc / "fragments" / promoter_name)
 
 # %%
-motifscan_folder = (
-    chd.get_output() / "motifscans" / dataset_name / promoter_name / "cutoff_001"
-)
+motifscan_folder = chd.get_output() / "motifscans" / dataset_name / promoter_name / "cutoff_001"
 motifscan = chd.data.Motifscan(motifscan_folder)
 
 # %%
@@ -121,12 +117,7 @@ n_fragmentxlocus = n_fragments * 600
 
 # %%
 n_gigs = (
-    (
-        (n_fragmentxlocus * 32)
-        + (n_fragmentxlocus * 32)
-        + (n_fragmentxlocus * 32)
-        + (n_fragmentxlocus * 32)
-    )
+    ((n_fragmentxlocus * 32) + (n_fragmentxlocus * 32) + (n_fragmentxlocus * 32) + (n_fragmentxlocus * 32))
     / 8
     / 1024
     / 1024
@@ -211,26 +202,19 @@ genes_oi = np.arange(0, 100)
 
 cellxgene_oi = (cells_oi[:, None] * fragments.n_genes + genes_oi).flatten()
 cellxgene_oi_indptr = np.pad(
-    np.cumsum(
-        fragments.cellxgene_indptr[cellxgene_oi + 1]
-        - fragments.cellxgene_indptr[cellxgene_oi]
-    ),
+    np.cumsum(fragments.cellxgene_indptr[cellxgene_oi + 1] - fragments.cellxgene_indptr[cellxgene_oi]),
     (1, 0),
     "constant",
 )
 
-fragments_oi = torch.isin(
-    fragments.mapping[:, 0], torch.from_numpy(cells_oi)
-) & torch.isin(fragments.mapping[:, 1], torch.from_numpy(genes_oi))
+fragments_oi = torch.isin(fragments.mapping[:, 0], torch.from_numpy(cells_oi)) & torch.isin(
+    fragments.mapping[:, 1], torch.from_numpy(genes_oi)
+)
 n_fragments = fragments_oi.sum()
 
-coordinates = np.ascontiguousarray(
-    fragments.coordinates[fragments_oi].to(torch.int64).numpy()
-)
+coordinates = np.ascontiguousarray(fragments.coordinates[fragments_oi].to(torch.int64).numpy())
 mapping = np.ascontiguousarray(fragments.mapping[fragments_oi].to(torch.int64).numpy())
-genemapping = np.ascontiguousarray(
-    fragments.mapping[fragments_oi, 1].to(torch.int64).numpy()
-)
+genemapping = np.ascontiguousarray(fragments.mapping[fragments_oi, 1].to(torch.int64).numpy())
 
 # %%
 n_motifs = motifscan.shape[1]
@@ -246,9 +230,7 @@ out_fragment_indptr = torch.from_numpy(np.zeros(buffer_size, dtype=int)).numpy()
 out_motif_ix = torch.from_numpy(np.zeros(buffer_size, dtype=int)).numpy()
 out_score = torch.from_numpy(np.zeros(buffer_size, dtype=np.float64)).numpy()
 out_distance = torch.from_numpy(np.zeros(buffer_size, dtype=int)).numpy()
-out_motifcounts = torch.from_numpy(
-    np.ascontiguousarray(np.zeros((n_fragments, n_motifs), dtype=int))
-).numpy()
+out_motifcounts = torch.from_numpy(np.ascontiguousarray(np.zeros((n_fragments, n_motifs), dtype=int))).numpy()
 
 # %%
 out_n = chd.loaders.extraction.motifs.extract_all(
@@ -264,7 +246,7 @@ out_n = chd.loaders.extraction.motifs.extract_all(
     out_motif_ix,
     out_score,
     out_distance,
-    out_motifcounts
+    out_motifcounts,
 )
 
 # %% [markdown]
@@ -281,33 +263,21 @@ motif_scores = pd.DataFrame(
         "motif_index": out_motif_ix[:out_n],
         "locus_score": out_score[:out_n],
         "locus_distance": out_distance[:out_n],
-        "fragment_ix": np.repeat(
-            np.arange(n_fragments), np.diff(out_fragment_indptr[: n_fragments + 1])
-        ),
+        "fragment_ix": np.repeat(np.arange(n_fragments), np.diff(out_fragment_indptr[: n_fragments + 1])),
     }
 )
 motif_scores["gene_ix"] = mapping[motif_scores["fragment_ix"].values, 1]
 motif_scores["cell_ix"] = mapping[motif_scores["fragment_ix"].values, 0]
-motif_scores["local_gene_ix"] = pd.Series(np.arange(len(genes_oi)), index=genes_oi)[
-    motif_scores["gene_ix"]
-].values
-motif_scores["local_cell_ix"] = pd.Series(np.arange(len(cells_oi)), index=cells_oi)[
-    motif_scores["cell_ix"]
-].values
-motif_scores["locall_cellxgene_ix"] = (
-    motif_scores["local_cell_ix"] * len(genes_oi) + motif_scores["local_gene_ix"]
-)
+motif_scores["local_gene_ix"] = pd.Series(np.arange(len(genes_oi)), index=genes_oi)[motif_scores["gene_ix"]].values
+motif_scores["local_cell_ix"] = pd.Series(np.arange(len(cells_oi)), index=cells_oi)[motif_scores["cell_ix"]].values
+motif_scores["locall_cellxgene_ix"] = motif_scores["local_cell_ix"] * len(genes_oi) + motif_scores["local_gene_ix"]
 
 # %%
 # select the site that scores best on a particular motif
 motifs_oi["ix"] = np.arange(motifs_oi.shape[0])
 motif_ix = motifs_oi.query("gene_label == 'FOXQ1'")["ix"][0]
 # motif_ix = 10
-best = (
-    motif_scores.query("motif_index == @motif_ix")
-    .sort_values("locus_score", ascending=False)
-    .iloc[0]
-)
+best = motif_scores.query("motif_index == @motif_ix").sort_values("locus_score", ascending=False).iloc[0]
 ingene_mid = int(best["locus_distance"])
 gene_ix = int(best["gene_ix"])
 
@@ -342,9 +312,7 @@ if "genome" not in globals():
     genome = pickle.load(gzip.GzipFile((folder_data_preproc / "genome.pkl.gz"), "rb"))
 
 # %%
-chromosome, promoter_start, promoter_end, strand = promoters.iloc[gene_ix][
-    ["chr", "start", "end", "strand"]
-]
+chromosome, promoter_start, promoter_end, strand = promoters.iloc[gene_ix][["chr", "start", "end", "strand"]]
 strand
 
 # %%
@@ -363,9 +331,7 @@ nucleotides = pd.DataFrame({"nucleotide": np.arange(4), "label": ["A", "C", "G",
 nucleotides["color"] = sns.color_palette(n_colors=4)
 
 # %%
-fig, (ax_score, ax_onehot, ax_pwm, ax_onehotrev, ax_scorerev) = plt.subplots(
-    5, 1, figsize=(3, 4), sharex=True
-)
+fig, (ax_score, ax_onehot, ax_pwm, ax_onehotrev, ax_scorerev) = plt.subplots(5, 1, figsize=(3, 4), sharex=True)
 
 ntscores = pwm.flatten()[onehot.flatten().to(bool)]
 ax_score.fill_between(np.arange(onehot.shape[0]), ntscores, color="#55555533")
@@ -419,9 +385,7 @@ for x, y, s, c in zip(
             mpl.patheffects.Normal(),
         ],
     )
-for (nucleotide, x), y in (
-    pd.DataFrame(pwm.numpy()[::-1, [3, 2, 1, 0]]).unstack().items()
-):
+for (nucleotide, x), y in pd.DataFrame(pwm.numpy()[::-1, [3, 2, 1, 0]]).unstack().items():
     s = nucleotides.loc[nucleotide, "label"]
     c = nucleotides.loc[nucleotide, "color"]
     ax_scorerev.text(x, y, s, ha="center", va="center", color=c, alpha=0.3)
@@ -432,9 +396,7 @@ reverse_score = (onehot.numpy()[::-1, [3, 2, 1, 0]] * pwm.numpy()).sum()
 forward_score, reverse_score
 
 # %%
-assert np.isclose(best["locus_score"], reverse_score) or np.isclose(
-    best["locus_score"], forward_score
-)
+assert np.isclose(best["locus_score"], reverse_score) or np.isclose(best["locus_score"], forward_score)
 
 # %% [markdown]
 # ## Extracting fragments
@@ -520,9 +482,7 @@ genes_oi = np.arange(0, n_genes)
 
 cellxgene_oi = (cells_oi[:, None] * fragments.n_genes + genes_oi).flatten()
 
-minibatch = chromatinhd.loaders.minibatching.Minibatch(
-    cellxgene_oi=cellxgene_oi, cells_oi=cells_oi, genes_oi=genes_oi
-)
+minibatch = chromatinhd.loaders.minibatches.Minibatch(cellxgene_oi=cellxgene_oi, cells_oi=cells_oi, genes_oi=genes_oi)
 data = loader.load(minibatch)
 
 # %%
@@ -539,9 +499,7 @@ data = loader.load(minibatch)
 n_cells = 100
 n_genes = 10
 cutwindow = np.array([-150, 150])
-loader = chromatinhd.loaders.fragmentmotif.Full(
-    fragments, motifscan, n_cells * n_genes, window, cutwindow
-)
+loader = chromatinhd.loaders.fragmentmotif.Full(fragments, motifscan, n_cells * n_genes, window, cutwindow)
 
 # %%
 cells_oi = np.arange(0, n_cells)
@@ -549,9 +507,7 @@ genes_oi = np.arange(0, n_genes)
 
 cellxgene_oi = (cells_oi[:, None] * fragments.n_genes + genes_oi).flatten()
 
-minibatch = chromatinhd.loaders.minibatching.Minibatch(
-    cellxgene_oi=cellxgene_oi, cells_oi=cells_oi, genes_oi=genes_oi
-)
+minibatch = chromatinhd.loaders.minibatches.Minibatch(cellxgene_oi=cellxgene_oi, cells_oi=cells_oi, genes_oi=genes_oi)
 data = loader.load(minibatch)
 
 # %%
@@ -568,9 +524,7 @@ full_result = loader.load(cellxgene_oi, cells_oi=cells_oi, genes_oi=genes_oi)
 n_cells = 300
 n_genes = 1000
 cutwindow = np.array([-150, 150])
-loader = chromatinhd.loaders.fragmentmotif.Motifcounts(
-    fragments, motifscan, n_cells * n_genes, window, cutwindow
-)
+loader = chromatinhd.loaders.fragmentmotif.Motifcounts(fragments, motifscan, n_cells * n_genes, window, cutwindow)
 # loader = chromatinhd.loaders.fragmentmotif.MotifcountsSplit(fragments, motifscan, n_cells * n_genes, window, cutwindow)
 
 # %%
@@ -580,9 +534,7 @@ genes_oi = rg.choice(fragments.n_genes, n_genes)
 
 cellxgene_oi = (cells_oi[:, None] * fragments.n_genes + genes_oi).flatten()
 
-minibatch = chromatinhd.loaders.minibatching.Minibatch(
-    cellxgene_oi=cellxgene_oi, cells_oi=cells_oi, genes_oi=genes_oi
-)
+minibatch = chromatinhd.loaders.minibatches.Minibatch(cellxgene_oi=cellxgene_oi, cells_oi=cells_oi, genes_oi=genes_oi)
 data = loader.load(minibatch)
 
 # %%
@@ -607,9 +559,7 @@ genes_oi = rg.choice(fragments.n_genes, n_genes)
 
 cellxgene_oi = (cells_oi[:, None] * fragments.n_genes + genes_oi).flatten()
 
-minibatch = chromatinhd.loaders.minibatching.Minibatch(
-    cellxgene_oi=cellxgene_oi, cells_oi=cells_oi, genes_oi=genes_oi
-)
+minibatch = chromatinhd.loaders.minibatches.Minibatch(cellxgene_oi=cellxgene_oi, cells_oi=cells_oi, genes_oi=genes_oi)
 
 # %%
 n_cells = 300
@@ -633,9 +583,7 @@ data = loader.load(minibatch)
 n_cells = 300
 n_genes = 1000
 cutwindows = np.array([-150, 0])
-loader = chromatinhd.loaders.fragmentmotif.Motifcounts(
-    fragments, motifscan, n_cells * n_genes, window, cutwindows
-)
+loader = chromatinhd.loaders.fragmentmotif.Motifcounts(fragments, motifscan, n_cells * n_genes, window, cutwindows)
 
 # %%
 data = loader.load(minibatch)
@@ -678,12 +626,12 @@ cutwindow = np.array([-150, 150])
 import chromatinhd.loaders.fragmentmotif
 
 # %%
-loaders = chromatinhd.loaders.pool.LoaderPool(
+loaders = chromatinhd.loaders.pool.LoaderPoolOld(
     chromatinhd.loaders.fragmentmotif.Motifcounts,
     {
         "fragments": fragments,
         "motifscan": motifscan,
-        "cellxgene_batch_size": n_cells * n_genes,
+        "cellxregion_batch_size": n_cells * n_genes,
         "window": window,
         "cutwindow": cutwindow,
     },
@@ -703,11 +651,7 @@ for i in range(2):
 
     cellxgene_oi = (cells_oi[:, None] * fragments.n_genes + genes_oi).flatten()
 
-    data.append(
-        chd.loaders.minibatching.Minibatch(
-            cells_oi=cells_oi, genes_oi=genes_oi, cellxgene_oi=cellxgene_oi
-        )
-    )
+    data.append(chd.loaders.minibatching.Minibatch(cells_oi=cells_oi, genes_oi=genes_oi, cellxgene_oi=cellxgene_oi))
 loaders.initialize(data)
 
 # %%
@@ -811,9 +755,7 @@ ax0.set_xlabel("component")
 from chromatinhd.models.promotermotif.v3 import EmbeddingToExpression
 
 # %%
-embedding_to_expression = EmbeddingToExpression(
-    n_components=n_features, mean_gene_expression=mean_gene_expression
-)
+embedding_to_expression = EmbeddingToExpression(n_components=n_features, mean_gene_expression=mean_gene_expression)
 # embedding_to_expression = EmbeddingToExpressionBias(fragments.n_genes, n_components = n_components, mean_gene_expression = mean_gene_expression)
 
 # %%
@@ -826,9 +768,7 @@ expression_predicted = embedding_to_expression(cell_gene_embedding, data.genes_o
 from chromatinhd.models.promotermotif.v3 import FragmentEmbeddingToExpression
 
 # %%
-model = FragmentEmbeddingToExpression(
-    fragments.n_genes, mean_gene_expression, n_features
-)
+model = FragmentEmbeddingToExpression(fragments.n_genes, mean_gene_expression, n_features)
 
 # %%
 model(data)
@@ -874,14 +814,14 @@ if "loaders_validation" in globals():
 
     gc.collect()
 print("collected")
-loaders = chd.loaders.LoaderPool(
+loaders = chd.loaders.LoaderPoolOld(
     design_row["loader_cls"],
     design_row["loader_parameters"],
     shuffle_on_iter=True,
     n_workers=20,
 )
 print("haha!")
-loaders_validation = chd.loaders.LoaderPool(
+loaders_validation = chd.loaders.LoaderPoolOld(
     design_row["loader_cls"],
     design_row["loader_parameters"],
     shuffle_on_iter=False,
@@ -902,9 +842,7 @@ folds = get_folds_training(fragments, folds)
 
 def paircor(x, y, dim=0, eps=0.1):
     divisor = (y.std(dim) * x.std(dim)) + eps
-    cor = ((x - x.mean(dim, keepdims=True)) * (y - y.mean(dim, keepdims=True))).mean(
-        dim
-    ) / divisor
+    cor = ((x - x.mean(dim, keepdims=True)) * (y - y.mean(dim, keepdims=True))).mean(dim) / divisor
     return cor
 
 
@@ -918,19 +856,14 @@ loss = lambda x, y: -paircor(x, y).mean() * 100
 # mse_loss = torch.nn.MSELoss()
 # loss = lambda x, y: mse_loss(zscore(x), zscore(y)) * 10.
 
+
 # %%
 class Prediction(chd.flow.Flow):
     pass
 
 
 print(prediction_name)
-prediction = chd.flow.Flow(
-    chd.get_output()
-    / "prediction_sequence"
-    / dataset_name
-    / promoter_name
-    / prediction_name
-)
+prediction = chd.flow.Flow(chd.get_output() / "prediction_sequence" / dataset_name / promoter_name / prediction_name)
 
 # %%
 fold_ix = 0
@@ -989,14 +922,10 @@ trainer = chd.train.Trainer(
 trainer.train()
 
 # %%
-pd.DataFrame(trainer.trace.validation_steps).groupby("checkpoint").mean()["loss"].plot(
-    label="validation"
-)
+pd.DataFrame(trainer.trace.validation_steps).groupby("checkpoint").mean()["loss"].plot(label="validation")
 
 # %%
-pd.DataFrame(trainer.trace.train_steps).groupby("checkpoint").mean()["loss"].plot(
-    label="train"
-)
+pd.DataFrame(trainer.trace.train_steps).groupby("checkpoint").mean()["loss"].plot(label="train")
 
 # %%
 # model = model.to("cpu")
@@ -1066,9 +995,7 @@ plotdata = pd.DataFrame(
     }
 )
 plotdata["dispersions_norm"] = pd.Series(
-    transcriptome.var["dispersions_norm"][
-        transcriptome.gene_id(motifs_oi["gene_label"]).values
-    ].values,
+    transcriptome.var["dispersions_norm"][transcriptome.gene_id(motifs_oi["gene_label"]).values].values,
     index=motifs_oi.index,
 )
 
@@ -1083,9 +1010,7 @@ sns.stripplot(plotdata, y="linear_score", x="is_variable")
 
 # %%
 exp = pd.DataFrame(
-    transcriptome.adata[
-        :, transcriptome.gene_id(motifs_oi["gene_label"].values).values
-    ].X.todense(),
+    transcriptome.adata[:, transcriptome.gene_id(motifs_oi["gene_label"].values).values].X.todense(),
     index=transcriptome.adata.obs.index,
     columns=motifs_oi.index,
 )
@@ -1093,9 +1018,7 @@ exp = pd.DataFrame(
 # %%
 
 # %%
-sc.get.obs_df(
-    transcriptome.adata, transcriptome.gene_id(motifs_oi["gene_label"].values).values
-)
+sc.get.obs_df(transcriptome.adata, transcriptome.gene_id(motifs_oi["gene_label"].values).values)
 
 # %%
 transcriptome.var

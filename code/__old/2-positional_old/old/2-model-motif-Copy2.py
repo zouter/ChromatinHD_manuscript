@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.14.1
+#       jupytext_version: 1.14.7
 #   kernelspec:
 #     display_name: Python 3 (ipykernel)
 #     language: python
@@ -423,7 +423,7 @@ class X:
 
 motifscores_fast = X(motifscores)
 
-# %% tags=[]
+# %%
 idx = np.array([(0, 301)] * 100)
 time_indexing(motifscores_fast, idx=idx, n_idx=idx.shape[0])  # first run for jit compile
 time_indexing(motifscores_fast, idx=idx, n_idx=idx.shape[0])
@@ -764,7 +764,7 @@ time_indexing(motifscores_fast, idx=idx, n_idx=len(idx), n=1)
 # How fast is the numpy/CPU version, with a subsequent transfer to torch?
 
 
-# %% tags=[]
+# %%
 class X:
     def __init__(self, csr, device="cpu"):
         self.indices = csr.indices

@@ -37,7 +37,7 @@ class Example:
         motifs_to_merge=tuple(),
         subset_clusters: list = None,
         show_motifs=False,
-        **kwargs
+        **kwargs,
     ):
         folder_root = chd.get_output()
         folder_data = folder_root / "data"
@@ -47,21 +47,15 @@ class Example:
         self.dataset_name = dataset_name
         self.symbol = symbol
 
-        self.promoters = pd.read_csv(
-            folder_data_preproc / ("promoters_" + promoter_name + ".csv"), index_col=0
-        )
+        self.promoters = pd.read_csv(folder_data_preproc / ("promoters_" + promoter_name + ".csv"), index_col=0)
 
         if promoter_name == "10k10k":
             window = np.array([-10000, 10000])
         else:
             raise ValueError()
 
-        self.transcriptome = chd.data.Transcriptome(
-            folder_data_preproc / "transcriptome"
-        )
-        self.fragments = chd.data.Fragments(
-            folder_data_preproc / "fragments" / promoter_name
-        )
+        self.transcriptome = chd.data.Transcriptome(folder_data_preproc / "transcriptome")
+        self.fragments = chd.data.Fragments(folder_data_preproc / "fragments" / promoter_name)
         self.fragments.window = window
 
         self.fragments.create_cut_data()
@@ -87,15 +81,11 @@ class Example:
         cluster_info = pd.read_pickle(latent_folder / (latent_name + "_info.pkl"))
         cluster_info["color"] = sns.color_palette("husl", latent.shape[1])
 
-        self.fragments.obs["cluster"] = pd.Categorical(
-            pd.from_dummies(latent).iloc[:, 0]
-        )
+        self.fragments.obs["cluster"] = pd.Categorical(pd.from_dummies(latent).iloc[:, 0])
         if self.transcriptome is not None:
-            self.transcriptome.obs["cluster"] = self.transcriptome.adata.obs[
+            self.transcriptome.obs["cluster"] = self.transcriptome.adata.obs["cluster"] = self.fragments.obs[
                 "cluster"
-            ] = self.fragments.obs["cluster"] = pd.Categorical(
-                pd.from_dummies(latent).iloc[:, 0]
-            )
+            ] = pd.Categorical(pd.from_dummies(latent).iloc[:, 0])
 
         cluster_info["lib"] = self.fragments.obs.groupby("cluster")["lib"].sum().values
 
@@ -127,12 +117,7 @@ class Example:
 
         # probs
         prediction = chd.flow.Flow(
-            chd.get_output()
-            / "prediction_likelihood"
-            / dataset_name
-            / promoter_name
-            / latent_name
-            / method_name
+            chd.get_output() / "prediction_likelihood" / dataset_name / promoter_name / latent_name / method_name
         )
 
         probs = pickle.load((prediction.path / "probs.pkl").open("rb"))
@@ -141,13 +126,7 @@ class Example:
         probs_diff = probs - probs.mean(1, keepdims=True)
 
         # motifs
-        motifscan_folder = (
-            chd.get_output()
-            / "motifscans"
-            / dataset_name
-            / promoter_name
-            / motifscan_name
-        )
+        motifscan_folder = chd.get_output() / "motifscans" / dataset_name / promoter_name / motifscan_name
         motifscan = self.motifscan = chd.data.Motifscan(motifscan_folder)
         motifs = pickle.load((motifscan_folder / "motifs.pkl").open("rb"))
         motifscan.n_motifs = len(motifs)
@@ -293,9 +272,7 @@ class Example:
                 ).set_index("motif")
 
             if subset_clusters is not None:
-                motifs_oi["clusters"] = motifs_oi["clusters"].apply(
-                    lambda x: [y for y in x if y in subset_clusters]
-                )
+                motifs_oi["clusters"] = motifs_oi["clusters"].apply(lambda x: [y for y in x if y in subset_clusters])
                 motifs_oi = motifs_oi.loc[motifs_oi["clusters"].apply(len) > 0]
 
             motifs_oi["ix"] = motifs.loc[motifs_oi.index, "ix"].values
@@ -312,13 +289,9 @@ class Example:
             for motif in motifs_oi.index:
                 motif_ix = motifs.loc[motif, "ix"]
                 for pos in range(indptr_start, indptr_end):
-                    pos_indices = motifscan.indices[
-                        motifscan.indptr[pos] : motifscan.indptr[pos + 1]
-                    ]
+                    pos_indices = motifscan.indices[motifscan.indptr[pos] : motifscan.indptr[pos + 1]]
                     if motif_ix in pos_indices:
-                        motifdata.append(
-                            {"position": pos - indptr_start + window[0], "motif": motif}
-                        )
+                        motifdata.append({"position": pos - indptr_start + window[0], "motif": motif})
             motifdata = pd.DataFrame(motifdata, columns=["position", "motif"])
 
             # merge motifs
@@ -333,9 +306,9 @@ class Example:
 
         plotdata_empirical = []
         for cluster_ix in cluster_info["dimension"]:
-            fragments_oi = (
-                latent_torch[self.fragments.cut_local_cell_ix, cluster_ix] != 0
-            ) & (self.fragments.cut_local_gene_ix == gene_oi)
+            fragments_oi = (latent_torch[self.fragments.cut_local_cell_ix, cluster_ix] != 0) & (
+                self.fragments.cut_local_gene_ix == gene_oi
+            )
             cut_coordinates = self.fragments.cut_coordinates[fragments_oi].cpu().numpy()
             cut_coordinates = cut_coordinates * (window[1] - window[0]) + window[0]
 
@@ -343,12 +316,7 @@ class Example:
             cuts = np.linspace(*window, n_bins + 1)
             bincounts, bins = np.histogram(cut_coordinates, bins=cuts, range=window)
             binmids = bins[:-1] + (bins[:-1] - bins[1:]) / 2
-            bindensity = (
-                bincounts
-                / cluster_info["lib"][cluster_ix]
-                * self.fragments.obs["lib"].mean()
-                * n_bins
-            )
+            bindensity = bincounts / cluster_info["lib"][cluster_ix] * self.fragments.obs["lib"].mean() * n_bins
 
             plotdata_empirical.append(
                 pd.DataFrame(
@@ -365,9 +333,7 @@ class Example:
 
         plotdata_empirical = pd.DataFrame(
             {
-                "coord": plotdata_empirical_bins[
-                    ["binleft", "binright"]
-                ].values.flatten(),
+                "coord": plotdata_empirical_bins[["binleft", "binright"]].values.flatten(),
                 "prob": np.log(plotdata_empirical_bins["density"].values.repeat(2)),
                 "cluster": plotdata_empirical_bins["cluster"].values.repeat(2),
             }
@@ -382,23 +348,15 @@ class Example:
             )
         )
 
-        plotdata_empirical["prob"] = (
-            plotdata_empirical["prob"] - baseline[~np.isinf(baseline)].mean()
-        )
+        plotdata_empirical["prob"] = plotdata_empirical["prob"] - baseline[~np.isinf(baseline)].mean()
 
-        cluster_info["n_cells"] = (
-            self.fragments.obs.groupby("cluster")
-            .size()[cluster_info["dimension"]]
-            .values
-        )
+        cluster_info["n_cells"] = self.fragments.obs.groupby("cluster").size()[cluster_info["dimension"]].values
 
         # expression
-        plotdata_expression = sc.get.obs_df(
-            self.transcriptome.adata, [gene_id, "cluster"]
-        ).rename(columns={gene_id: "expression"})
-        plotdata_expression_clusters = plotdata_expression.groupby("cluster")[
-            "expression"
-        ].mean()
+        plotdata_expression = sc.get.obs_df(self.transcriptome.adata, [gene_id, "cluster"]).rename(
+            columns={gene_id: "expression"}
+        )
+        plotdata_expression_clusters = plotdata_expression.groupby("cluster")["expression"].mean()
 
         # atac (model)
         plotdata_atac = (
@@ -469,9 +427,7 @@ class Example:
 
         # highlight motifs
         if show_motifs:
-            chd.models.diff.plot.MotifsHighlighting(
-                self.wrap_differential, motifdata, motifs_oi, self.cluster_info_oi
-            )
+            chd.models.diff.plot.MotifsHighlighting(self.wrap_differential, motifdata, motifs_oi, self.cluster_info_oi)
             wrap_motiflegend = main[2, 2] = chd.models.diff.plot.MotifsLegend(
                 motifs_oi,
                 self.cluster_info_oi,
@@ -508,22 +464,19 @@ class Example:
                 column=self.wrap_differential,
             )
 
-    def add_bigwig(self, design, show_peaks=False):
+    def add_bigwig(self, design):
         # check design
         design["ix"] = np.arange(len(design))
 
         if "file_bed" not in design.columns:
             design["file_bed"] = None
-            show_peaks = False
         if "file" not in design.columns:
             design["file"] = None
         if "gene" not in design.columns:
             design["gene"] = None
 
         # add grid for different tracks
-        grid = self.fig.main.add_under(
-            chd.grid.Grid(padding_width=0.25), column=self.wrap_differential
-        )
+        grid = self.fig.main.add_under(chd.grid.Grid(padding_width=0.25), column=self.wrap_differential)
 
         window = [
             self.promoter.start - self.promoter.tss,
@@ -533,12 +486,8 @@ class Example:
         # get motif data
         indptr_start = self.gene_ix * (window[1] - window[0])
         indptr_end = (self.gene_ix + 1) * (window[1] - window[0])
-        motif_indices = self.motifscan.indices[
-            self.motifscan.indptr[indptr_start] : self.motifscan.indptr[indptr_end]
-        ]
-        position_indices = chd.utils.indptr_to_indices(
-            self.motifscan.indptr[indptr_start : indptr_end + 1]
-        )
+        motif_indices = self.motifscan.indices[self.motifscan.indptr[indptr_start] : self.motifscan.indptr[indptr_end]]
+        position_indices = chd.utils.indptr_to_indices(self.motifscan.indptr[indptr_start : indptr_end + 1])
 
         # get motifs oi
         motifs_oi = []
@@ -559,18 +508,14 @@ class Example:
         for motif in motifs_oi.index:
             motif_ix = self.motifscan.motifs.loc[motif, "ix"]
             positions_oi = position_indices[motif_indices == motif_ix]
-            motifdata.extend(
-                [{"position": pos + window[0], "motif": motif} for pos in positions_oi]
-            )
+            motifdata.extend([{"position": pos + window[0], "motif": motif} for pos in positions_oi])
         motifdata = self.motifdata = pd.DataFrame(motifdata)
 
         import pyBigWig
 
         first = True
         for bigwig_info in design.itertuples():
-            panel, ax = grid.add_under(
-                chd.grid.Panel((self.panel_width, 0.1)), padding=0
-            )
+            panel, ax = grid.add_under(chd.grid.Panel((self.panel_width, 0.1)), padding=0)
 
             # keep track of scores of positions, so we can color motifs
             position_scores = pd.DataFrame(
@@ -629,9 +574,7 @@ class Example:
                         "position": np.arange(*window),
                     }
                 )
-                ax.plot(
-                    plotdata_bw["position"], plotdata_bw["value"], color="#555", lw=0.8
-                )
+                ax.plot(plotdata_bw["position"], plotdata_bw["value"], color="#555", lw=0.8)
                 position_scores["value"] = plotdata_bw["value"].values
 
             # add peaks
@@ -665,24 +608,17 @@ class Example:
                     ax.axvspan(peak["start"], peak["end"], color="black", alpha=0.5)
 
                     position_scores.loc[
-                        (position_scores["position"] < peak["end"])
-                        & (position_scores["position"] >= peak["start"]),
+                        (position_scores["position"] < peak["end"]) & (position_scores["position"] >= peak["start"]),
                         "value",
                     ] = 10
 
             # add motifs
             if bigwig_info.motif_identifiers is not None:
-                motif_ids = motifs_oi.index[
-                    motifs_oi["motif_identifier"].isin(bigwig_info.motif_identifiers)
-                ]
+                motif_ids = motifs_oi.index[motifs_oi["motif_identifier"].isin(bigwig_info.motif_identifiers)]
                 plotdata = motifdata.loc[motifdata["motif"].isin(motif_ids)].copy()
 
                 if len(plotdata) > 0:
-                    plotdata["value"] = (
-                        position_scores.set_index("position")
-                        .loc[plotdata["position"], "value"]
-                        .values
-                    )
+                    plotdata["value"] = position_scores.set_index("position").loc[plotdata["position"], "value"].values
 
                     def determine_color(value):
                         if pd.isnull(value):
@@ -696,9 +632,7 @@ class Example:
                     ax.scatter(
                         plotdata["position"],
                         [1] * len(plotdata),
-                        transform=mpl.transforms.blended_transform_factory(
-                            ax.transData, ax.transAxes
-                        ),
+                        transform=mpl.transforms.blended_transform_factory(ax.transData, ax.transAxes),
                         marker="v",
                         color=plotdata["color"],
                         alpha=1,
@@ -707,15 +641,11 @@ class Example:
                     )
 
             if bigwig_info.gene is not None:
-                plotdata_expression = sc.get.obs_df(
-                    self.transcriptome.adata, [bigwig_info.gene, "cluster"]
-                ).rename(columns={bigwig_info.gene: "expression"})
-                plotdata_expression_clusters = plotdata_expression.groupby("cluster")[
-                    "expression"
-                ].mean()
-                plotdata_expression_clusters_oi = plotdata_expression_clusters.loc[
-                    self.cluster_info_oi.index
-                ]
+                plotdata_expression = sc.get.obs_df(self.transcriptome.adata, [bigwig_info.gene, "cluster"]).rename(
+                    columns={bigwig_info.gene: "expression"}
+                )
+                plotdata_expression_clusters = plotdata_expression.groupby("cluster")["expression"].mean()
+                plotdata_expression_clusters_oi = plotdata_expression_clusters.loc[self.cluster_info_oi.index]
 
                 panel_expression, ax_expression = panel.add_inset(
                     chd.grid.Panel((0.1 * len(plotdata_expression_clusters_oi), 0.1)),
@@ -746,3 +676,8 @@ class Example:
                     )
                     ax_expression.add_patch(circle)
                     ax_expression.axis("off")
+
+
+
+class Bigwig(Grid):
+    

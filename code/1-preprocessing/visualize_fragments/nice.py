@@ -52,12 +52,6 @@ folder_data = folder_root / "data"
 
 # dataset_name = "lymphoma"
 dataset_name = "pbmc10k"
-# dataset_name = "pbmc10k_clustered"
-# dataset_name = "e18brain"
-# dataset_name = "lymphoma+pbmc10k"
-# dataset_name = "MSGN1_7"
-# dataset_name = "CDX1_7"
-# dataset_name = "morf_20"
 folder_data_preproc = folder_data / dataset_name
 
 # %%

@@ -6,7 +6,7 @@ import tqdm.auto as tqdm
 import chromatinhd as chd
 import chromatinhd.data
 import chromatinhd.loaders.fragmentmotif
-import chromatinhd.loaders.minibatching
+import chromatinhd.loaders.minibatches
 
 import pickle
 
@@ -28,14 +28,10 @@ transcriptome = chromatinhd.data.Transcriptome(folder_data_preproc / "transcript
 # fragments
 # promoter_name, window = "1k1k", np.array([-1000, 1000])
 promoter_name, window = "10k10k", np.array([-10000, 10000])
-promoters = pd.read_csv(
-    folder_data_preproc / ("promoters_" + promoter_name + ".csv"), index_col=0
-)
+promoters = pd.read_csv(folder_data_preproc / ("promoters_" + promoter_name + ".csv"), index_col=0)
 window_width = window[1] - window[0]
 
-fragments = chromatinhd.data.Fragments(
-    folder_data_preproc / "fragments" / promoter_name
-)
+fragments = chromatinhd.data.Fragments(folder_data_preproc / "fragments" / promoter_name)
 
 # motifscan
 motifscan_folder = chd.get_output() / "motifscans" / dataset_name / promoter_name
@@ -94,11 +90,7 @@ class Prediction(chd.flow.Flow):
 for prediction_name, design_row in design.items():
     print(prediction_name)
     prediction = chd.flow.Flow(
-        chd.get_output()
-        / "prediction_sequence_v5"
-        / dataset_name
-        / promoter_name
-        / prediction_name
+        chd.get_output() / "prediction_sequence_v5" / dataset_name / promoter_name / prediction_name
     )
 
     # loaders
@@ -116,24 +108,18 @@ for prediction_name, design_row in design.items():
 
         gc.collect()
     print("collected")
-    loaders = chd.loaders.LoaderPool(
-        design_row["loader_cls"], design_row["loader_parameters"], n_workers=20
-    )
+    loaders = chd.loaders.LoaderPoolOld(design_row["loader_cls"], design_row["loader_parameters"], n_workers=20)
     print("haha!")
-    loaders_validation = chd.loaders.LoaderPool(
+    loaders_validation = chd.loaders.LoaderPoolOld(
         design_row["loader_cls"], design_row["loader_parameters"], n_workers=5
     )
     print("finish")
     loaders_validation.shuffle_on_iter = False
 
     models = []
-    for fold_ix, fold in [(fold_ix, fold) for fold_ix, fold in enumerate(folds)][
-        fold_slice
-    ]:
+    for fold_ix, fold in [(fold_ix, fold) for fold_ix, fold in enumerate(folds)][fold_slice]:
         # model
-        model = design_row["model_cls"](
-            **design_row["model_parameters"], loader=loaders.loaders[0]
-        )
+        model = design_row["model_cls"](**design_row["model_parameters"], loader=loaders.loaders[0])
 
         # optimizer
         params = model.get_parameters()
@@ -170,28 +156,14 @@ for prediction_name, design_row in design.items():
         trainer.train()
 
         model = model.to("cpu")
-        pickle.dump(
-            model, open(prediction.path / ("model_" + str(fold_ix) + ".pkl"), "wb")
-        )
+        pickle.dump(model, open(prediction.path / ("model_" + str(fold_ix) + ".pkl"), "wb"))
 
         import matplotlib.pyplot as plt
 
         fig, ax = plt.subplots()
-        plotdata_validation = (
-            pd.DataFrame(trainer.trace.validation_steps)
-            .groupby("checkpoint")
-            .mean()
-            .reset_index()
-        )
-        plotdata_train = (
-            pd.DataFrame(trainer.trace.train_steps)
-            .groupby("checkpoint")
-            .mean()
-            .reset_index()
-        )
-        ax.plot(
-            plotdata_validation["checkpoint"], plotdata_validation["loss"], label="test"
-        )
+        plotdata_validation = pd.DataFrame(trainer.trace.validation_steps).groupby("checkpoint").mean().reset_index()
+        plotdata_train = pd.DataFrame(trainer.trace.train_steps).groupby("checkpoint").mean().reset_index()
+        ax.plot(plotdata_validation["checkpoint"], plotdata_validation["loss"], label="test")
         # ax.plot(plotdata_train["checkpoint"], plotdata_train["loss"], label = "train")
         ax.legend()
         fig.savefig(prediction.path / ("trace_" + str(fold_ix) + ".png"))

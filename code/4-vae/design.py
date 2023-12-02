@@ -10,7 +10,7 @@ import copy
 import numpy as np
 
 n_cells_step = 200
-n_genes_step = 5000
+n_regions_step = 5000
 
 
 def get_design(fragments):
@@ -18,7 +18,7 @@ def get_design(fragments):
 
     general_loader_parameters = {
         "fragments": fragments,
-        "cellxgene_batch_size": n_cells_step * n_genes_step,
+        "cellxregion_batch_size": n_cells_step * n_regions_step,
     }
 
     design = {}
@@ -26,23 +26,13 @@ def get_design(fragments):
         "model_cls": chromatinhd.models.vae.v4.VAE,
         "model_parameters": {**general_model_parameters},
         "loader_cls": chromatinhd.loaders.fragments.Fragments,
-        "loader_parameters": {
-            **{
-                k: general_loader_parameters[k]
-                for k in ["fragments", "cellxgene_batch_size"]
-            }
-        },
+        "loader_parameters": {**{k: general_loader_parameters[k] for k in ["fragments", "cellxregion_batch_size"]}},
     }
     design["v4_baseline"] = {
         "model_cls": chromatinhd.models.vae.v4.VAE,
         "model_parameters": {**general_model_parameters, "baseline": True},
         "loader_cls": chromatinhd.loaders.fragments.Fragments,
-        "loader_parameters": {
-            **{
-                k: general_loader_parameters[k]
-                for k in ["fragments", "cellxgene_batch_size"]
-            }
-        },
+        "loader_parameters": {**{k: general_loader_parameters[k] for k in ["fragments", "cellxregion_batch_size"]}},
     }
     design["v4_1freq"] = copy.deepcopy(design["v4"])
     design["v4_1freq"]["model_parameters"].update({})
@@ -51,12 +41,7 @@ def get_design(fragments):
         "model_cls": chromatinhd.models.vae.v5.VAE,
         "model_parameters": {**general_model_parameters},
         "loader_cls": chromatinhd.loaders.fragments.Fragments,
-        "loader_parameters": {
-            **{
-                k: general_loader_parameters[k]
-                for k in ["fragments", "cellxgene_batch_size"]
-            }
-        },
+        "loader_parameters": {**{k: general_loader_parameters[k] for k in ["fragments", "cellxregion_batch_size"]}},
     }
 
     design["v5_baseline"] = copy.deepcopy(design["v5"])
@@ -66,44 +51,29 @@ def get_design(fragments):
     design["v5_1decoder"]["model_parameters"].update({"decoder_n_layers": 1})
 
     design["v5_32"] = copy.deepcopy(design["v5"])
-    design["v5_32"]["model_parameters"].update(
-        {"n_encoder_bins": 32, "n_decoder_bins": (32,)}
-    )
+    design["v5_32"]["model_parameters"].update({"n_encoder_bins": 32, "n_decoder_bins": (32,)})
     design["v5_8"] = copy.deepcopy(design["v5"])
-    design["v5_8"]["model_parameters"].update(
-        {"n_encoder_bins": 8, "n_decoder_bins": (8,)}
-    )
+    design["v5_8"]["model_parameters"].update({"n_encoder_bins": 8, "n_decoder_bins": (8,)})
 
     design["v5_norescale"] = copy.deepcopy(design["v5"])
     design["v5_norescale"]["model_parameters"].update({"rescale": False})
 
     design["v5_encoder32"] = copy.deepcopy(design["v5"])
-    design["v5_encoder32"]["model_parameters"].update(
-        {"encoder_n_hidden_dimensions": 32}
-    )
+    design["v5_encoder32"]["model_parameters"].update({"encoder_n_hidden_dimensions": 32})
     design["v5_norescale"]["model_parameters"].update({"rescale": False})
 
     design["v5_regularizefragmentcounts"] = copy.deepcopy(design["v5"])
-    design["v5_regularizefragmentcounts"]["model_parameters"].update(
-        {"regularize_fragmentcounts": True}
-    )
+    design["v5_regularizefragmentcounts"]["model_parameters"].update({"regularize_fragmentcounts": True})
 
     design["v5_regularizefragmentcounts_400epoch"] = copy.deepcopy(design["v5"])
-    design["v5_regularizefragmentcounts_400epoch"]["model_parameters"].update(
-        {"regularize_fragmentcounts": True}
-    )
+    design["v5_regularizefragmentcounts_400epoch"]["model_parameters"].update({"regularize_fragmentcounts": True})
     design["v5_regularizefragmentcounts_400epoch"]["n_epochs"] = 400
 
     design["v6"] = {
         "model_cls": chromatinhd.models.vae.v6.VAE,
         "model_parameters": {**general_model_parameters},
         "loader_cls": chromatinhd.loaders.fragments.Fragments,
-        "loader_parameters": {
-            **{
-                k: general_loader_parameters[k]
-                for k in ["fragments", "cellxgene_batch_size"]
-            }
-        },
+        "loader_parameters": {**{k: general_loader_parameters[k] for k in ["fragments", "cellxregion_batch_size"]}},
     }
 
     design["v5_s0.8"] = copy.deepcopy(design["v5"])
@@ -122,9 +92,7 @@ def get_design(fragments):
     design["v5_s0.3"]["model_parameters"].update({"fragments_scale": 0.3})
 
     design["v5_mixturelaplace"] = copy.deepcopy(design["v5"])
-    design["v5_mixturelaplace"]["model_parameters"].update(
-        {"mixturedistribution": "laplace"}
-    )
+    design["v5_mixturelaplace"]["model_parameters"].update({"mixturedistribution": "laplace"})
 
     design["v5_2encoder"] = copy.deepcopy(design["v5"])
     design["v5_2encoder"]["model_parameters"].update({"encoder_n_layers": 2})
@@ -163,7 +131,7 @@ def get_design_peakcount(fragments, peakcounts):
 
 
 import chromatinhd as chd
-import chromatinhd.loaders.minibatching
+import chromatinhd.loaders.minibatches
 
 
 def get_folds_training(fragments, folds):
@@ -172,30 +140,25 @@ def get_folds_training(fragments, folds):
         rg = np.random.RandomState(0)
         minibatcher = chd.loaders.minibatching.Minibatcher(
             fold["cells_train"],
-            np.arange(fragments.n_genes),
+            np.arange(fragments.n_regions),
             fragments.n_genes,
-            n_genes_step=n_genes_step,
+            n_regions_step=n_regions_step,
             n_cells_step=n_cells_step,
         )
         minibatches_train_sets = [
-            {
-                "tasks": minibatcher.create_minibatches(
-                    use_all=True, rg=np.random.RandomState(i)
-                )
-            }
-            for i in range(10)
+            {"tasks": minibatcher.create_minibatches(use_all=True, rg=np.random.RandomState(i))} for i in range(10)
         ]
         fold["minibatches_train_sets"] = minibatches_train_sets
 
         # validation
         fold["minibatches_validation"] = chd.loaders.minibatching.create_bins_ordered(
             fold["cells_validation"],
-            np.arange(fragments.n_genes),
+            np.arange(fragments.n_regions),
             n_cells_step=n_cells_step,
-            n_genes_step=n_genes_step,
+            n_regions_step=n_regions_step,
             n_genes_total=fragments.n_genes,
             use_all=True,
-            permute_genes=False,
+            permute_regions=False,
             rg=rg,
         )
         fold["minibatches_validation_trace"] = fold["minibatches_validation"][:8]
@@ -203,12 +166,12 @@ def get_folds_training(fragments, folds):
         # all
         minibatches_all = chd.loaders.minibatching.create_bins_ordered(
             np.arange(fragments.n_cells),
-            np.arange(fragments.n_genes),
+            np.arange(fragments.n_regions),
             fragments.n_genes,
-            n_genes_step=n_genes_step,
+            n_regions_step=n_regions_step,
             n_cells_step=n_cells_step,
             use_all=True,
-            permute_genes=False,
+            permute_regions=False,
             permute_cells=False,
         )
         fold["minibatches_all"] = minibatches_all
@@ -223,12 +186,12 @@ def get_folds_inference(fragments, folds):
 
         minibatches_all = chd.loaders.minibatching.create_bins_ordered(
             np.arange(fragments.n_cells),
-            np.arange(fragments.n_genes),
+            np.arange(fragments.n_regions),
             fragments.n_genes,
-            n_genes_step=n_genes_step,
+            n_regions_step=n_regions_step,
             n_cells_step=n_cells_step,
             use_all=True,
-            permute_genes=False,
+            permute_regions=False,
         )
         fold["minibatches"] = minibatches_all
 
@@ -251,10 +214,10 @@ def get_folds_test(fragments, folds):
             cells_test,
             genes_test,
             n_cells_step=n_cells_step,
-            n_genes_step=n_genes_step,
+            n_regions_step=n_regions_step,
             n_genes_total=fragments.n_genes,
             use_all=True,
-            permute_genes=False,
+            permute_regions=False,
             rg=rg,
         )
         fold["minibatches"] = minibatches

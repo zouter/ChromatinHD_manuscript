@@ -43,15 +43,20 @@ folder_data = folder_root / "data"
 
 dataset_name = "pbmc10k"
 genome = "GRCh38.107"
-dataset_name = "pbmc10k_gran"
+
+# dataset_name = "pbmc10k_gran"
+# genome = "GRCh38.107"
+
+dataset_name = "hspc"
 genome = "GRCh38.107"
+
+# dataset_name = "hspc_gmp"
+# genome = "GRCh38.107"
+
 # dataset_name = "e18brain"; genome = "mm10"
 # dataset_name = "lymphoma"; genome = "GRCh38.107"
 # dataset_name = "alzheimer"; genome = "mm10"
 # dataset_name = "brain"; genome = "GRCh38.107"
-dataset_name = "GSE198467_H3K27ac"
-organism = "mm"
-genome = "mm10"
 
 # dataset_name = "FLI1_7"
 # dataset_name = "PAX2_7"
@@ -171,7 +176,8 @@ peaks_folder.mkdir(exist_ok=True, parents=True)
 #
 # This uses the settings recommended by the authors of MACS2
 # https://github.com/macs3-project/MACS/issues/145
-# In the end, this doesn't make much difference
+#
+# In the end, this visually doesn't make much difference from the ENCODE pipeline
 
 # %%
 peaks_folder = folder_root / "peaks" / dataset_name / "macs2_improved"
@@ -231,7 +237,7 @@ peaks_folder.mkdir(exist_ok=True, parents=True)
 assert genome == "GRCh38.107"
 
 # %%
-# # !wget https://downloads.wenglab.org/V3/GRCh38-cCREs.bed -O {chd.get_output()}/GRCh38-cCREs.bed
+# !wget https://downloads.wenglab.org/V3/GRCh38-cCREs.bed -O {chd.get_output()}/GRCh38-cCREs.bed
 # # !wget https://downloads.wenglab.org/Registry-V3/mm10-cCREs.bed -O {chd.get_output()}/mm10-cCREs.bed
 
 # %%

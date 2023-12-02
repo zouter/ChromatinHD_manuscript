@@ -8,7 +8,7 @@ import tqdm.auto as tqdm
 import chromatinhd as chd
 import chromatinhd.data
 import chromatinhd.loaders.fragmentmotif
-import chromatinhd.loaders.minibatching
+import chromatinhd.loaders.minibatches
 
 import pickle
 
@@ -37,9 +37,7 @@ for dataset_name, design_dataset in design.groupby("dataset"):
     # fragments
     promoter_name, window = "10k10k", np.array([-10000, 10000])
 
-    fragments = chromatinhd.data.Fragments(
-        folder_data_preproc / "fragments" / promoter_name
-    )
+    fragments = chromatinhd.data.Fragments(folder_data_preproc / "fragments" / promoter_name)
     fragments.window = window
 
     print(fragments.n_genes)
@@ -50,12 +48,7 @@ for dataset_name, design_dataset in design.groupby("dataset"):
         for method_name, subdesign in subdesign.groupby("method"):
             print(f"{dataset_name=} {promoter_name=} {method_name=}")
             prediction = chd.flow.Flow(
-                chd.get_output()
-                / "prediction_likelihood"
-                / dataset_name
-                / promoter_name
-                / latent_name
-                / method_name
+                chd.get_output() / "prediction_likelihood" / dataset_name / promoter_name / latent_name / method_name
             )
 
             models = []
@@ -66,9 +59,7 @@ for dataset_name, design_dataset in design.groupby("dataset"):
                 # check if outputs exist
                 desired_outputs = [(scores_dir / "slices.pkl")]
                 force = subdesign["force"].iloc[0]
-                if not all(
-                    [desired_output.exists() for desired_output in desired_outputs]
-                ):
+                if not all([desired_output.exists() for desired_output in desired_outputs]):
                     force = True
 
                 if force:
@@ -96,14 +87,10 @@ for dataset_name, design_dataset in design.groupby("dataset"):
 
                     prob_cutoff = np.log(1.0)
 
-                    basepair_ranking = probs_interpolated - probs_interpolated.mean(
-                        1, keepdims=True
-                    )
+                    basepair_ranking = probs_interpolated - probs_interpolated.mean(1, keepdims=True)
                     basepair_ranking[probs_interpolated < prob_cutoff] = -np.inf
 
-                    region_result = (
-                        chd.models.diff.DifferentialSlices.from_basepair_ranking(
-                            basepair_ranking, window, cutoff=np.log(2.0)
-                        )
+                    region_result = chd.models.diff.DifferentialSlices.from_basepair_ranking(
+                        basepair_ranking, window, cutoff=np.log(2.0)
                     )
                     pickle.dump(region_result, (scores_dir / "slices.pkl").open("wb"))

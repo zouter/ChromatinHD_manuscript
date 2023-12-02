@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.14.5
+#       jupytext_version: 1.14.7
 #   kernelspec:
 #     display_name: Python 3 (ipykernel)
 #     language: python
@@ -122,7 +122,7 @@ gene_variants_mapping = [
 import chromatinhd.models.eqtl.mapping.v2 as eqtl_model
 
 # %%
-loaders = chd.loaders.LoaderPool(
+loaders = chd.loaders.LoaderPoolOld(
     eqtl_model.Loader,
     {
         "transcriptome": transcriptome,
@@ -195,7 +195,7 @@ model_dummy = chd.load(pathlib.Path("model_dummy.pkl").open("rb"))
 minibatches_inference = minibatches
 
 # %%
-loaders_inference = chd.loaders.LoaderPool(
+loaders_inference = chd.loaders.LoaderPoolOld(
     eqtl_model.Loader,
     {
         "transcriptome": transcriptome,

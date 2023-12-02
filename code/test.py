@@ -1,118 +1,143 @@
-# %%
 import os
-import argparse
-import PyPDF2
-from PyPDF2 import PdfFileReader, PdfFileWriter
-from PyPDF2.generic import DecodedStreamObject, EncodedStreamObject, NameObject
 
+os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"
+import torch
 
-def replace_text(content, replacements=dict()):
-    lines = content.splitlines()
+torch.use_deterministic_algorithms(True)
 
-    result = ""
-    in_text = False
+import numpy as np
+import pandas as pd
 
-    for line in lines:
-        if line == "BT":
-            in_text = True
+import matplotlib.pyplot as plt
+import matplotlib as mpl
 
-        elif line == "ET":
-            in_text = False
+import seaborn as sns
 
-        elif in_text:
-            cmd = line[-2:]
-            if cmd.lower() == "tj":
-                replaced_line = line
-                for k, v in replacements.items():
-                    replaced_line = replaced_line.replace(k, v)
-                result += replaced_line + "\n"
-            else:
-                result += line + "\n"
-            continue
+import pickle
 
-        result += line + "\n"
+import scanpy as sc
 
-    return result
+import pathlib
 
+import tqdm.auto as tqdm
 
-def process_data(object, replacements):
-    data = object.get_data()
-    decoded_data = data.decode("utf-8")
+import chromatinhd as chd
 
-    replaced_data = replace_text(decoded_data, replacements)
+# dataset_name = "pbmc10k"
+dataset_name = "pbmc10k/subsets/top5"
+dataset_name = "pbmc10k/subsets/top1"
+# dataset_name = "pbmc10k/subsets/top250"
+# dataset_name = "e18brain"
+regions_name = "100k100k"
+# regions_name = "10k10k"
 
-    encoded_data = replaced_data.encode("utf-8")
-    if object.decoded_self is not None:
-        object.decoded_self.set_data(encoded_data)
-    else:
-        object.set_data(encoded_data)
+transcriptome = chd.data.Transcriptome(chd.get_output() / "datasets" / dataset_name / "transcriptome")
+fragments = chd.data.Fragments(chd.get_output() / "datasets" / dataset_name / "fragments" / regions_name)
 
-# %%
-in_file = "../manuscript/figure/2/figure2.pdf"
-out_decompressed_location = "../manuscript/figure/2/figure2_decompressed.pdf"
-out_location = "../manuscript/figure/2/figure2_replaced.pdf"
+folds = chd.data.folds.Folds(chd.get_output() / "datasets" / dataset_name / "folds" / "5x1")
+fold = folds[0]
 
-# %%
-!pdftk {in_file} output {out_decompressed_location} uncompress
+torch.manual_seed(1)
 
-# %%
+import chromatinhd.models.pred.model.better
 
-# Provide replacements list that you need here
-replacements = {"positional_all_scores": "HEYO"}
-replacements = [
-    ("positional_benchmark_overview", "HEYO")
-]
+model_params2 = dict(
+    n_embedding_dimensions=100,
+    n_layers_fragment_embedder=5,
+    residual_fragment_embedder=False,
+    n_layers_embedding2expression=5,
+    residual_embedding2expression=False,
+    dropout_rate_fragment_embedder=0.0,
+    dropout_rate_embedding2expression=0.0,
+    encoder="spline_binary",
+)
+train_params2 = dict(
+    weight_decay=1e-1,
+    lr=1e-4,
+)
 
-pdf = PyPDF2.PdfReader(open(out_decompressed_location, "rb"))
-writer = PyPDF2.PdfWriter() 
+gene_oi = fragments.var.index[0]
 
-for page in pdf.pages:
-    contents = page.get_contents().get_data()
-    for (a,b) in replacements:
-        contents = contents.replace(a.encode('utf-8'), b.encode('utf-8'))
-    page.get_contents().set_data(contents)
-    writer.add_page(page)
-    
-with open(out_location, "wb") as f:
-     writer.write(f)
+for i in range(10):
+    model2 = chd.models.pred.model.better.Model(
+        fragments=fragments, transcriptome=transcriptome, fold=fold, layer="magic", region_oi=gene_oi, **model_params2
+    )
 
+    model_params = dict(
+        n_embedding_dimensions=100,
+        n_layers_fragment_embedder=5,
+        residual_fragment_embedder=False,
+        n_layers_embedding2expression=5,
+        residual_embedding2expression=False,
+        dropout_rate_fragment_embedder=0.0,
+        dropout_rate_embedding2expression=0.0,
+        encoder="multi_spline_binary",
+        # distance_encoder="split",
+        # library_size_encoder="linear",
+    )
+    train_params = dict(
+        # optimizer = "sgd",
+        optimizer="adam",
+        weight_decay=1e-1,
+        # lr = 1e-2,
+        # lr = 1e-3,
+        lr=1e-4,
+    )
 
-    # %%
+    import chromatinhd.models.pred.model.binary
 
-    # if __name__ == "__main__":
-    #     ap = argparse.ArgumentParser()
-    #     ap.add_argument("-i", "--input", required=True, help="path to PDF document")
-    #     args = vars(ap.parse_args())
+    model = chd.models.pred.model.binary.Model(
+        fragments=fragments, transcriptome=transcriptome, fold=fold, layer="magic", **model_params
+    )
 
-    #     in_file = args["input"]
-    #     filename_base = in_file.replace(os.path.splitext(in_file)[1], "")
+    model2.fragment_embedder.encoder.w.data = torch.rand_like(input=model2.fragment_embedder.encoder.w.data)
+    model.fragment_embedder.encoder.w[0].data = model2.fragment_embedder.encoder.w.data
 
-    # Provide replacements list that you need here
-    replacements = {"PDF": "DOC"}
+    model.fragment_embedder.nn0[0].weight[0].data = model2.fragment_embedder.nn0[0].weight.data.T
+    model.fragment_embedder.nn1[0].weight[0].data = model2.fragment_embedder.nn1[0].weight.data.T
+    model.fragment_embedder.nn2[0].weight[0].data = model2.fragment_embedder.nn2[0].weight.data.T
+    model.fragment_embedder.nn3[0].weight[0].data = model2.fragment_embedder.nn3[0].weight.data.T
+    model.fragment_embedder.nn4[0].weight[0].data = model2.fragment_embedder.nn4[0].weight.data.T
 
-    pdf = PdfFileReader(in_file)
-    writer = PdfFileWriter()
+    model.fragment_embedder.nn0[0].bias[0].data = model2.fragment_embedder.nn0[0].bias.data
+    model.fragment_embedder.nn1[0].bias[0].data = model2.fragment_embedder.nn1[0].bias.data
+    model.fragment_embedder.nn2[0].bias[0].data = model2.fragment_embedder.nn2[0].bias.data
+    model.fragment_embedder.nn3[0].bias[0].data = model2.fragment_embedder.nn3[0].bias.data
+    model.fragment_embedder.nn4[0].bias[0].data = model2.fragment_embedder.nn4[0].bias.data
 
-#     for page_number in range(0, pdf.getNumPages()):
+    model.embedding_to_expression.nn0[0].weight[0].data = model2.embedding_to_expression.nn0[0].weight.data.T
+    model.embedding_to_expression.nn1[0].weight[0].data = model2.embedding_to_expression.nn1[0].weight.data.T
+    model.embedding_to_expression.nn2[0].weight[0].data = model2.embedding_to_expression.nn2[0].weight.data.T
+    model.embedding_to_expression.nn3[0].weight[0].data = model2.embedding_to_expression.nn3[0].weight.data.T
+    model.embedding_to_expression.nn4[0].weight[0].data = model2.embedding_to_expression.nn4[0].weight.data.T
+    model.embedding_to_expression.final.weight[0].data = model2.embedding_to_expression.final.weight.data.T
 
-#         page = pdf.getPage(page_number)
-#         contents = page.getContents()
+    model.embedding_to_expression.nn0[0].bias[0].data = model2.embedding_to_expression.nn0[0].bias.data
+    model.embedding_to_expression.nn1[0].bias[0].data = model2.embedding_to_expression.nn1[0].bias.data
+    model.embedding_to_expression.nn2[0].bias[0].data = model2.embedding_to_expression.nn2[0].bias.data
+    model.embedding_to_expression.nn3[0].bias[0].data = model2.embedding_to_expression.nn3[0].bias.data
+    model.embedding_to_expression.nn4[0].bias[0].data = model2.embedding_to_expression.nn4[0].bias.data
 
-#         if isinstance(contents, DecodedStreamObject) or isinstance(
-#             contents, EncodedStreamObject
-#         ):
-#             process_data(contents, replacements)
-#         elif len(contents) > 0:
-#             for obj in contents:
-#                 if isinstance(obj, DecodedStreamObject) or isinstance(
-#                     obj, EncodedStreamObject
-#                 ):
-#                     streamObj = obj.getObject()
-#                     process_data(streamObj, replacements)
+    # model.embedding_to_expression.final.weight[0].data[:] = 0.1
+    # model2.embedding_to_expression.final.weight.data[:] = 0.1
 
-#         # Force content replacement
-#         page[NameObject("/Contents")] = contents.decodedSelf
-#         writer.addPage(page)
+    model.train_model(
+        **train_params, warmup_epochs=0, n_epochs=500, early_stopping=True, n_regions_step=1, device="cuda"
+    )
+    model2.train_model(**train_params2, n_epochs=500, early_stopping=True, device="cuda")
 
-#     with open(filename_base + ".result.pdf", "wb") as out_file:
-#         writer.write(out_file)
+    prediction1 = model.get_prediction(cell_ixs=fold["cells_test"]).sel(gene=gene_oi)
+    prediction2 = model2.get_prediction(cell_ixs=fold["cells_test"]).sel(gene=gene_oi)
+    print(
+        "test ",
+        np.corrcoef(prediction1["predicted"], prediction1["expected"])[0, 1],
+        np.corrcoef(prediction2["predicted"], prediction2["expected"])[0, 1],
+    )
+
+    prediction1 = model.get_prediction().sel(gene=gene_oi)
+    prediction2 = model2.get_prediction().sel(gene=gene_oi)
+    print(
+        "train",
+        np.corrcoef(prediction1["predicted"], prediction1["expected"])[0, 1],
+        np.corrcoef(prediction2["predicted"], prediction2["expected"])[0, 1],
+    )

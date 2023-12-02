@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.14.5
+#       jupytext_version: 1.14.7
 #   kernelspec:
 #     display_name: Python 3 (ipykernel)
 #     language: python
@@ -17,11 +17,13 @@
 # # Model promoters positionally
 
 # %%
-from IPython import get_ipython
+# %load_ext autoreload
+# %autoreload 2
 
-if get_ipython():
-    get_ipython().run_line_magic("load_ext", "autoreload")
-    get_ipython().run_line_magic("autoreload", "2")
+import os
+os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"
+import torch
+torch.use_deterministic_algorithms(True)
 
 import numpy as np
 import pandas as pd
@@ -40,512 +42,100 @@ import scanpy as sc
 
 import pathlib
 
-# export LD_LIBRARY_PATH=/data/peak_free_atac/software/peak_free_atac/lib
-import torch
-
 import tqdm.auto as tqdm
 
 # %%
 import chromatinhd as chd
+chd.set_default_device("cuda:1")
 
 # %%
-folder_root = chd.get_output()
-folder_data = folder_root / "data"
-
-# dataset_name = "lymphoma"
-dataset_name = "pbmc10k"
-# dataset_name = "pbmc10k_clustered"
+# dataset_name = "pbmc10k"
+# dataset_name = "pbmc10k/subsets/top5"
+# dataset_name = "pbmc10k/subsets/top1"
+dataset_name = "pbmc10k/subsets/top250"
 # dataset_name = "e18brain"
-folder_data_preproc = folder_data / dataset_name
+regions_name = "100k100k"
+# regions_name = "500k500k"
+# regions_name = "10k10k"
 
-# %%
-# promoter_name, window = "4k2k", (2000, 4000)
-promoter_name, window = "10k10k", np.array([-10000, 10000])
-promoter_name, window = "100k100k", np.array([-100000, 100000])
-promoters = pd.read_csv(
-    folder_data_preproc / ("promoters_" + promoter_name + ".csv"), index_col=0
-)
-window_width = window[1] - window[0]
+transcriptome = chd.data.Transcriptome(chd.get_output() / "datasets" / dataset_name / "transcriptome")
+fragments = chd.flow.Flow.from_path(chd.get_output() / "datasets" / dataset_name / "fragments" / regions_name)
+fragments2 = chd.flow.Flow.from_path(chd.get_output() / "datasets" / dataset_name / "fragments" / "100k100k")
 
-# %%
-transcriptome = chd.data.Transcriptome(folder_data_preproc / "transcriptome")
-fragments = chd.data.Fragments(folder_data_preproc / "fragments" / promoter_name)
-fragments.window = window
-
-# %%
-folds = pickle.load((fragments.path / "folds.pkl").open("rb"))
+folds = chd.data.folds.Folds(chd.get_output() / "datasets" / dataset_name / "folds" / "5x1")
 fold = folds[0]
 
 # %%
-from design import get_folds_inference
+torch.manual_seed(1)
 
-folds = get_folds_inference(fragments, folds)
+import chromatinhd.models.pred.model.better
+model_params = dict(
+    n_embedding_dimensions=100,
+    n_layers_fragment_embedder=5,
+    n_layers_embedding2expression=5,
+    residual_embedding2expression=True,
+    residual_fragment_embedder=True,
+    layernorm_embedding2expression=True,
+    encoder="spline_binary",
+    nonlinear = "silu",
+    library_size_encoder="linear",
 
-# %% [markdown]
-# What we want is
-# - Know which motifs are close to a cut sites. Either precalculate or extract on-the-fly as fast as possible
-# - Extract all information of a motif in relation to the fragment
-#   - Which motif
-#   - Whether it is relative to the left or right cut site
-#   - Its distance to the cut site
-#   - Its score
-# - We want to be able to index extremely fast on the fragments, ideally microseconds
-
-# %% [markdown]
-# ## Load fragments
-
-# %%
-import pyximport
-import sys
-
-pyximport.install(
-    reload_support=True,
-    language_level=3,
-    setup_args=dict(include_dirs=[np.get_include()]),
 )
-if "chromatinhd.loaders.extraction.fragments" in sys.modules:
-    del sys.modules["chromatinhd.loaders.extraction.fragments"]
-import chromatinhd.loaders.extraction.fragments
-
-# %% [markdown]
-# ### Fragments
-
-# %%
-n_cells = 1000
-n_genes = 100
-cutwindow = np.array([-150, 150])
-loader = chromatinhd.loaders.fragments.Fragments(fragments, n_cells * n_genes)
-
-# %%
-cells_oi = np.arange(0, n_cells)
-genes_oi = np.arange(0, n_genes)
-
-cellxgene_oi = (cells_oi[:, None] * fragments.n_genes + genes_oi).flatten()
-
-minibatch = chromatinhd.loaders.minibatching.Minibatch(
-    cells_oi=cells_oi, genes_oi=genes_oi
+train_params = dict(
+    weight_decay=1e-1,
+    optimizer = "adam",
+    lr = 1e-4,
 )
+
+# gene_oi = fragments.var.index[20]
+gene_oi = transcriptome.gene_id("JCHAIN")
+gene_ix = transcriptome.var.index.get_loc(gene_oi)
+
+model = chd.models.pred.model.better.Model(
+    fragments = fragments,
+    transcriptome = transcriptome,
+    fold = fold,
+    layer = "magic",
+    region_oi = gene_oi,
+    **model_params
+)
+
+# %%
+minibatch = chd.loaders.minibatches.Minibatch(np.arange(fragments.obs.shape[0]), np.array([gene_ix]))
+# loader = chd.loaders.Fragments(fragments, 50000)
+loader = chd.loaders.FragmentsRegional(fragments, 50000, gene_oi)
 data = loader.load(minibatch)
 
 # %%
-# %%timeit -n 1
-data = loader.load(minibatch)
+model.train_model(**train_params, n_epochs = 1000, device = 'cuda:0')
 
 # %%
-(fragments.n_cells * fragments.n_genes) / len(cellxgene_oi)
-
-# %% [markdown]
-# ### Fragments n (2)
+model.trace.plot()
 
 # %%
-fragments_oi = fragments.coordinates[:, 0] > 0
+prediction = model.get_prediction(cell_ixs = fold["cells_train"]).sel(gene = gene_oi)
+np.corrcoef(prediction["predicted"], prediction["expected"])[0, 1]
 
 # %%
-n_cells = 1000
-n_genes = 100
-cutwindow = np.array([-150, 150])
-loader = chromatinhd.loaders.fragments.FragmentsCounting(fragments, n_cells * n_genes)
+models = chd.models.pred.model.better.Models()
+models[gene_oi + "_0"] = model
+models.folds = folds
 
 # %%
-cells_oi = np.arange(0, n_cells)
-genes_oi = np.arange(0, n_genes)
-
-cellxgene_oi = (cells_oi[:, None] * fragments.n_genes + genes_oi).flatten()
-
-minibatch = chromatinhd.loaders.minibatching.Minibatch(
-    cells_oi=cells_oi, genes_oi=genes_oi
-)
-data = loader.load(minibatch)
+censorer = chd.models.pred.interpret.MultiWindowCensorer(fragments.regions.window)
+regionmultiwindow = chd.models.pred.interpret.RegionMultiWindow.create(folds, transcriptome, fragments, censorer, path = chd.get_output() / "test", overwrite = True)
 
 # %%
-# %%timeit -n 1
-data = loader.load(minibatch)
+regionmultiwindow.score(models, regions = [gene_oi])
 
 # %%
-(fragments.n_cells * fragments.n_genes) / len(cellxgene_oi)
+regionmultiwindow.scores["deltacor"].sel_xr().sel(gene = gene_oi).sel(phase = "test").mean("fold").to_pandas().plot()
 
 # %%
-data.local_cellxgene_ix[data.n[0]]
+import cProfile
 
-# %% [markdown]
-# ## Loading using multithreading
+stats = cProfile.run("regionmultiwindow.score(models, regions = [gene_oi], device = 'cpu')", "restats")
+import pstats
 
-# %%
-import pyximport
-import sys
-
-pyximport.install(
-    reload_support=True,
-    language_level=3,
-    setup_args=dict(include_dirs=[np.get_include()]),
-)
-if "chromatinhd.loaders.extraction.fragments" in sys.modules:
-    del sys.modules["chromatinhd.loaders.extraction.fragments"]
-import chromatinhd.loaders.extraction.fragments
-
-# %%
-# n_cells = 2000
-n_cells = 3
-n_genes = 100
-
-cutwindow = np.array([-150, 150])
-
-# %%
-import chromatinhd.loaders.fragments
-
-# %%
-loaders = chromatinhd.loaders.pool.LoaderPool(
-    chromatinhd.loaders.fragments.Fragments,
-    {"fragments": fragments, "cellxgene_batch_size": n_cells * n_genes},
-    n_workers=2,
-)
-
-# %%
-import gc
-
-gc.collect()
-
-# %%
-data = []
-for i in range(2):
-    cells_oi = np.sort(np.random.choice(fragments.n_cells, n_cells, replace=False))
-    genes_oi = np.sort(np.random.choice(fragments.n_genes, n_genes, replace=False))
-
-    cellxgene_oi = (cells_oi[:, None] * fragments.n_genes + genes_oi).flatten()
-
-    data.append(
-        chd.loaders.minibatching.Minibatch(cells_oi=cells_oi, genes_oi=genes_oi)
-    )
-loaders.initialize(data)
-
-# %%
-for i, data in enumerate(tqdm.tqdm(loaders)):
-    print(i)
-    data
-    loaders.submit_next()
-
-# %% [markdown]
-# ## Positional encoding
-
-# %%
-import chromatinhd.models.positional.v20
-
-# %%
-n_frequencies = 20
-encoder = chromatinhd.models.positional.v20.SineEncoding(n_frequencies)
-
-# %%
-x = torch.arange(-10000, 10000)
-coordinates = torch.stack([x, x + 500], 1)
-encoding = encoder(coordinates)
-
-# %%
-1 / (10000 ** (2 * 0 / 50))
-
-# %%
-fig, ax = plt.subplots(figsize=(1, 3), facecolor="w")
-sns.heatmap(coordinates.numpy(), cbar_kws={"label": "position"})
-ax.collections[0].colorbar.set_label("position", rotation=0)
-ax.set_ylabel("fragment", rotation=0, ha="right")
-ax.set_yticks([])
-ax.set_xticklabels(["left", "right"])
-fig.savefig("hi.png", bbox_inches="tight", transparent=True, dpi=300)
-
-# %%
-fig, ax = plt.subplots(figsize=(4, 3))
-sns.heatmap(encoding.numpy())
-ax.collections[0].colorbar.set_label(
-    "embedding\nvalue", rotation=0, ha="left", va="center"
-)
-ax.set_ylabel("fragment", rotation=0, ha="right")
-ax.set_yticks([])
-ax.set_xlabel("components")
-ax.set_xticks([])
-fig.savefig("hi.png", bbox_inches="tight", transparent=True, dpi=300)
-
-# %%
-i = 0
-plt.plot(coordinates[:100, 0], encoding[:100, i])
-i = 10
-plt.plot(coordinates[:100, 0], encoding[:100, i])
-i = 20
-plt.plot(coordinates[:100, 0], encoding[:100, i])
-i = 50
-plt.plot(coordinates[:100, 0], encoding[:100, i])
-
-# %% [markdown]
-# ## Fragment counts
-
-# %%
-counts = pd.Series(torch.diff(fragments.cellxgene_indptr).numpy())
-pd.Series(counts).plot(kind="hist", range=(0, 10), bins=10)
-
-# %% [markdown]
-# ## Fragment embedder
-
-# %%
-import chromatinhd.models.positional.v20
-
-# %%
-embedder = chromatinhd.models.positional.v20.FragmentEmbedder(fragments.n_genes)
-
-# %%
-embedder.forward(data.coordinates, data.genemapping)
-
-# %%
-1 / (10000 ** (2 * 0 / 50))
-
-# %%
-sns.heatmap(encoding.numpy())
-
-# %%
-i = 0
-plt.plot(coordinates[:100, 0], encoding[:100, i])
-i = 10
-plt.plot(coordinates[:100, 0], encoding[:100, i])
-i = 20
-plt.plot(coordinates[:100, 0], encoding[:100, i])
-i = 50
-plt.plot(coordinates[:100, 0], encoding[:100, i])
-
-# %% [markdown]
-# ## Model
-
-# %%
-import chromatinhd.models.positional.v20
-
-# %%
-mean_gene_expression = transcriptome.X.dense().mean(0)
-
-# %%
-model = chromatinhd.models.positional.v20.Model(
-    fragments.n_genes,
-    mean_gene_expression,
-    n_frequencies=50,
-    nonlinear="sigmoid",
-    reduce="sum",
-)
-# model = pickle.load(
-#     (
-#         chd.get_output()
-#         / ".."
-#         / "output/prediction_positional/pbmc10k/10k10k/v14_50freq_sum_sigmoid_initdefault/model_0.pkl"
-#     ).open("rb")
-# )
-
-# %%
-effect = model.forward(data)
-effect = effect - mean_gene_expression[data.genes_oi]
-
-# %% [markdown]
-# ## Single example
-
-# %%
-transcriptome.X
-mean_gene_expression = transcriptome.X.dense().mean(0)
-
-# %%
-from chromatinhd.models.positional.v20 import Model
-
-# %%
-model = Model(fragments.n_genes, mean_gene_expression)
-
-# %%
-model.forward(data)
-
-# %% [markdown]
-# ## Infer
-
-# %% [markdown]
-# ### Loaders
-
-# %%
-import chromatinhd.loaders
-
-# %%
-from design import get_design, get_folds_training
-
-# %%
-design = get_design(transcriptome, fragments)
-
-# %%
-prediction_name = "v20"
-# prediction_name = "counter"
-design_row = design[prediction_name]
-
-# %%
-# loaders
-print("collecting...")
-if "loaders" in globals():
-    loaders.terminate()
-    del loaders
-    import gc
-
-    gc.collect()
-if "loaders_validation" in globals():
-    loaders_validation.terminate()
-    del loaders_validation
-    import gc
-
-    gc.collect()
-print("collected")
-loaders = chd.loaders.LoaderPool(
-    design_row["loader_cls"], design_row["loader_parameters"], n_workers=20
-)
-loaders_validation = chd.loaders.LoaderPool(
-    design_row["loader_cls"], design_row["loader_parameters"], n_workers=5
-)
-loaders_validation.shuffle_on_iter = False
-
-# %%
-# folds & minibatching
-folds = pickle.load((fragments.path / "folds.pkl").open("rb"))
-folds = get_folds_training(fragments, folds)
-
-
-# %%
-# loss
-def paircor(x, y, dim=0, eps=0.1):
-    divisor = (y.std(dim) * x.std(dim)) + eps
-    cor = ((x - x.mean(dim, keepdims=True)) * (y - y.mean(dim, keepdims=True))).mean(
-        dim
-    ) / divisor
-    return cor
-
-
-loss = lambda x, y: -paircor(x, y).mean() * 100
-
-
-# %%
-class Prediction(chd.flow.Flow):
-    pass
-
-
-print(prediction_name)
-prediction = chd.flow.Flow(
-    chd.get_output()
-    / "prediction_positional"
-    / dataset_name
-    / promoter_name
-    / prediction_name
-)
-
-# %%
-fold_ix = 0
-fold = folds[0]
-
-# %%
-# new_minibatch_sets = []
-# for minibatch_set in fold["minibatches_train_sets"]:
-#     tasks = [minibatch.filter_genes(improved) for minibatch in minibatch_set["tasks"]]
-#     new_minibatch_sets.append({"tasks":tasks})
-
-# %%
-n_epochs = 30
-checkpoint_every_epoch = 1
-
-# %%
-# model
-model = design_row["model_cls"](**design_row["model_parameters"])
-
-# %%
-from chromatinhd.models.positional.trainer import Trainer
-
-# %%
-# optimization
-optimize_every_step = 1
-lr = 1e-2  # / optimize_every_step
-optim = chd.optim.SparseDenseAdam(
-    model.parameters_sparse(),
-    model.parameters_dense(autoextend=False),
-    lr=lr,
-    weight_decay=1e-5,
-)
-
-# train
-import chromatinhd.train
-
-outcome = torch.tensor(transcriptome.adata.layers["magic"])
-trainer = Trainer(
-    model,
-    loaders,
-    loaders_validation,
-    outcome,
-    loss,
-    optim,
-    checkpoint_every_epoch=checkpoint_every_epoch,
-    optimize_every_step=optimize_every_step,
-    n_epochs=n_epochs,
-    device="cuda",
-)
-trainer.train(fold["minibatches_train_sets"], fold["minibatches_validation_trace"])
-
-# %%
-pd.DataFrame(trainer.trace.validation_steps).groupby("checkpoint").mean()["loss"].plot(
-    label="validation"
-)
-pd.DataFrame(trainer.trace.train_steps).groupby("checkpoint").mean()["loss"].plot(
-    label="train"
-)
-
-# %%
-# model = model.to("cpu")
-# pickle.dump(model, open("../../" + dataset_name + "_" + "baseline_model.pkl", "wb"))
-
-# %%
-# model = model.to("cpu")
-# pickle.dump(model, open(prediction.path / ("model_" + str(fold_ix) + ".pkl"), "wb"))
-
-# %%
-from chromatinhd.models.positional.v22 import Model as Model22
-
-model2 = Model22(model)
-
-# %%
-data = loaders_validation.pull()
-
-# %%
-a = model.forward(data)
-b = model2.forward(data)
-
-# %%
-a.detach().cpu().numpy() - b.detach().cpu().numpy()
-
-# %%
-# optimization
-optimize_every_step = 1
-lr = 1e-2  # / optimize_every_step
-optim = chd.optim.SparseDenseAdam(
-    model2.parameters_sparse(),
-    model2.parameters_dense(autoextend=False),
-    lr=lr,
-    weight_decay=1e-5,
-)
-
-# train
-import chromatinhd.train
-
-outcome = torch.tensor(transcriptome.adata.layers["magic"])
-trainer = Trainer(
-    model2,
-    loaders,
-    loaders_validation,
-    outcome,
-    loss,
-    optim,
-    checkpoint_every_epoch=checkpoint_every_epoch,
-    optimize_every_step=optimize_every_step,
-    n_epochs=n_epochs,
-    device="cuda",
-)
-trainer.train(fold["minibatches_train_sets"], fold["minibatches_validation_trace"])
-
-# %%
-pd.DataFrame(trainer.trace.validation_steps).groupby("checkpoint").mean()["loss"].plot(
-    label="validation"
-)
-pd.DataFrame(trainer.trace.train_steps).groupby("checkpoint").mean()["loss"].plot(
-    label="train"
-)
-
-# %%
+p = pstats.Stats("restats")
+p.sort_stats("cumulative").print_stats(50)

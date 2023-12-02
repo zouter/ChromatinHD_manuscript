@@ -8,7 +8,7 @@ import pickle
 import numpy as np
 
 n_cells_step = 300
-n_genes_step = 1000
+n_regions_step = 1000
 
 
 def get_design(dataset_name, transcriptome, motifscan, fragments, window):
@@ -21,7 +21,7 @@ def get_design(dataset_name, transcriptome, motifscan, fragments, window):
     general_loader_parameters = {
         "fragments": fragments,
         "motifscan": motifscan,
-        "cellxgene_batch_size": n_cells_step * n_genes_step,
+        "cellxregion_batch_size": n_cells_step * n_regions_step,
         "window": window,
     }
 
@@ -31,10 +31,7 @@ def get_design(dataset_name, transcriptome, motifscan, fragments, window):
         "model_parameters": {**general_model_parameters},
         "loader_cls": chromatinhd.loaders.fragments.Fragments,
         "loader_parameters": {
-            **{
-                k: general_loader_parameters[k]
-                for k in ["fragments", "cellxgene_batch_size", "window"]
-            }
+            **{k: general_loader_parameters[k] for k in ["fragments", "cellxregion_batch_size", "window"]}
         },
     }
 
@@ -350,7 +347,7 @@ def get_design(dataset_name, transcriptome, motifscan, fragments, window):
 
 
 import chromatinhd as chd
-import chromatinhd.loaders.minibatching
+import chromatinhd.loaders.minibatches
 
 
 def get_folds_training(fragments, folds):
@@ -360,7 +357,7 @@ def get_folds_training(fragments, folds):
             fold["cells_train"],
             fold["genes_train"],
             n_cells_step=n_cells_step,
-            n_genes_step=n_genes_step,
+            n_regions_step=n_regions_step,
             n_genes_total=fragments.n_genes,
             use_all=True,
             rg=rg,
@@ -369,7 +366,7 @@ def get_folds_training(fragments, folds):
             fold["cells_validation"],
             fold["genes_validation"],
             n_cells_step=n_cells_step,
-            n_genes_step=n_genes_step,
+            n_regions_step=n_regions_step,
             n_genes_total=fragments.n_genes,
             use_all=True,
             rg=rg,
@@ -391,7 +388,7 @@ def get_folds_inference(fragments, folds):
             cells_train,
             genes_train,
             n_cells_step=n_cells_step,
-            n_genes_step=n_genes_step,
+            n_regions_step=n_regions_step,
             n_genes_total=fragments.n_genes,
             use_all=True,
             rg=rg,
@@ -400,7 +397,7 @@ def get_folds_inference(fragments, folds):
             cells_train + cells_validation,
             genes_validation,
             n_cells_step=n_cells_step,
-            n_genes_step=n_genes_step,
+            n_regions_step=n_regions_step,
             n_genes_total=fragments.n_genes,
             use_all=True,
             rg=rg,
@@ -409,7 +406,7 @@ def get_folds_inference(fragments, folds):
             cells_validation,
             genes_train,
             n_cells_step=n_cells_step,
-            n_genes_step=n_genes_step,
+            n_regions_step=n_regions_step,
             n_genes_total=fragments.n_genes,
             use_all=True,
             rg=rg,
@@ -440,7 +437,7 @@ def get_folds_test(fragments, folds):
             cells_test,
             genes_test,
             n_cells_step=n_cells_step,
-            n_genes_step=n_genes_step,
+            n_regions_step=n_regions_step,
             n_genes_total=fragments.n_genes,
             use_all=True,
             rg=rg,
@@ -449,7 +446,7 @@ def get_folds_test(fragments, folds):
             cells_test,
             genes_train,
             n_cells_step=n_cells_step,
-            n_genes_step=n_genes_step,
+            n_regions_step=n_regions_step,
             n_genes_total=fragments.n_genes,
             use_all=True,
             rg=rg,

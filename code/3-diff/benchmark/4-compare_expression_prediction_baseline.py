@@ -6,7 +6,7 @@ import tqdm.auto as tqdm
 import chromatinhd as chd
 import chromatinhd.data
 import chromatinhd.loaders.fragmentmotif
-import chromatinhd.loaders.minibatching
+import chromatinhd.loaders.minibatches
 
 import pickle
 
@@ -34,9 +34,7 @@ def calculate_scores(y_clusters, train_clusters, validation_cluster):
 
         prediction = y.mean(0, keepdims=True)
         rmse = np.sqrt(((prediction - y_validation) ** 2).mean())
-        scores.append(
-            {"gene_ix": gene_ix, "rmse": rmse, "validation_cluster": validation_cluster}
-        )
+        scores.append({"gene_ix": gene_ix, "rmse": rmse, "validation_cluster": validation_cluster})
     return pd.DataFrame(scores)
 
 
@@ -76,12 +74,7 @@ for dataset_name, subdesign in design.groupby("dataset"):
         if force:
             # get y cluster
             y_cells = np.array(transcriptome.X.to_scipy_csr().todense())
-            y_clusters = (
-                pd.DataFrame(y_cells, index=pd.from_dummies(latent))
-                .groupby(level=0)
-                .mean()
-                .values
-            )
+            y_clusters = pd.DataFrame(y_cells, index=pd.from_dummies(latent)).groupby(level=0).mean().values
             print(y_clusters)
 
             # calculate scores
@@ -90,9 +83,7 @@ for dataset_name, subdesign in design.groupby("dataset"):
             for validation_cluster in np.arange(len(cluster_info)):
                 train_clusters = np.arange(len(cluster_info)) != validation_cluster
 
-                scores_validation_cluster = calculate_scores(
-                    y_clusters, train_clusters, validation_cluster
-                )
+                scores_validation_cluster = calculate_scores(y_clusters, train_clusters, validation_cluster)
                 scores_validation_cluster["validation_cluster"] = validation_cluster
                 scores.append(scores_validation_cluster)
 

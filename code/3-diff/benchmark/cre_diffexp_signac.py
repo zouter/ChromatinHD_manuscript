@@ -6,7 +6,7 @@ import tqdm.auto as tqdm
 import chromatinhd as chd
 import chromatinhd.data
 import chromatinhd.loaders.fragmentmotif
-import chromatinhd.loaders.minibatching
+import chromatinhd.loaders.minibatches
 
 import scanpy as sc
 
@@ -27,9 +27,7 @@ design = design.query("dataset == 'pbmc10k'")
 
 R_location = "/data/peak_free_atac/software/R-4.2.2/bin/"
 signac_script_location = chd.get_code() / "1-preprocessing" / "peaks" / "run_signac.R"
-chromvar_script_location = (
-    chd.get_code() / "1-preprocessing" / "peaks" / "run_chromvar.R"
-)
+chromvar_script_location = chd.get_code() / "1-preprocessing" / "peaks" / "run_chromvar.R"
 
 design["force"] = False
 
@@ -49,9 +47,7 @@ for dataset_name, design_dataset in design.groupby("dataset"):
         latent = pickle.load((latent_folder / (latent_name + ".pkl")).open("rb"))
         cluster_info = pd.read_pickle(latent_folder / (latent_name + "_info.pkl"))
 
-        for (peakcaller, diffexp), subdesign in subdesign.groupby(
-            ["peakcaller", "diffexp"]
-        ):
+        for (peakcaller, diffexp), subdesign in subdesign.groupby(["peakcaller", "diffexp"]):
             scores_dir = (
                 chd.get_output()
                 / "prediction_differential"
@@ -72,10 +68,7 @@ for dataset_name, design_dataset in design.groupby("dataset"):
                 try:
                     print(f"{dataset_name=} {latent_name=} {peakcaller=}")
                     peakcounts = chd.peakcounts.FullPeak(
-                        folder=chd.get_output()
-                        / "peakcounts"
-                        / dataset_name
-                        / peakcaller
+                        folder=chd.get_output() / "peakcounts" / dataset_name / peakcaller
                     )
                     adata_atac = sc.AnnData(
                         peakcounts.counts.astype(np.float32),
@@ -113,15 +106,9 @@ for dataset_name, design_dataset in design.groupby("dataset"):
                         # run R script
                         import os
 
-                        script_location = (
-                            signac_script_location
-                            if diffexp == "signac"
-                            else chromvar_script_location
-                        )
+                        script_location = signac_script_location if diffexp == "signac" else chromvar_script_location
 
-                        os.system(
-                            f"{R_location}/Rscript {script_location} {tempfolder}"
-                        )
+                        os.system(f"{R_location}/Rscript {script_location} {tempfolder}")
 
                         import shutil
 
@@ -131,21 +118,17 @@ for dataset_name, design_dataset in design.groupby("dataset"):
                         )
 
                     peakscores = pd.read_csv(scores_dir / "results.csv", index_col=0)
-                    peakscores["cluster"] = pd.Categorical(
-                        peakscores["cluster"], categories=cluster_info.index
-                    )
+                    peakscores["cluster"] = pd.Categorical(peakscores["cluster"], categories=cluster_info.index)
 
                     peakscores = pd.merge(peakscores, peakcounts.peaks, on="peak")
                     peakscores["logfoldchanges"] = peakscores["avg_log2FC"]
                     peakscores["pvals_adj"] = peakscores["p_val_adj"]
 
-                    peakresult = (
-                        chromatinhd.differential.DifferentialSlices.from_peakscores(
-                            peakscores,
-                            window,
-                            len(transcriptome.var),
-                            logfoldchanges_cutoff=0.1,
-                        )
+                    peakresult = chromatinhd.differential.DifferentialSlices.from_peakscores(
+                        peakscores,
+                        window,
+                        len(transcriptome.var),
+                        logfoldchanges_cutoff=0.1,
                     )
 
                     print(scores_dir)

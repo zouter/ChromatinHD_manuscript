@@ -29,11 +29,18 @@ import requests
 
 # %%
 bed_folder = chd.get_output() / "bed" / "gm1282_tf_chipseq_bw"
-bed_folder.mkdir(exist_ok = True, parents = True)
+
 
 # %%
+bed_folder = chd.get_output() / "bed" / "gm1282_tf_chipseq_bw"
 url = "https://www.encodeproject.org/metadata/?type=Experiment&replicates.library.biosample.donor.organism.scientific_name=Homo+sapiens&assay_title=TF+ChIP-seq&status=released&biosample_ontology.term_name=GM12878&target.label!=CTCF&target.label!=EP300&target.label!=POLR2A&assembly=GRCh38&control_type!=*&target.label!=POLR2AphosphoS2&target.label!=POLR2AphosphoS5"
+
+bed_folder = chd.get_output() / "bed" / "k562_tf_chipseq_bw"
+url = "https://www.encodeproject.org/metadata/?type=Experiment&replicates.library.biosample.donor.organism.scientific_name=Homo+sapiens&assay_title=TF+ChIP-seq&status=released&biosample_ontology.term_name=K562&target.label!=CTCF&target.label!=EP300&target.label!=POLR2A&assembly=GRCh38&control_type!=*&target.label!=POLR2AphosphoS2&target.label!=POLR2AphosphoS5"
 # url = "https://www.encodeproject.org/search/?type=Experiment&replicates.library.biosample.donor.organism.scientific_name=Homo+sapiens&assay_title=TF+ChIP-seq&status=released&biosample_ontology.term_name=GM12878&target.label!=CTCF&target.label!=EP300&target.label!=POLR2A&assembly=GRCh38&control_type!=*&target.label!=POLR2AphosphoS2&target.label!=POLR2AphosphoS5"
+
+if not bed_folder.exists():
+    bed_folder.mkdir(exist_ok = True, parents = True)
 
 # %%
 obj = requests.get(url)
@@ -47,19 +54,23 @@ files = pd.read_table(io.StringIO(obj.content.decode("utf-8")))
 files.columns = ["_".join(col.lower().split(" ")) for col in files.columns]
 files = files.set_index("file_accession")
 
-# %%
 files.head()
 files["file_format"].value_counts()
 files["output_type"].value_counts()
 
-# %%
 files = files.loc[files["output_type"] == "fold change over control"]
 files = files.loc[files["file_assembly"] == "GRCh38"]
 files = files.groupby("experiment_target").first().reset_index()
 files["experiment_target"].value_counts()
 
-# %%
-files = files.loc[files["experiment_target"].str.contains("POU2F2") | files["experiment_target"].str.contains("TCF3") | files["experiment_target"].str.contains("SPI1") | files["experiment_target"].str.contains("RELA") | files["experiment_target"].str.contains("EBF1")| files["experiment_target"].str.contains("IRF4")| files["experiment_target"].str.contains("PAX5")| files["experiment_target"].str.contains("ZEB1")| files["experiment_target"].str.contains("RELB")| files["experiment_target"].str.contains("IRF1")| files["experiment_target"].str.contains("RUNX3")| files["experiment_target"].str.contains("TBX21")| files["experiment_target"].str.contains("TCF7")]
+targets = [
+    "POU2F2" ,"TCF3" ,"SPI1" ,"RELA" ,"EBF1" ,"IRF4" ,"PAX5" ,"ZEB1" ,"RELB" ,"IRF1" ,"RUNX3" ,"TBX21" ,"TCF7"
+]
+targets = ["GATA1", "GATA2"]
+files_oi = pd.Series(False, files.index)
+for target in targets:
+    files_oi[files["experiment_target"].str.contains(target)] = True
+files = files.loc[files_oi]
 files["experiment_target"].value_counts()
 
 # %%
@@ -97,3 +108,4 @@ for _, file in files.iterrows():
 
 
 # %%
+str(bed_folder / file["filename"])

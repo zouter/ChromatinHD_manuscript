@@ -6,7 +6,7 @@ import tqdm.auto as tqdm
 import chromatinhd as chd
 import chromatinhd.data
 import chromatinhd.loaders.fragmentmotif
-import chromatinhd.loaders.minibatching
+import chromatinhd.loaders.minibatches
 
 import pickle
 
@@ -42,14 +42,10 @@ for dataset_name, design_dataset in design.groupby("dataset"):
     # promoter_name, window = "1k1k", np.array([-1000, 1000])
     promoter_name, window = "10k10k", np.array([-10000, 10000])
     # promoter_name, window = "20kpromoter", np.array([-10000, 0])
-    promoters = pd.read_csv(
-        folder_data_preproc / ("promoters_" + promoter_name + ".csv"), index_col=0
-    )
+    promoters = pd.read_csv(folder_data_preproc / ("promoters_" + promoter_name + ".csv"), index_col=0)
     window_width = window[1] - window[0]
 
-    fragments = chromatinhd.data.Fragments(
-        folder_data_preproc / "fragments" / promoter_name
-    )
+    fragments = chromatinhd.data.Fragments(folder_data_preproc / "fragments" / promoter_name)
     fragments.window = window
 
     print(fragments.n_genes)
@@ -59,12 +55,7 @@ for dataset_name, design_dataset in design.groupby("dataset"):
 
         for method_name, subdesign in subdesign.groupby("method"):
             prediction = chd.flow.Flow(
-                chd.get_output()
-                / "prediction_likelihood"
-                / dataset_name
-                / promoter_name
-                / latent_name
-                / method_name
+                chd.get_output() / "prediction_likelihood" / dataset_name / promoter_name / latent_name / method_name
             )
 
             models = []
@@ -78,22 +69,15 @@ for dataset_name, design_dataset in design.groupby("dataset"):
 
                 basepair_ranking = None
 
-                for (peakcaller, diffexp), design_peakcaller in subdesign.groupby(
-                    ["peakcaller", "diffexp"]
-                ):
-
-                    print(
-                        f"{dataset_name=} {promoter_name=} {method_name=} {peakcaller=} {diffexp=}"
-                    )
+                for (peakcaller, diffexp), design_peakcaller in subdesign.groupby(["peakcaller", "diffexp"]):
+                    print(f"{dataset_name=} {promoter_name=} {method_name=} {peakcaller=} {diffexp=}")
                     # create scores dir
                     scores_dir = prediction.path / "scoring" / peakcaller / diffexp
                     scores_dir.mkdir(parents=True, exist_ok=True)
 
                     desired_outputs = [(scores_dir / "slices.pkl")]
                     force = subdesign["force"].iloc[0]
-                    if not all(
-                        [desired_output.exists() for desired_output in desired_outputs]
-                    ):
+                    if not all([desired_output.exists() for desired_output in desired_outputs]):
                         force = True
 
                     if force:
@@ -109,9 +93,7 @@ for dataset_name, design_dataset in design.groupby("dataset"):
                         )
 
                         try:
-                            peakresult = pickle.load(
-                                (peak_scores_dir / "slices.pkl").open("rb")
-                            )
+                            peakresult = pickle.load((peak_scores_dir / "slices.pkl").open("rb"))
                         except FileNotFoundError as e:
                             print(e)
                             continue
@@ -147,10 +129,7 @@ for dataset_name, design_dataset in design.groupby("dataset"):
 
                             prob_cutoff = np.log(1.0)
 
-                            basepair_ranking = (
-                                probs_interpolated
-                                - probs_interpolated.mean(1, keepdims=True)
-                            )
+                            basepair_ranking = probs_interpolated - probs_interpolated.mean(1, keepdims=True)
                             basepair_ranking[probs_interpolated < prob_cutoff] = -99999
 
                             # filter_background = True
@@ -184,14 +163,9 @@ for dataset_name, design_dataset in design.groupby("dataset"):
 
                             # calculate percentage of base pairs in a peak
                             # the same percentage will be used later to select regions
-                            n = (
-                                peakresult.positions[slices_oi, 1]
-                                - peakresult.positions[slices_oi, 0]
-                            ).sum()
+                            n = (peakresult.positions[slices_oi, 1] - peakresult.positions[slices_oi, 0]).sum()
                             perc = n / (fragments.n_genes * (window[1] - window[0]))
-                            cutoff = np.quantile(
-                                basepair_ranking[:, cluster_ix], 1 - perc
-                            )
+                            cutoff = np.quantile(basepair_ranking[:, cluster_ix], 1 - perc)
                             print(perc)
                             assert not pd.isnull(cutoff), cluster_ix
                             cutoffs.append(cutoff)
@@ -200,24 +174,16 @@ for dataset_name, design_dataset in design.groupby("dataset"):
                         print(cutoffs)
 
                         # call differential regions
-                        regionresult = (
-                            chd.models.diff.DifferentialSlices.from_basepair_ranking(
-                                basepair_ranking,
-                                window,
-                                cutoff=cutoffs[:, None],
-                                resolution=basepair_step,
-                            )
+                        regionresult = chd.models.diff.DifferentialSlices.from_basepair_ranking(
+                            basepair_ranking,
+                            window,
+                            cutoff=cutoffs[:, None],
+                            resolution=basepair_step,
                         )
 
                         print(
-                            peakresult.get_slicescores()
-                            .groupby("cluster_ix")["length"]
-                            .sum()
-                            / regionresult.get_slicescores()
-                            .groupby("cluster_ix")["length"]
-                            .sum()
+                            peakresult.get_slicescores().groupby("cluster_ix")["length"].sum()
+                            / regionresult.get_slicescores().groupby("cluster_ix")["length"].sum()
                         )
 
-                        pickle.dump(
-                            regionresult, (scores_dir / "slices.pkl").open("wb")
-                        )
+                        pickle.dump(regionresult, (scores_dir / "slices.pkl").open("wb"))

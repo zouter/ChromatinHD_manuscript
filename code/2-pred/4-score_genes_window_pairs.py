@@ -53,9 +53,7 @@ outcome_source = "magic"
 prediction_name = "v20"
 # prediction_name = "v21"
 
-promoters = pd.read_csv(
-    folder_data_preproc / ("promoters_" + promoter_name + ".csv"), index_col=0
-)
+promoters = pd.read_csv(folder_data_preproc / ("promoters_" + promoter_name + ".csv"), index_col=0)
 window_width = window[1] - window[0]
 
 fragments = chd.data.Fragments(folder_data_preproc / "fragments" / promoter_name)
@@ -71,7 +69,7 @@ class Prediction(chd.flow.Flow):
 
 # folds & minibatching
 folds = pickle.load((fragments.path / "folds" / (splitter + ".pkl")).open("rb"))
-folds, cellxgene_batch_size = get_folds_inference(fragments, folds, n_cells_step=2000)
+folds, cellxregion_batch_size = get_folds_inference(fragments, folds, n_cells_step=2000)
 folds = folds  # [:1]
 
 # design
@@ -84,37 +82,20 @@ def select_window(coordinates, window_start, window_end):
     return ~((coordinates[:, 0] < window_end) & (coordinates[:, 1] > window_start))
 
 
-assert (
-    select_window(np.array([[-100, 200], [-300, -100]]), -50, 50)
-    == np.array([False, True])
-).all()
-assert (
-    select_window(np.array([[-100, 200], [-300, -100]]), -310, -309)
-    == np.array([True, True])
-).all()
-assert (
-    select_window(np.array([[-100, 200], [-300, -100]]), 201, 202)
-    == np.array([True, True])
-).all()
-assert (
-    select_window(np.array([[-100, 200], [-300, -100]]), -200, 20)
-    == np.array([False, False])
-).all()
+assert (select_window(np.array([[-100, 200], [-300, -100]]), -50, 50) == np.array([False, True])).all()
+assert (select_window(np.array([[-100, 200], [-300, -100]]), -310, -309) == np.array([True, True])).all()
+assert (select_window(np.array([[-100, 200], [-300, -100]]), 201, 202) == np.array([True, True])).all()
+assert (select_window(np.array([[-100, 200], [-300, -100]]), -200, 20) == np.array([False, False])).all()
 
 Scorer2 = chd.scoring.prediction.Scorer2
 
 design_row = design[prediction_name]
 
 fragments.window = window
-design_row["loader_parameters"]["cellxgene_batch_size"] = cellxgene_batch_size
+design_row["loader_parameters"]["cellxregion_batch_size"] = cellxregion_batch_size
 print(prediction_name)
 prediction = chd.flow.Flow(
-    chd.get_output()
-    / "prediction_positional"
-    / dataset_name
-    / promoter_name
-    / splitter
-    / prediction_name
+    chd.get_output() / "prediction_positional" / dataset_name / promoter_name / splitter / prediction_name
 )
 
 # loaders
@@ -125,7 +106,7 @@ if "loaders" in globals():
 
     gc.collect()
 
-loaders = chd.loaders.LoaderPool(
+loaders = chd.loaders.LoaderPoolOld(
     design_row["loader_cls"],
     design_row["loader_parameters"],
     n_workers=20,
@@ -134,13 +115,12 @@ loaders = chd.loaders.LoaderPool(
 
 # load all models
 models = [
-    pickle.load(open(prediction.path / ("model_" + str(fold_ix) + ".pkl"), "rb"))
-    for fold_ix, fold in enumerate(folds)
+    pickle.load(open(prediction.path / ("model_" + str(fold_ix) + ".pkl"), "rb")) for fold_ix, fold in enumerate(folds)
 ]
 outcome = torch.from_numpy(transcriptome.adata.layers["magic"])
 
 folds = pickle.load((fragments.path / "folds" / (splitter + ".pkl")).open("rb"))
-folds, cellxgene_batch_size = get_folds_inference(fragments, folds, n_cells_step=2000)
+folds, cellxregion_batch_size = get_folds_inference(fragments, folds, n_cells_step=2000)
 folds = folds
 
 # load nothing scoring
@@ -180,9 +160,7 @@ for gene, subdesign in design.groupby("gene", sort=False):
     force = subdesign_row["force"] or not (scores_folder / "scores.nc").exists()
 
     if force:
-        window_scoring = chd.scoring.prediction.Scoring.load(
-            prediction.path / "scoring" / "window_gene" / gene
-        )
+        window_scoring = chd.scoring.prediction.Scoring.load(prediction.path / "scoring" / "window_gene" / gene)
 
         deltacor_cutoff = -0.0001
         windows_oi = window_scoring.design.loc[
@@ -196,7 +174,7 @@ for gene, subdesign in design.groupby("gene", sort=False):
         ]
 
         print(gene)
-        folds_filtered, cellxgene_batch_size = get_folds_inference(
+        folds_filtered, cellxregion_batch_size = get_folds_inference(
             fragments, folds, n_cells_step=2000, genes_oi=genes_oi
         )
 

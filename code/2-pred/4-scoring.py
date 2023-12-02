@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.14.5
+#       jupytext_version: 1.14.7
 #   kernelspec:
 #     display_name: Python 3
 #     language: python
@@ -75,9 +75,7 @@ prediction_name = "v20_initdefault"
 outcome_source = "magic"
 
 # fragments
-promoters = pd.read_csv(
-    folder_data_preproc / ("promoters_" + promoter_name + ".csv"), index_col=0
-)
+promoters = pd.read_csv(folder_data_preproc / ("promoters_" + promoter_name + ".csv"), index_col=0)
 window_width = window[1] - window[0]
 
 fragments = chd.data.Fragments(folder_data_preproc / "fragments" / promoter_name)
@@ -88,7 +86,7 @@ from design import get_design, get_folds_inference
 
 # folds & minibatching
 folds = pickle.load((fragments.path / "folds" / (splitter + ".pkl")).open("rb"))
-folds, cellxgene_batch_size = get_folds_inference(fragments, folds, n_cells_step=2000)
+folds, cellxregion_batch_size = get_folds_inference(fragments, folds, n_cells_step=2000)
 folds = folds  # [:1]
 
 # design
@@ -106,20 +104,15 @@ design_row = design[prediction_name]
 fragments.window = window
 
 # %%
-design_row["loader_parameters"]["cellxgene_batch_size"] = cellxgene_batch_size
+design_row["loader_parameters"]["cellxregion_batch_size"] = cellxregion_batch_size
 
 # %%
 print(prediction_name)
 prediction = chd.flow.Flow(
-    chd.get_output()
-    / "prediction_positional"
-    / dataset_name
-    / promoter_name
-    / splitter
-    / prediction_name
+    chd.get_output() / "prediction_positional" / dataset_name / promoter_name / splitter / prediction_name
 )
 
-loaders = chd.loaders.LoaderPool(
+loaders = chd.loaders.LoaderPoolOld(
     design_row["loader_cls"],
     design_row["loader_parameters"],
     n_workers=20,
@@ -128,8 +121,7 @@ loaders = chd.loaders.LoaderPool(
 
 # load all models
 models = [
-    pickle.load(open(prediction.path / ("model_" + str(fold_ix) + ".pkl"), "rb"))
-    for fold_ix, fold in enumerate(folds)
+    pickle.load(open(prediction.path / ("model_" + str(fold_ix) + ".pkl"), "rb")) for fold_ix, fold in enumerate(folds)
 ]
 
 # %%
@@ -194,7 +186,7 @@ neighbors = neighbors[:, 1:]
 
 # %%
 folds = pickle.load((fragments.path / "folds" / (splitter + ".pkl")).open("rb"))
-folds, cellxgene_batch_size = get_folds_inference(fragments, folds, n_cells_step=2000)
+folds, cellxregion_batch_size = get_folds_inference(fragments, folds, n_cells_step=2000)
 folds = folds  # [:1]
 
 # %% [markdown]
@@ -234,9 +226,7 @@ scorer_folder.mkdir(exist_ok=True, parents=True)
 nothing_scoring.save(scorer_folder)
 
 # %%
-nothing_scoring.genescores.sel(phase="validation")["cor"].mean("model").sel(
-    i=0
-).to_pandas().plot(kind="hist")
+nothing_scoring.genescores.sel(phase="validation")["cor"].mean("model").sel(i=0).to_pandas().plot(kind="hist")
 
 # %% [markdown]
 # ## Size
@@ -333,9 +323,7 @@ symbol = "BCL2"
 # symbol = "BCL11B"
 genes_oi = transcriptome.var["symbol"] == symbol
 gene = transcriptome.var.index[genes_oi][0]
-folds, cellxgene_batch_size = get_folds_inference(
-    fragments, folds, n_cells_step=2000, genes_oi=genes_oi
-)
+folds, cellxregion_batch_size = get_folds_inference(fragments, folds, n_cells_step=2000, genes_oi=genes_oi)
 folds = folds  # [:1]
 
 gene_ix = transcriptome.gene_ix(symbol)
@@ -368,9 +356,7 @@ window_scorer = Scorer2(
 )
 
 # %%
-window_filterer = chd.scoring.prediction.filterers.WindowFilterer(
-    window, window_size=100
-)
+window_filterer = chd.scoring.prediction.filterers.WindowFilterer(window, window_size=100)
 
 # %%
 window_scoring = window_scorer.score(
@@ -392,43 +378,22 @@ window_scoring.save(scores_folder)
 
 # %%
 sns.scatterplot(
-    x=window_scoring.genescores["deltacor"]
-    .sel(phase="test")
-    .mean("model")
-    .values.flatten(),
-    y=window_scoring.genescores["deltacor"]
-    .sel(phase="validation")
-    .mean("model")
-    .values.flatten(),
-    hue=np.log1p(
-        window_scoring.genescores["lost"]
-        .sel(phase="validation")
-        .mean("model")
-        .values.flatten()
-    ),
+    x=window_scoring.genescores["deltacor"].sel(phase="test").mean("model").values.flatten(),
+    y=window_scoring.genescores["deltacor"].sel(phase="validation").mean("model").values.flatten(),
+    hue=np.log1p(window_scoring.genescores["lost"].sel(phase="validation").mean("model").values.flatten()),
 )
 
 # %%
-window_scoring.genescores["retained"].sel(gene=gene).sel(phase="train").mean(
-    "model"
-).plot()
-window_scoring.genescores["retained"].sel(gene=gene).sel(phase="validation").mean(
-    "model"
-).plot()
-window_scoring.genescores["retained"].sel(gene=gene).sel(phase="test").mean(
-    "model"
-).plot()
+window_scoring.genescores["retained"].sel(gene=gene).sel(phase="train").mean("model").plot()
+window_scoring.genescores["retained"].sel(gene=gene).sel(phase="validation").mean("model").plot()
+window_scoring.genescores["retained"].sel(gene=gene).sel(phase="test").mean("model").plot()
 
 # %%
 # genescores["cor"].mean("model").sel(phase = "train").sel(gene = transcriptome.gene("IL1B")).plot()
 # genescores["cor"].mean("model").sel(phase = "validation").sel(gene = transcriptome.gene("CTLA4")).plot()
 fig, ax = plt.subplots()
-window_scoring.genescores["deltacor"].sel(phase="validation").sel(gene=gene).mean(
-    "model"
-).plot(ax=ax)
-window_scoring.genescores["deltacor"].sel(phase="test").sel(gene=gene).mean(
-    "model"
-).plot(ax=ax, color="blue")
+window_scoring.genescores["deltacor"].sel(phase="validation").sel(gene=gene).mean("model").plot(ax=ax)
+window_scoring.genescores["deltacor"].sel(phase="test").sel(gene=gene).mean("model").plot(ax=ax, color="blue")
 # ax2 = ax.twinx()
 # window_scoring.genescores["effect"].sel(phase="test").mean("gene").mean("model").plot(
 #     ax=ax2, color="red"
@@ -438,13 +403,9 @@ window_scoring.genescores["deltacor"].sel(phase="test").sel(gene=gene).mean(
 # ).plot(ax=ax2, color="orange")
 
 # %%
-nothing_scoring.genescores["cor"].sel(
+nothing_scoring.genescores["cor"].sel(gene=gene, phase="test").mean().item(), window_scoring.genescores["deltacor"].sel(
     gene=gene, phase="test"
-).mean().item(), window_scoring.genescores["deltacor"].sel(
-    gene=gene, phase="test"
-).mean(
-    "model"
-).sum().item()
+).mean("model").sum().item()
 
 # %% [markdown]
 # ### Explore celltype
@@ -505,12 +466,8 @@ cors_flattened = cors.reshape((cors.shape[0], -1))
 interaction = pd.DataFrame(
     {
         "cor": cors_flattened.mean(0),
-        "window_ix1": np.tile(
-            np.arange(cors.shape[1])[:, None], cors.shape[1]
-        ).flatten(),
-        "window_ix2": np.tile(
-            np.arange(cors.shape[1])[:, None], cors.shape[1]
-        ).T.flatten(),
+        "window_ix1": np.tile(np.arange(cors.shape[1])[:, None], cors.shape[1]).flatten(),
+        "window_ix2": np.tile(np.arange(cors.shape[1])[:, None], cors.shape[1]).T.flatten(),
         "window1": np.tile(
             window_scoring.genescores.coords["window"].values[:, None],
             len(window_scoring.genescores.coords["window"].values),
@@ -557,9 +514,7 @@ interaction["qval"] = statsmodels.stats.multitest.fdrcorrection(interaction["pva
 
 
 # %%
-sns.heatmap(
-    interaction.set_index(["window1", "window2"])["qval"].unstack(), vmin=0, vmax=0.05
-)
+sns.heatmap(interaction.set_index(["window1", "window2"])["qval"].unstack(), vmin=0, vmax=0.05)
 
 # %%
 interaction["significant"] = interaction["qval"] < 0.05
@@ -568,9 +523,7 @@ interaction.loc[~interaction["significant"], "cor_masked"] = 0.0
 
 # %%
 
-interaction["deltacor_prod"] = np.abs(interaction["deltacor1"]) * np.abs(
-    interaction["deltacor2"]
-)
+interaction["deltacor_prod"] = np.abs(interaction["deltacor1"]) * np.abs(interaction["deltacor2"])
 
 # %%
 interaction_oi = interaction.query("(distance > 1000)")
@@ -604,9 +557,7 @@ for celltype, obs_celltype in transcriptome.adata.obs.groupby("celltype"):
         deltacors_celltype[celltype] += (
             cellgenedeltacors_fold.sel(
                 gene=gene,
-                cell=obs_celltype.index.intersection(
-                    cellgenedeltacors_fold.coords["cell"]
-                ),
+                cell=obs_celltype.index.intersection(cellgenedeltacors_fold.coords["cell"]),
             )
             .mean("cell")
             .to_pandas()
@@ -621,9 +572,7 @@ x = deltacors_celltype.unstack()
 sns.heatmap(x)
 
 # %%
-window_scoring.genescores["cor"].sel(phase="test").mean("model").mean(
-    "gene"
-).to_pandas().plot()
+window_scoring.genescores["cor"].sel(phase="test").mean("model").mean("gene").to_pandas().plot()
 
 
 # %%
@@ -644,15 +593,15 @@ fig, ax = plt.subplots()
 # deltacors.mean("gene").sel(
 #     cell=transcriptome.obs.query("celltype == 'CD14+ Monocytes'").index
 # ).mean("cell").to_pandas().plot(label="CD14+ Monocytes")
-deltacors.mean("gene").sel(
-    cell=transcriptome.obs.query("celltype == 'memory B'").index
-).mean("cell").to_pandas().plot(label="memory B")
-deltacors.mean("gene").sel(
-    cell=transcriptome.obs.query("celltype == 'CD14+ Monocytes'").index
-).mean("cell").to_pandas().plot(label="CD14+ Monocytes")
-deltacors.mean("gene").sel(
-    cell=transcriptome.obs.query("celltype == 'FCGR3A+ Monocytes'").index
-).mean("cell").to_pandas().plot(label="FCGR3A+ Monocytes")
+deltacors.mean("gene").sel(cell=transcriptome.obs.query("celltype == 'memory B'").index).mean("cell").to_pandas().plot(
+    label="memory B"
+)
+deltacors.mean("gene").sel(cell=transcriptome.obs.query("celltype == 'CD14+ Monocytes'").index).mean(
+    "cell"
+).to_pandas().plot(label="CD14+ Monocytes")
+deltacors.mean("gene").sel(cell=transcriptome.obs.query("celltype == 'FCGR3A+ Monocytes'").index).mean(
+    "cell"
+).to_pandas().plot(label="FCGR3A+ Monocytes")
 
 # deltacors.mean("gene").sel(
 #     cell=transcriptome.obs.query("celltype == 'pDCs'").index
@@ -709,9 +658,7 @@ deltacors = window_scoring.deltacors
 # effects_raw = effects.sel(gene = gene).to_pandas()
 effects_raw = window_scoring.deltacors.sel(gene=gene).to_pandas()
 effects_smooth = effects_raw.T.values[neighbors].mean(1)
-effects_smooth = pd.DataFrame(
-    effects_smooth.T, index=effects_raw.index, columns=effects_raw.columns
-)
+effects_smooth = pd.DataFrame(effects_smooth.T, index=effects_raw.index, columns=effects_raw.columns)
 
 # %%
 sc.pl.umap(transcriptome.adata, color=["celltype"])
@@ -785,30 +732,21 @@ plot_windows_oi2(windows_oi2)
 # ### Explore ambiguity
 
 # %%
-window_scoring.genescores["deltacor_down_ratio"] = (deltacors < -0.01).sum("cell") / (
-    deltacors > 0.01
-).sum("cell")
+window_scoring.genescores["deltacor_down_ratio"] = (deltacors < -0.01).sum("cell") / (deltacors > 0.01).sum("cell")
 
 # %%
 window_scores = (
-    window_scoring.genescores.sel(gene=gene, phase="validation")
-    .mean("model")
-    .to_pandas()
-    .join(window_filterer.design)
+    window_scoring.genescores.sel(gene=gene, phase="validation").mean("model").to_pandas().join(window_filterer.design)
 )
-window_scores["deltacor_down_ratio"] = (deltacors.sel(gene=gene) < -0.01).sum(
-    "cell"
-) / (deltacors.sel(gene=gene) > 0.01).sum("cell")
+window_scores["deltacor_down_ratio"] = (deltacors.sel(gene=gene) < -0.01).sum("cell") / (
+    deltacors.sel(gene=gene) > 0.01
+).sum("cell")
 
 # %%
-sns.heatmap(
-    deltacors.sel(cell=transcriptome.obs.query("celltype == 'memory B'").index)
-    .sel(gene=gene)
-    .to_pandas()
-)
-deltacors.sel(cell=transcriptome.obs.query("celltype == 'memory B'").index).median(
-    "window"
-).to_pandas().sort_values("ENSG00000019582").head(20)
+sns.heatmap(deltacors.sel(cell=transcriptome.obs.query("celltype == 'memory B'").index).sel(gene=gene).to_pandas())
+deltacors.sel(cell=transcriptome.obs.query("celltype == 'memory B'").index).median("window").to_pandas().sort_values(
+    "ENSG00000019582"
+).head(20)
 
 # %%
 fig, ax = plt.subplots()
@@ -830,18 +768,12 @@ ax.plot(window_scores["window_mid"], -window_scores["deltacor"], color="red", zo
 
 # %%
 window_scores["log_deltacor_down_ratio"] = np.log2(window_scores["deltacor_down_ratio"])
-window_scores.query("deltacor < -0.001").style.bar(
-    subset=["log_deltacor_down_ratio", "deltacor", "effect"]
-)
+window_scores.query("deltacor < -0.001").style.bar(subset=["log_deltacor_down_ratio", "deltacor", "effect"])
 
 # %%
 windows_oi2 = [
-    *window_scores.query("deltacor < -0.001")
-    .sort_values("log_deltacor_down_ratio")
-    .index[:3],
-    *window_scores.query("deltacor < -0.001")
-    .sort_values("log_deltacor_down_ratio")
-    .index[-3:],
+    *window_scores.query("deltacor < -0.001").sort_values("log_deltacor_down_ratio").index[:3],
+    *window_scores.query("deltacor < -0.001").sort_values("log_deltacor_down_ratio").index[-3:],
 ]
 # windows_oi2 = [-37500.0	]
 
@@ -853,9 +785,7 @@ plot_windows_oi2(windows_oi2)
 
 # %%
 windows_oi = window_scoring.design.loc[
-    (
-        window_scoring.genescores["deltacor"].sel(gene=gene, phase="test") < -0.0001
-    ).values
+    (window_scoring.genescores["deltacor"].sel(gene=gene, phase="test") < -0.0001).values
 ]
 # windows_oi = window_filterer.design
 windows_oi.shape
@@ -878,9 +808,7 @@ windowpair_scoring = windowpair_scorer.score(
 )
 
 # %%
-windowpair_baseline_filterer = (
-    chd.scoring.prediction.filterers.WindowPairBaselineFilterer(windowpair_filterer)
-)
+windowpair_baseline_filterer = chd.scoring.prediction.filterers.WindowPairBaselineFilterer(windowpair_filterer)
 windowpair_baseline_scorer = chd.scoring.prediction.Scorer2(
     models,
     folds[: len(models)],
@@ -933,24 +861,16 @@ retained_additive = pd.Series(
 # because some fragments may be in two windows, we need to use a baseline to correct for this
 additive_baseline = windowpair_baseline_scoring.genescores["cor"].sel(gene=gene)
 additive_base1 = (
-    window_scoring.genescores["cor"]
-    .sel(gene=gene)
-    .sel(window=windowpair_filterer.design["window1"].values)
+    window_scoring.genescores["cor"].sel(gene=gene).sel(window=windowpair_filterer.design["window1"].values)
 ).reindex_like(additive_baseline)
 additive_base2 = (
-    window_scoring.genescores["cor"]
-    .sel(gene=gene)
-    .sel(window=windowpair_filterer.design["window2"].values)
+    window_scoring.genescores["cor"].sel(gene=gene).sel(window=windowpair_filterer.design["window2"].values)
 ).reindex_like(additive_baseline)
 
 deltacor1 = additive_base1.values - additive_baseline
 deltacor2 = additive_base2.values - additive_baseline
-deltacor_additive = (
-    additive_base1.values + additive_base2.values
-) - 2 * additive_baseline
-deltacor_interacting = (
-    windowpair_scoring.genescores["cor"].sel(gene=gene) - additive_baseline
-)
+deltacor_additive = (additive_base1.values + additive_base2.values) - 2 * additive_baseline
+deltacor_interacting = windowpair_scoring.genescores["cor"].sel(gene=gene) - additive_baseline
 reldeltacor_interacting = deltacor_interacting - np.minimum(deltacor1, deltacor2)
 
 # %%
@@ -967,9 +887,7 @@ additive = windowpair_scoring.design.copy()
 additive["deltacor"] = deltacor_additive.sel(phase=phase).to_pandas()
 
 # %%
-sns.heatmap(
-    interaction.set_index(["window_mid1", "window_mid2"])["reldeltacor"].unstack()
-)
+sns.heatmap(interaction.set_index(["window_mid1", "window_mid2"])["reldeltacor"].unstack())
 
 # %%
 sns.heatmap(interaction.set_index(["window_mid1", "window_mid2"])["deltacor"].unstack())
@@ -991,9 +909,9 @@ norm = mpl.colors.Normalize(-0.0001, 0.0001)
 
 cmap = mpl.cm.RdBu
 
-for (window_mid1, window_mid2), deltacor in interaction.set_index(
-    ["window_mid1", "window_mid2"]
-)["deltacor_interaction"].items():
+for (window_mid1, window_mid2), deltacor in interaction.set_index(["window_mid1", "window_mid2"])[
+    "deltacor_interaction"
+].items():
     patch = mpl.patches.RegularPolygon(
         (
             window_mid1 + (window_mid2 - window_mid1) / 2,
@@ -1035,9 +953,7 @@ window_scoring.genescores.sel(gene=gene, phase="test")["effect"].plot()
 
 # %%
 fig, ax = plt.subplots()
-x = interaction.set_index(["window_mid1", "window_mid2"])[
-    "deltacor_interaction"
-].unstack()
+x = interaction.set_index(["window_mid1", "window_mid2"])["deltacor_interaction"].unstack()
 x[np.isnan(x)] = 0
 
 # make x symmetric
@@ -1066,18 +982,14 @@ ax.set_yticklabels(x.index, rotation=0, fontsize=5)
 # ### Interaction versus distance
 
 # %%
-interaction["distance"] = np.abs(
-    interaction["window_mid1"] - interaction["window_mid2"]
-)
+interaction["distance"] = np.abs(interaction["window_mid1"] - interaction["window_mid2"])
 
 # %%
 interaction["deltacor_min"] = interaction[["deltacor1", "deltacor2"]].min(1)
 interaction["deltacor_max"] = interaction[["deltacor1", "deltacor2"]].max(1)
 
 # %%
-interaction["deltacor_interaction_ratio"] = (
-    interaction["deltacor_interaction"] / interaction["deltacor_max"]
-)
+interaction["deltacor_interaction_ratio"] = interaction["deltacor_interaction"] / interaction["deltacor_max"]
 
 # %%
 plt.scatter(
@@ -1099,18 +1011,12 @@ plt.scatter(
 # %%
 # make symmetric
 window_scores["interacting"] = (
-    interaction.set_index(["window1", "window2"])["deltacor_interaction"]
-    .unstack()
-    .fillna(0)
-    + interaction.set_index(["window2", "window1"])["deltacor_interaction"]
-    .unstack()
-    .fillna(0)
+    interaction.set_index(["window1", "window2"])["deltacor_interaction"].unstack().fillna(0)
+    + interaction.set_index(["window2", "window1"])["deltacor_interaction"].unstack().fillna(0)
 ).mean(0)
 
 # %%
-window_scores["interacting_ratio"] = (
-    window_scores["interacting"] / window_scores["deltacor"]
-)
+window_scores["interacting_ratio"] = window_scores["interacting"] / window_scores["deltacor"]
 window_scores["log_interacting_ratio"] = np.log2(window_scores["interacting_ratio"])
 window_scores_oi = window_scores.loc[~pd.isnull(window_scores["interacting"])]
 
@@ -1122,7 +1028,7 @@ sns.regplot(
 
 # %% [markdown]
 # ## Multiwindow
-
+#
 # ### Score
 
 # %%
@@ -1141,9 +1047,7 @@ window_sizes = (50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000)
 window_sizes = (500,)
 
 # %%
-multiwindow_filterer = chd.scoring.prediction.filterers.MultiWindowFilterer(
-    window, window_sizes=window_sizes
-)
+multiwindow_filterer = chd.scoring.prediction.filterers.MultiWindowFilterer(window, window_sizes=window_sizes)
 
 # %%
 multiwindow_scoring = multiwindow_scorer.score(
@@ -1180,11 +1084,7 @@ deltacor_norm = mpl.colors.Normalize(0, 0.001)
 deltacor_cmap = mpl.cm.Reds
 
 for window_size, window_size_info in window_sizes_info.iterrows():
-    plotdata_oi = (
-        plotdata.query("window_size == @window_size")
-        .query("phase == 'validation'")
-        .iloc[::2]
-    )
+    plotdata_oi = plotdata.query("window_size == @window_size").query("phase == 'validation'").iloc[::2]
     y = window_size_info["ix"]
     for _, plotdata_row in plotdata_oi.iterrows():
         rect = mpl.patches.Rectangle(
@@ -1235,17 +1135,13 @@ retained_interpolated = np.zeros((len(window_sizes_info), len(positions_oi)))
 for window_size, window_size_info in window_sizes_info.iterrows():
     plotdata_oi = plotdata.query("window_size == @window_size")
     deltacor_interpolated_ = np.clip(
-        np.interp(positions_oi, plotdata_oi["window_mid"], plotdata_oi["deltacor"])
-        / window_size
-        * 1000,
+        np.interp(positions_oi, plotdata_oi["window_mid"], plotdata_oi["deltacor"]) / window_size * 1000,
         -np.inf,
         0,
     )
     deltacor_interpolated[window_size_info["ix"], :] = deltacor_interpolated_
     retained_interpolated_ = (
-        np.interp(positions_oi, plotdata_oi["window_mid"], plotdata_oi["retained"])
-        / window_size
-        * 1000
+        np.interp(positions_oi, plotdata_oi["window_mid"], plotdata_oi["retained"]) / window_size * 1000
     )
     retained_interpolated[window_size_info["ix"], :] = retained_interpolated_
 
@@ -1260,9 +1156,7 @@ ax2.set_ylabel("retained")
 # ## Variants/haplotypes
 
 # %%
-promoters = pd.read_csv(
-    folder_data_preproc / ("promoters_" + promoter_name + ".csv"), index_col=0
-)
+promoters = pd.read_csv(folder_data_preproc / ("promoters_" + promoter_name + ".csv"), index_col=0)
 promoter = promoters.loc[gene]
 
 # %%
@@ -1285,9 +1179,7 @@ association_oi = association.loc[
 ].copy()
 
 # %%
-association_oi["position"] = (association_oi["pos"] - promoter["tss"]) * promoter[
-    "strand"
-]
+association_oi["position"] = (association_oi["pos"] - promoter["tss"]) * promoter["strand"]
 
 # %%
 variants = pd.DataFrame(
@@ -1299,11 +1191,7 @@ variants = pd.DataFrame(
 variants = variants.join(snp_info)
 variants["position"] = (variants["start"] - promoter["tss"]) * promoter["strand"]
 
-haplotypes = (
-    association_oi.groupby("snp_main")["snp"]
-    .apply(lambda x: sorted(set(x)))
-    .to_frame("snps")
-)
+haplotypes = association_oi.groupby("snp_main")["snp"].apply(lambda x: sorted(set(x))).to_frame("snps")
 haplotypes["color"] = sns.color_palette("hls", n_colors=len(haplotypes))
 
 # %% [markdown]
@@ -1311,9 +1199,7 @@ haplotypes["color"] = sns.color_palette("hls", n_colors=len(haplotypes))
 
 # %%
 fig, ax = plt.subplots(figsize=(20, 3))
-ax.plot(
-    positions_oi * promoter["strand"] + promoter["tss"], deltacor_interpolated.mean(0)
-)
+ax.plot(positions_oi * promoter["strand"] + promoter["tss"], deltacor_interpolated.mean(0))
 ax2 = ax.twinx()
 ax2.plot(
     positions_oi * promoter["strand"] + promoter["tss"],
@@ -1356,9 +1242,7 @@ rnk_sorted = pd.Series(np.sort(np.log(rnk)), index=rnk.index)
 # rnk_sorted = pd.Series(np.sort(rnk), index = rnk.index)
 fig, ax = plt.subplots()
 sns.ecdfplot(rnk_sorted, ax=ax)
-sns.ecdfplot(
-    rnk_sorted[variants["position"].astype(int).astype(str)], ax=ax, color="orange"
-)
+sns.ecdfplot(rnk_sorted[variants["position"].astype(int).astype(str)], ax=ax, color="orange")
 for _, motifdatum in variants.iterrows():
     rnk_motif = rnk_sorted[str(int(motifdatum["position"]))]
     q = np.searchsorted(rnk_sorted, rnk_motif) / len(rnk_sorted)
@@ -1374,9 +1258,7 @@ scorer_folder = prediction.path / "scoring" / "nothing"
 nothing_scoring = chd.scoring.prediction.Scoring.load(scorer_folder)
 
 # %%
-variant_filterer = chd.scoring.prediction.filterers.VariantFilterer(
-    variants["position"], window_sizes=(500,)
-)
+variant_filterer = chd.scoring.prediction.filterers.VariantFilterer(variants["position"], window_sizes=(500,))
 variant_scorer = chd.scoring.prediction.Scorer2(
     models,
     folds[: len(models)],
@@ -1397,15 +1279,9 @@ variant_scoring = variant_scorer.score(
 
 # %%
 variant_size_scores = (
-    variant_scoring.genescores.sel(gene=gene)
-    .sel(phase="test")
-    .mean("model")
-    .to_pandas()
-    .join(variant_filterer.design)
+    variant_scoring.genescores.sel(gene=gene).sel(phase="test").mean("model").to_pandas().join(variant_filterer.design)
 )
-variant_size_scores["deltacor_norm"] = (
-    variant_size_scores["deltacor"] / variant_size_scores["window_size"] * 1000
-)
+variant_size_scores["deltacor_norm"] = variant_size_scores["deltacor"] / variant_size_scores["window_size"] * 1000
 variant_scores = variant_size_scores.groupby("snp").mean(numeric_only=True)
 variant_scores["deltacor"] = variant_scores["deltacor_norm"]
 
@@ -1429,9 +1305,7 @@ haplotypes["n"] = haplotypes["snps"].apply(len)
 # %%
 def calculate_sample_kurtosis(x):
     n = len(x)
-    return (1 / n * (x - x.mean()) ** 4).sum() / (
-        (1 / n * (x - x.mean()) ** 2).sum()
-    ) ** 2 - 3
+    return (1 / n * (x - x.mean()) ** 4).sum() / ((1 / n * (x - x.mean()) ** 2).sum()) ** 2 - 3
 
 
 # %%
@@ -1447,34 +1321,18 @@ for haplotype, snps in haplotypes["snps"].items():
     # print(haplotype)
     # print(variant_scores_oi["deltacor"].min())
     if len(snps) > 5:
-        extremity = (
-            variant_scores_oi["deltacor"].min() - variant_scores_oi["deltacor"].mean()
-        )
+        extremity = variant_scores_oi["deltacor"].min() - variant_scores_oi["deltacor"].mean()
         kurtosis = calculate_sample_kurtosis(variant_scores_oi["deltacor"].values)
-        retained_cors.append(
-            np.corrcoef(variant_scores_oi["deltacor"], variant_scores_oi["retained"])[
-                0, 1
-            ]
-        )
-        retained_matched.append(
-            np.argmin(variant_scores_oi["deltacor"])
-            == np.argmin(variant_scores_oi["retained"])
-        )
+        retained_cors.append(np.corrcoef(variant_scores_oi["deltacor"], variant_scores_oi["retained"])[0, 1])
+        retained_matched.append(np.argmin(variant_scores_oi["deltacor"]) == np.argmin(variant_scores_oi["retained"]))
         extremity_random = []
         kurtoses_random = []
         for i in range(100):
             # variant_scores_oi = variant_scores.sample(len(snps))
             variant_scores_oi = variant_scores_oi.copy()
-            variant_scores_oi["deltacor"] = np.random.choice(
-                deltacor_interpolated[0], len(snps)
-            )
-            extremity_random.append(
-                variant_scores_oi["deltacor"].min()
-                - variant_scores_oi["deltacor"].mean()
-            )
-            kurtoses_random.append(
-                calculate_sample_kurtosis(variant_scores_oi["deltacor"])
-            )
+            variant_scores_oi["deltacor"] = np.random.choice(deltacor_interpolated[0], len(snps))
+            extremity_random.append(variant_scores_oi["deltacor"].min() - variant_scores_oi["deltacor"].mean())
+            kurtoses_random.append(calculate_sample_kurtosis(variant_scores_oi["deltacor"]))
         # ratios.append(extremity / np.mean(extremity_random))
         ratios.append(kurtosis / np.mean(kurtoses_random))
         kurtoses.append(kurtosis)
@@ -1521,31 +1379,21 @@ deltacors = variant_scoring.deltacors
 
 # %%
 def smooth(effects_raw):
-    effects_raw = (
-        effects_raw  # / (variant_filterer.design["window_size"] * 1000).values[:, None]
-    )
+    effects_raw = effects_raw  # / (variant_filterer.design["window_size"] * 1000).values[:, None]
     effects_raw = effects_raw
     effects_smooth = effects_raw.T.values[neighbors].mean(1)
-    effects_smooth = pd.DataFrame(
-        effects_smooth.T, index=effects_raw.index, columns=effects_raw.columns
-    )
+    effects_smooth = pd.DataFrame(effects_smooth.T, index=effects_raw.index, columns=effects_raw.columns)
     return effects_smooth
 
 
 # %%
-effects_raw = (
-    effects.sel(gene=gene).to_pandas().groupby(variant_filterer.design["snp"]).mean()
-)
+effects_raw = effects.sel(gene=gene).to_pandas().groupby(variant_filterer.design["snp"]).mean()
 effects_smooth = smooth(effects_raw)
 
-losts_raw = (
-    losts.sel(gene=gene).to_pandas().groupby(variant_filterer.design["snp"]).mean()
-)
+losts_raw = losts.sel(gene=gene).to_pandas().groupby(variant_filterer.design["snp"]).mean()
 losts_smooth = smooth(losts_raw)
 
-deltacors_raw = (
-    deltacors.sel(gene=gene).to_pandas().groupby(variant_filterer.design["snp"]).mean()
-)
+deltacors_raw = deltacors.sel(gene=gene).to_pandas().groupby(variant_filterer.design["snp"]).mean()
 deltacors_smooth = smooth(deltacors_raw)
 
 # %%
@@ -1646,17 +1494,11 @@ haplotype_scores = pd.DataFrame(haplotype_scores).set_index("snp")
 
 # %%
 windowpair_scores = (
-    windowpair_scoring.genescores.sel(gene=gene, phase="validation")
-    .to_pandas()
-    .join(windowpair_scoring.design)
+    windowpair_scoring.genescores.sel(gene=gene, phase="validation").to_pandas().join(windowpair_scoring.design)
 )
 
 # %%
-window_scores = (
-    window_scoring.genescores.sel(gene=gene, phase="validation")
-    .to_pandas()
-    .join(window_scoring.design)
-)
+window_scores = window_scoring.genescores.sel(gene=gene, phase="validation").to_pandas().join(window_scoring.design)
 window_scores["matched"] = False
 
 # %%
@@ -1669,23 +1511,13 @@ for haplotype, haplotype_score in haplotype_scores.iterrows():
     if matched_windows.sum() == 0:
         continue
     window_oi = matched_windows[matched_windows].index[0]
-    windowpairs_oi = windowpair_scores.query(
-        "(window1 == @window_oi) or (window2 == @window_oi)"
-    ).index
+    windowpairs_oi = windowpair_scores.query("(window1 == @window_oi) or (window2 == @window_oi)").index
     window_scores.loc[window_oi, "matched"] = haplotype
     haplotype_scores.loc[haplotype, "interacting"] = (
-        (deltacor_interacting)
-        .sel(phase="test")
-        .sel(windowpair=windowpairs_oi)
-        .mean()
-        .item()
+        (deltacor_interacting).sel(phase="test").sel(windowpair=windowpairs_oi).mean().item()
     )
     haplotype_scores.loc[haplotype, "relinteracting"] = (
-        (reldeltacor_interacting)
-        .sel(phase="test")
-        .sel(windowpair=windowpairs_oi)
-        .mean()
-        .item()
+        (reldeltacor_interacting).sel(phase="test").sel(windowpair=windowpairs_oi).mean().item()
     )
 
 # %% [markdown]
@@ -1693,22 +1525,15 @@ for haplotype, haplotype_score in haplotype_scores.iterrows():
 
 # %%
 (
-    haplotype_scores["relinteracting"].mean()
-    / (reldeltacor_interacting).sel(phase="test").mean().item(),
-    haplotype_scores["interacting"].mean()
-    / (deltacor_interacting).sel(phase="test").mean().item(),
+    haplotype_scores["relinteracting"].mean() / (reldeltacor_interacting).sel(phase="test").mean().item(),
+    haplotype_scores["interacting"].mean() / (deltacor_interacting).sel(phase="test").mean().item(),
 )
 
 # %%
 window_oi = 22500.0
-windowpairs_oi = windowpair_scores.query(
-    "(window1 == @window_oi) or (window2 == @window_oi)"
-).index
+windowpairs_oi = windowpair_scores.query("(window1 == @window_oi) or (window2 == @window_oi)").index
 sns.histplot(
-    (reldeltacor_interacting)
-    .sel(phase="test")
-    .sel(windowpair=windowpairs_oi)
-    .to_pandas(),
+    (reldeltacor_interacting).sel(phase="test").sel(windowpair=windowpairs_oi).to_pandas(),
     stat="density",
     color="k",
     alpha=0.5,
@@ -1756,15 +1581,11 @@ plotdata = plotdata.join(windowdirection_scoring.design)
 
 # %%
 lost = windowdirection_scoring.genescores["lost"]
-lost.coords["window_direction"] = pd.MultiIndex.from_frame(
-    windowdirection_scoring.design[["window", "direction"]]
-)
+lost.coords["window_direction"] = pd.MultiIndex.from_frame(windowdirection_scoring.design[["window", "direction"]])
 lost = lost.unstack("window_direction")
 
 deltacor = windowdirection_scoring.genescores["deltacor"]
-deltacor.coords["window_direction"] = pd.MultiIndex.from_frame(
-    windowdirection_scoring.design[["window", "direction"]]
-)
+deltacor.coords["window_direction"] = pd.MultiIndex.from_frame(windowdirection_scoring.design[["window", "direction"]])
 deltacor = deltacor.unstack("window_direction")
 
 # %%
@@ -1792,18 +1613,14 @@ def shrink(numerator, denominator, shrinkage):
 
 
 # %%
-deltacor_bias_ratio = shrink(
-    deltacor_bias, np.clip(window_scoring.genescores["deltacor"], -np.inf, 0), shrinkage
-)
+deltacor_bias_ratio = shrink(deltacor_bias, np.clip(window_scoring.genescores["deltacor"], -np.inf, 0), shrinkage)
 
 # %%
 fig, ax = plt.subplots()
 deltacor_bias.sel(phase="test", gene=gene).mean("model").to_pandas().plot(ax=ax)
 ax2 = ax.twiny()
 # deltacor_bias_ratio.sel(phase = "test", gene = gene).mean("model").to_pandas().plot(ax = ax2)
-window_scoring.genescores.sel(gene=gene, phase="test").mean("model").to_pandas()[
-    "deltacor"
-].plot()
+window_scoring.genescores.sel(gene=gene, phase="test").mean("model").to_pandas()["deltacor"].plot()
 
 # %%
 numerator = lost.sel(direction="forward")
@@ -1820,19 +1637,12 @@ ax.set_yscale("log")
 # %%
 plotdata = pd.DataFrame(
     {
-        "lost_ratio": lost_ratio.sel(phase="validation", gene=gene)
-        .mean("model")
-        .to_pandas(),
-        "deltacor_bias": deltacor_bias.sel(phase="validation", gene=gene)
-        .mean("model")
-        .to_pandas(),
+        "lost_ratio": lost_ratio.sel(phase="validation", gene=gene).mean("model").to_pandas(),
+        "deltacor_bias": deltacor_bias.sel(phase="validation", gene=gene).mean("model").to_pandas(),
     }
 ).reset_index()
 plotdata["deltacor"] = (
-    window_scoring.genescores.sel(phase="validation", gene=gene)
-    .mean("model")
-    .to_pandas()["deltacor"]
-    .values
+    window_scoring.genescores.sel(phase="validation", gene=gene).mean("model").to_pandas()["deltacor"].values
 )
 
 
@@ -1880,28 +1690,15 @@ scores_folder = prediction.path / "scoring" / "windowsize_gene" / gene
 windowsize_scoring = chd.scoring.prediction.Scoring.load(scores_folder)
 
 # %%
-deltacor = windowsize_scoring.genescores.mean("model").sel(
-    phase="validation", gene=gene
-)["deltacor"]
-lost = windowsize_scoring.genescores.mean("model").sel(phase="validation", gene=gene)[
-    "lost"
-]
-reldeltacor = windowsize_scoring.genescores.mean("model").sel(
-    phase="validation", gene=gene
-)["deltacor"] / (
-    1
-    - windowsize_scoring.genescores.mean("model").sel(phase="validation", gene=gene)[
-        "retained"
-    ]
+deltacor = windowsize_scoring.genescores.mean("model").sel(phase="validation", gene=gene)["deltacor"]
+lost = windowsize_scoring.genescores.mean("model").sel(phase="validation", gene=gene)["lost"]
+reldeltacor = windowsize_scoring.genescores.mean("model").sel(phase="validation", gene=gene)["deltacor"] / (
+    1 - windowsize_scoring.genescores.mean("model").sel(phase="validation", gene=gene)["retained"]
 )
 
 # %%
-deltacor.coords["window_size"] = pd.MultiIndex.from_frame(
-    windowsize_scoring.design[["window", "size"]]
-)
-lost.coords["window_size"] = pd.MultiIndex.from_frame(
-    windowsize_scoring.design[["window", "size"]]
-)
+deltacor.coords["window_size"] = pd.MultiIndex.from_frame(windowsize_scoring.design[["window", "size"]])
+lost.coords["window_size"] = pd.MultiIndex.from_frame(windowsize_scoring.design[["window", "size"]])
 
 # %%
 sns.heatmap(deltacor.to_pandas().unstack())
@@ -1911,9 +1708,7 @@ plotdata
 
 # %%
 fig, ax = plt.subplots(figsize=(30, 5))
-ax.plot(
-    lost.to_pandas().unstack().index, np.log1p(lost).to_pandas().unstack(), marker="."
-)
+ax.plot(lost.to_pandas().unstack().index, np.log1p(lost).to_pandas().unstack(), marker=".")
 # ax.set_xlim([-20000, -8000])
 ax.set_xlim([3000, 6000])
 
@@ -1929,13 +1724,7 @@ ax.set_xlim([3000, 6000])
 chd.utils.paircor(deltacor.unstack().values, np.log(0.1 + lost.unstack().values))
 
 # %%
-sns.heatmap(
-    np.corrcoef(
-        deltacor.to_pandas()
-        .unstack()
-        .T.loc[:, (lost.unstack().sum("size") > 10).values]
-    )
-)
+sns.heatmap(np.corrcoef(deltacor.to_pandas().unstack().T.loc[:, (lost.unstack().sum("size") > 10).values]))
 
 # %%
 deltacor

@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.14.5
+#       jupytext_version: 1.14.7
 #   kernelspec:
 #     display_name: Python 3
 #     language: python
@@ -49,46 +49,33 @@ folder_data = folder_root / "data"
 dataset_name = "pbmc10k"
 # dataset_name = "pbmc10k_gran"
 # dataset_name = "e18brain"
-folder_data_preproc = folder_data / dataset_name
+folder_dataset = chd.get_output() / "datasets" / dataset_name
 
-transcriptome = chd.data.Transcriptome(folder_data_preproc / "transcriptome")
+transcriptome = chd.data.Transcriptome(folder_dataset / "transcriptome")
 
-splitter = "random_5fold"
-promoter_name, window = "10k10k", np.array([-10000, 10000])
-prediction_name = "v20_initdefault"
-
-splitter = "permutations_5fold5repeat"
-promoter_name, window = "10k10k", np.array([-10000, 10000])
-prediction_name = "v20"
-
-splitter = "permutations_5fold5repeat"
-promoter_name, window = "100k100k", np.array([-100000, 100000])
-prediction_name = "v20_initdefault"
+splitter = "5x5"
+regions_name = "100k100k"
+prediction_name = "v30"
 
 # fragments
-promoters = pd.read_csv(
-    folder_data_preproc / ("promoters_" + promoter_name + ".csv"), index_col=0
-)
-window_width = window[1] - window[0]
+fragments = chd.data.Fragments(folder_dataset / "fragments" / regions_name)
 
 # %%
 print(prediction_name)
 prediction = chd.flow.Flow(
-    chd.get_output()
-    / "prediction_positional"
-    / dataset_name
-    / promoter_name
-    / splitter
-    / prediction_name
+    chd.get_output() / "pred" / dataset_name / regions_name / splitter / "magic" / prediction_name
 )
 
 # %% [markdown]
 # ## Transcriptome diffexp
 
 # %%
+transcriptome.adata = transcriptome.adata[:, transcriptome.var.index]
+
+# %%
 import scanpy as sc
 
-sc.tl.rank_genes_groups(transcriptome.adata, groupby="celltype")
+sc.tl.rank_genes_groups(transcriptome.adata, groupby="celltype", use_raw = False)
 diffexp = (
     sc.get.rank_genes_groups_df(transcriptome.adata, group="naive B")
     .rename(columns={"names": "gene"})
@@ -101,44 +88,45 @@ genes_oi = diffexp.query("pvals_adj < 0.05").query("logfoldchanges > 0.5").index
 
 # %% [markdown]
 # ## Pairwindow
-#
-# genes_all = transcriptome.var.index
-# genes_all = transcriptome.var.query("symbol in ['BCL2']").index
-#
-# scorer_folder = prediction.path / "scoring" / "nothing"
-# nothing_scoring = chd.scoring.prediction.Scoring.load(scorer_folder)
-# genes_all = (
-#     nothing_scoring.genescores.mean("model")
-#     .sel(phase=["test", "validation"])
-#     .mean("phase")
-#     .sel(i=0)
-#     .to_pandas()
-#     .query("cor > 0.1")
-#     .sort_values("cor", ascending=False)
-#     .index
-# )
-#
-# scores = []
-# for gene in tqdm.tqdm(genes_all):
-#     scores_folder = prediction.path / "scoring" / "pairwindow_gene" / gene
-#     interaction_file = scores_folder / "interaction.pkl"
-#
-#     if interaction_file.exists():
-#         scores_gene = pd.read_pickle(interaction_file).reset_index()
-#         # scores_gene = scores_gene.loc[
-#         #     (scores_gene["lost1"] > 2) & (scores_gene["lost2"] > 2)
-#         # ]
-#         scores_gene2 = scores_gene[["cor", "window1", "window2"]].copy()
-#         scores_gene2["window1"] = scores_gene2["window1"].astype("category")
-#         scores_gene2["window2"] = scores_gene2["window2"].astype("category")
-#         scores_gene["gene"] = gene
-#         scores_gene["gene"] = pd.Categorical(scores_gene["gene"], categories=genes_all)
-#         scores.append(scores_gene)
-#
-#     # if len(scores) > 500:
-#     #     break
-# scores = pd.concat(scores)
-# print(len(scores["gene"].unique()))
+
+# %%
+genes_all = transcriptome.var.index
+genes_all = transcriptome.var.query("symbol in ['BCL2']").index
+
+scorer_folder = prediction.path / "scoring" / "nothing"
+nothing_scoring = chd.scoring.prediction.Scoring.load(scorer_folder)
+genes_all = (
+    nothing_scoring.genescores.mean("model")
+    .sel(phase=["test", "validation"])
+    .mean("phase")
+    .sel(i=0)
+    .to_pandas()
+    .query("cor > 0.1")
+    .sort_values("cor", ascending=False)
+    .index
+)
+
+scores = []
+for gene in tqdm.tqdm(genes_all):
+    scores_folder = prediction.path / "scoring" / "pairwindow_gene" / gene
+    interaction_file = scores_folder / "interaction.pkl"
+
+    if interaction_file.exists():
+        scores_gene = pd.read_pickle(interaction_file).reset_index()
+        # scores_gene = scores_gene.loc[
+        #     (scores_gene["lost1"] > 2) & (scores_gene["lost2"] > 2)
+        # ]
+        scores_gene2 = scores_gene[["cor", "window1", "window2"]].copy()
+        scores_gene2["window1"] = scores_gene2["window1"].astype("category")
+        scores_gene2["window2"] = scores_gene2["window2"].astype("category")
+        scores_gene["gene"] = gene
+        scores_gene["gene"] = pd.Categorical(scores_gene["gene"], categories=genes_all)
+        scores.append(scores_gene)
+
+    # if len(scores) > 500:
+    #     break
+scores = pd.concat(scores)
+print(len(scores["gene"].unique()))
 
 # %%
 scores["distance"] = np.abs(scores["window1"] - scores["window2"])
@@ -206,7 +194,7 @@ ax.plot(
 ax.set_xlim(1000)
 ax.set_ylim(0)
 ax.set_xticks([1000, 100000, 200000])
-ax.xaxis.set_major_formatter(chd.plot.distance_ticker)
+ax.xaxis.set_major_formatter(chd.plotting.distance_ticker)
 ax.set_ylabel("Average co-predictivity\n(cor between $\\Delta$ cor)")
 ax.set_xlabel("Distance")
 manuscript.save_figure(fig, "5", "synergism_distance")
@@ -270,7 +258,7 @@ ax.plot(
 )
 ax.set_ylim(0)
 ax.set_xlim(*window)
-ax.xaxis.set_major_formatter(chd.plot.gene_ticker)
+ax.xaxis.set_major_formatter(chd.plotting.gene_ticker)
 ax.set_ylabel("Average co-predictivity\n(cor between $\\Delta$ cor)")
 
 manuscript.save_figure(fig, "5", "synergism_position")

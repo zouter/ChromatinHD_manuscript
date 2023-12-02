@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.14.5
+#       jupytext_version: 1.14.7
 #   kernelspec:
 #     display_name: Python 3 (ipykernel)
 #     language: python
@@ -100,44 +100,44 @@ positions_oi = np.array([10000])
 import chromatinhd.loaders.fragments
 
 # n_cells_step = 1000
-# n_genes_step = 1000
+# n_regions_step = 1000
 
 n_cells_step = 100
-n_genes_step = 50
+n_regions_step = 50
 
 # n_cells_step = 2000
-# n_genes_step = 500
+# n_regions_step = 500
 
-loaders_train = chromatinhd.loaders.pool.LoaderPool(
+loaders_train = chromatinhd.loaders.pool.LoaderPoolOld(
     chromatinhd.loaders.fragments.Fragments,
-    {"fragments": fragments, "cellxgene_batch_size": n_cells_step * n_genes_step},
+    {"fragments": fragments, "cellxregion_batch_size": n_cells_step * n_regions_step},
     n_workers=20,
     shuffle_on_iter=True,
 )
 minibatches_train = chd.loaders.minibatching.create_bins_random(
     cells_train,
-    np.arange(fragments.n_genes),
+    np.arange(fragments.n_regions),
     fragments.n_genes,
-    n_genes_step=n_genes_step,
+    n_regions_step=n_regions_step,
     n_cells_step=n_cells_step,
     use_all=True,
-    permute_genes=False,
+    permute_regions=False,
 )
 loaders_train.initialize(minibatches_train)
 
-loaders_validation = chromatinhd.loaders.pool.LoaderPool(
+loaders_validation = chromatinhd.loaders.pool.LoaderPoolOld(
     chromatinhd.loaders.fragments.Fragments,
-    {"fragments": fragments, "cellxgene_batch_size": n_cells_step * n_genes_step},
+    {"fragments": fragments, "cellxregion_batch_size": n_cells_step * n_regions_step},
     n_workers=5,
 )
 minibatches_validation = chd.loaders.minibatching.create_bins_random(
     cells_validation,
-    np.arange(fragments.n_genes),
+    np.arange(fragments.n_regions),
     fragments.n_genes,
-    n_genes_step=n_genes_step,
+    n_regions_step=n_regions_step,
     n_cells_step=n_cells_step,
     use_all=True,
-    permute_genes=False,
+    permute_regions=False,
 )
 loaders_validation.initialize(minibatches_validation)
 
@@ -216,9 +216,7 @@ import torch
 model = model.to(device)
 
 ## Plot prior distribution
-fig, axes = plt.subplots(
-    latent.shape[1], 1, figsize=(20, 1 * latent.shape[1]), sharex=True, sharey=True
-)
+fig, axes = plt.subplots(latent.shape[1], 1, figsize=(20, 1 * latent.shape[1]), sharex=True, sharey=True)
 
 probs = []
 
@@ -238,24 +236,16 @@ for i, ax in zip(range(latent.shape[1]), axes):
     n_cells = latent_torch[:, i].sum()
 
     color = cluster_info.iloc[i]["color"]
-    fragments_oi = (latent_torch[fragments.cut_local_cell_ix, i] != 0) & (
-        fragments.cut_local_gene_ix == gene_oi
-    )
+    fragments_oi = (latent_torch[fragments.cut_local_cell_ix, i] != 0) & (fragments.cut_local_gene_ix == gene_oi)
 
-    bincounts, _ = np.histogram(
-        fragments.cut_coordinates[fragments_oi].cpu().numpy(), bins=bins
-    )
-    ax.bar(
-        binmids, bincounts / n_cells * len(bins), width=binsize, color="#888888", lw=0
-    )
+    bincounts, _ = np.histogram(fragments.cut_coordinates[fragments_oi].cpu().numpy(), bins=bins)
+    ax.bar(binmids, bincounts / n_cells * len(bins), width=binsize, color="#888888", lw=0)
 
     # Plot initial posterior distribution
     pseudolatent = torch.zeros((len(pseudocoordinates), latent.shape[1])).to(device)
     pseudolatent[:, i] = 1.0
 
-    prob = model.evaluate_pseudo(
-        pseudocoordinates.to(device), latent=pseudolatent.to(device), gene_oi=gene_oi
-    )
+    prob = model.evaluate_pseudo(pseudocoordinates.to(device), latent=pseudolatent.to(device), gene_oi=gene_oi)
     ax.plot(
         pseudocoordinates.cpu().numpy(),
         np.exp(prob),
@@ -307,9 +297,7 @@ ax.set_ylabel("$h_0$", rotation=0, ha="right", va="center")
 ax = main[1, 0] = chd.grid.Ax(dim=(10, n_latent_dimensions * 0.25))
 ax = ax.ax
 plotdata = model.decoder.logit_weight.data[gene_oi].cpu().numpy()
-ax.imshow(
-    plotdata, aspect="auto", cmap=mpl.cm.RdBu_r, vmax=np.log(2), vmin=np.log(1 / 2)
-)
+ax.imshow(plotdata, aspect="auto", cmap=mpl.cm.RdBu_r, vmax=np.log(2), vmin=np.log(1 / 2))
 ax.set_yticks(range(len(cluster_info)))
 ax.set_yticklabels(cluster_info.index, rotation=0, ha="right")
 for b in bincuts:
@@ -341,9 +329,7 @@ device = "cuda"
 # model.reflatent = model.reflatent.to(torch.float64)
 
 # %%
-optimizer = chd.optim.SparseDenseAdam(
-    model.parameters_sparse(), model.parameters_dense(autoextend=True), lr=1e-2
-)
+optimizer = chd.optim.SparseDenseAdam(model.parameters_sparse(), model.parameters_dense(autoextend=True), lr=1e-2)
 
 # %%
 loaders_train.restart()
@@ -370,9 +356,7 @@ class GeneLikelihoodHook:
 
     def run_individual(self, model, data):
         self.likelihood_mixture_checkpoint[data.genes_oi] += (
-            torch_scatter.scatter_sum(
-                model.track["likelihood"], data.cut_local_gene_ix, dim_size=data.n_genes
-            )
+            torch_scatter.scatter_sum(model.track["likelihood"], data.cut_local_gene_ix, dim_size=data.n_genes)
             .detach()
             .cpu()
             .numpy()
@@ -409,16 +393,10 @@ trainer = chd.train.Trainer(
 trainer.train()
 
 # %%
-likelihood_mixture = pd.DataFrame(
-    np.vstack(hook_genelikelihood.likelihood_mixture), columns=fragments.var.index
-).T
+likelihood_mixture = pd.DataFrame(np.vstack(hook_genelikelihood.likelihood_mixture), columns=fragments.var.index).T
 
 # %%
-scores = (
-    (likelihood_mixture.iloc[:, -1] - likelihood_mixture[0])
-    .sort_values()
-    .to_frame("lr")
-)
+scores = (likelihood_mixture.iloc[:, -1] - likelihood_mixture[0]).sort_values().to_frame("lr")
 scores["label"] = transcriptome.symbol(scores.index)
 
 # %%
@@ -511,9 +489,7 @@ gene_id = transcriptome.var.index[gene_oi]
 model = model.to(device)
 
 ## Plot prior distribution
-fig, axes = plt.subplots(
-    latent.shape[1], 1, figsize=(20, 1 * latent.shape[1]), sharex=True, sharey=True
-)
+fig, axes = plt.subplots(latent.shape[1], 1, figsize=(20, 1 * latent.shape[1]), sharex=True, sharey=True)
 
 probs = []
 
@@ -533,24 +509,16 @@ for i, ax in zip(range(latent.shape[1]), axes):
     n_cells = latent_torch[:, i].sum()
 
     color = cluster_info.iloc[i]["color"]
-    fragments_oi = (latent_torch[fragments.cut_local_cell_ix, i] != 0) & (
-        fragments.cut_local_gene_ix == gene_oi
-    )
+    fragments_oi = (latent_torch[fragments.cut_local_cell_ix, i] != 0) & (fragments.cut_local_gene_ix == gene_oi)
 
-    bincounts, _ = np.histogram(
-        fragments.cut_coordinates[fragments_oi].cpu().numpy(), bins=bins
-    )
-    ax.bar(
-        binmids, bincounts / n_cells * len(bins), width=binsize, color="#888888", lw=0
-    )
+    bincounts, _ = np.histogram(fragments.cut_coordinates[fragments_oi].cpu().numpy(), bins=bins)
+    ax.bar(binmids, bincounts / n_cells * len(bins), width=binsize, color="#888888", lw=0)
 
     # Plot initial posterior distribution
     pseudolatent = torch.zeros((len(pseudocoordinates), latent.shape[1])).to(device)
     pseudolatent[:, i] = 1.0
 
-    prob = model.evaluate_pseudo(
-        pseudocoordinates.to(device), latent=pseudolatent.to(device), gene_oi=gene_oi
-    )
+    prob = model.evaluate_pseudo(pseudocoordinates.to(device), latent=pseudolatent.to(device), gene_oi=gene_oi)
     ax.plot(
         pseudocoordinates.cpu().numpy(),
         np.exp(prob),

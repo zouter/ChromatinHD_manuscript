@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.14.1
+#       jupytext_version: 1.14.7
 #   kernelspec:
 #     display_name: Python 3 (ipykernel)
 #     language: python
@@ -63,7 +63,7 @@ transcriptome = chd.data.Transcriptome(folder_data_preproc / "transcriptome")
 promoter_name, (padding_negative, padding_positive) = "10k10k", (-10000, 10000)
 # promoter_name, (padding_negative, padding_positive) = "20kpromoter", (-10000, 0)
 
-# %% tags=[]
+# %%
 method_names = [
     "counter",
     "counter_binary",

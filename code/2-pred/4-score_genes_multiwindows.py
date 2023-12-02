@@ -49,9 +49,7 @@ outcome_source = "magic"
 prediction_name = "v20"
 
 # fragments
-promoters = pd.read_csv(
-    folder_data_preproc / ("promoters_" + promoter_name + ".csv"), index_col=0
-)
+promoters = pd.read_csv(folder_data_preproc / ("promoters_" + promoter_name + ".csv"), index_col=0)
 window_width = window[1] - window[0]
 
 fragments = chd.data.Fragments(folder_data_preproc / "fragments" / promoter_name)
@@ -67,7 +65,7 @@ class Prediction(chd.flow.Flow):
 
 # folds & minibatching
 folds = pickle.load((fragments.path / "folds" / (splitter + ".pkl")).open("rb"))
-folds, cellxgene_batch_size = get_folds_inference(fragments, folds, n_cells_step=2000)
+folds, cellxregion_batch_size = get_folds_inference(fragments, folds, n_cells_step=2000)
 folds = folds  # [:1]
 
 # design
@@ -81,15 +79,10 @@ Scorer2 = chd.scoring.prediction.Scorer2
 design_row = design[prediction_name]
 
 fragments.window = window
-design_row["loader_parameters"]["cellxgene_batch_size"] = cellxgene_batch_size
+design_row["loader_parameters"]["cellxregion_batch_size"] = cellxregion_batch_size
 print(prediction_name)
 prediction = chd.flow.Flow(
-    chd.get_output()
-    / "prediction_positional"
-    / dataset_name
-    / promoter_name
-    / splitter
-    / prediction_name
+    chd.get_output() / "prediction_positional" / dataset_name / promoter_name / splitter / prediction_name
 )
 
 # loaders
@@ -100,7 +93,7 @@ if "loaders" in globals():
 
     gc.collect()
 
-loaders = chd.loaders.LoaderPool(
+loaders = chd.loaders.LoaderPoolOld(
     design_row["loader_cls"],
     design_row["loader_parameters"],
     n_workers=20,
@@ -113,8 +106,7 @@ nothing_scoring = chd.scoring.prediction.Scoring.load(scorer_folder)
 
 # load all models
 models = [
-    pickle.load(open(prediction.path / ("model_" + str(fold_ix) + ".pkl"), "rb"))
-    for fold_ix, fold in enumerate(folds)
+    pickle.load(open(prediction.path / ("model_" + str(fold_ix) + ".pkl"), "rb")) for fold_ix, fold in enumerate(folds)
 ]
 if outcome_source == "counts":
     outcome = transcriptome.X.dense()
@@ -122,21 +114,17 @@ else:
     outcome = torch.from_numpy(transcriptome.adata.layers["magic"])
 
 scores_dir_overall = prediction.path / "scoring" / "overall"
-transcriptome_predicted_full = pickle.load(
-    (scores_dir_overall / "transcriptome_predicted_full.pkl").open("rb")
-)
+transcriptome_predicted_full = pickle.load((scores_dir_overall / "transcriptome_predicted_full.pkl").open("rb"))
 
 folds = pickle.load((fragments.path / "folds" / (splitter + ".pkl")).open("rb"))
-folds, cellxgene_batch_size = get_folds_inference(fragments, folds, n_cells_step=2000)
+folds, cellxregion_batch_size = get_folds_inference(fragments, folds, n_cells_step=2000)
 folds = folds  # [:1]
 
 from chromatinhd.scoring.prediction.filterers import WindowFilterer
 
 window_sizes = (50, 100, 200, 500, 1000, 2000)
 # window_sizes = (50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000)
-multiwindow_filterer = chd.scoring.prediction.filterers.MultiWindowFilterer(
-    window, window_sizes=window_sizes
-)
+multiwindow_filterer = chd.scoring.prediction.filterers.MultiWindowFilterer(window, window_sizes=window_sizes)
 
 genes_all = fragments.var.index
 genes_all_oi = fragments.var.index
@@ -156,7 +144,7 @@ for gene, subdesign in design.groupby("gene", sort=False):
 
     if force:
         print(gene)
-        folds_filtered, cellxgene_batch_size = get_folds_inference(
+        folds_filtered, cellxregion_batch_size = get_folds_inference(
             fragments,
             folds,
             n_cells_step=2000,

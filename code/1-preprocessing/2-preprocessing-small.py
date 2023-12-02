@@ -5,7 +5,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.14.5
+#       jupytext_version: 1.14.7
 #   kernelspec:
 #     display_name: Python 3 (ipykernel)
 #     language: python
@@ -26,7 +26,8 @@ import matplotlib.pyplot as plt
 import matplotlib as mpl
 
 import seaborn as sns
-sns.set_style('ticks')
+
+sns.set_style("ticks")
 
 import torch
 
@@ -46,10 +47,12 @@ folder_data = folder_root / "data"
 
 # train_dataset_name = "pbmc10k"; test_dataset_name = "pbmc3k"; organism = "hs"
 # train_dataset_name = "pbmc10k"; test_dataset_name = "lymphoma"; organism = "hs"
-train_dataset_name = "pbmc10k"; dataset_name = "pbmc10k_small"; organism = "hs"
+train_dataset_name = "pbmc10k"
+dataset_name = "pbmc10k_small"
+organism = "hs"
 
 folder_data_preproc = folder_data / dataset_name
-folder_data_preproc.mkdir(exist_ok = True, parents = True)
+folder_data_preproc.mkdir(exist_ok=True, parents=True)
 
 if organism == "mm":
     chromosomes = ["chr" + str(i) for i in range(20)] + ["chrX", "chrY"]
@@ -79,7 +82,7 @@ transcriptome = pfa.data.Transcriptome(folder_data / dataset_name / "transcripto
 adata = transcriptome_train.adata
 
 # %%
-sc.tl.leiden(adata, resolution = 0.1)
+sc.tl.leiden(adata, resolution=0.1)
 
 # %%
 sc.tl.rank_genes_groups(adata, "leiden")
@@ -124,8 +127,8 @@ transcriptome.create_X()
 transcriptome.var
 
 # %%
-genes_oi = transcriptome.adata.var.sort_values("dispersions_norm", ascending = False).index[:10]
-sc.pl.umap(adata, color=genes_oi, title = transcriptome.symbol(genes_oi))
+genes_oi = transcriptome.adata.var.sort_values("dispersions_norm", ascending=False).index[:10]
+sc.pl.umap(adata, color=genes_oi, title=transcriptome.symbol(genes_oi))
 
 # %% [markdown]
 # ### Creating promoters
@@ -141,16 +144,17 @@ promoter_name, (padding_negative, padding_positive) = "10k10k", (10000, 10000)
 # promoter_name, (padding_negative, padding_positive) = "20kpromoter", (10000, 0)
 
 # %%
-promoters = pd.read_csv(folder_data / train_dataset_name / ("promoters_" + promoter_name + ".csv"), index_col = 0)
+promoters = pd.read_csv(folder_data / train_dataset_name / ("promoters_" + promoter_name + ".csv"), index_col=0)
 promoters = promoters.loc[transcriptome.adata.var.index]
 promoters.to_csv(folder_data_preproc / ("promoters_" + promoter_name + ".csv"))
 
 # %%
 import pathlib
+
 fragments = pfa.data.Fragments(folder_data_preproc / "fragments" / promoter_name)
 
 # %%
-var = pd.DataFrame(index = promoters.index)
+var = pd.DataFrame(index=promoters.index)
 var["ix"] = np.arange(var.shape[0])
 
 n_genes = var.shape[0]
@@ -176,26 +180,25 @@ cell_to_fragments = [[] for i in obs["ix"]]
 coordinates_raw = []
 mapping_raw = []
 
-for i, (gene, promoter_info) in tqdm.tqdm(enumerate(promoters.iterrows()), total = promoters.shape[0]):
+for i, (gene, promoter_info) in tqdm.tqdm(enumerate(promoters.iterrows()), total=promoters.shape[0]):
     gene_ix = var.loc[gene, "ix"]
     fragments_promoter = fragments_tabix.query(*promoter_info[["chr", "start", "end"]])
-    
+
     for fragment in fragments_promoter:
         cell = fragment[3]
-        
+
         # only store the fragment if the cell is actually of interest
         if cell in cell_to_cell_ix:
             # add raw data of fragment relative to tss
-            coordinates_raw.append([
-                (int(fragment[1]) - promoter_info["tss"]) * promoter_info["strand"],
-                (int(fragment[2]) - promoter_info["tss"]) * promoter_info["strand"]
-            ][::promoter_info["strand"]])
+            coordinates_raw.append(
+                [
+                    (int(fragment[1]) - promoter_info["tss"]) * promoter_info["strand"],
+                    (int(fragment[2]) - promoter_info["tss"]) * promoter_info["strand"],
+                ][:: promoter_info["strand"]]
+            )
 
             # add mapping of cell/gene
-            mapping_raw.append([
-                cell_to_cell_ix[fragment[3]],
-                gene_ix
-            ])
+            mapping_raw.append([cell_to_cell_ix[fragment[3]], gene_ix])
 
 # %%
 fragments.var = var
@@ -205,8 +208,8 @@ fragments.obs = obs
 # Create fragments tensor
 
 # %%
-coordinates = torch.tensor(np.array(coordinates_raw, dtype = np.int64))
-mapping = torch.tensor(np.array(mapping_raw), dtype = torch.int64)
+coordinates = torch.tensor(np.array(coordinates_raw, dtype=np.int64))
+mapping = torch.tensor(np.array(mapping_raw), dtype=torch.int64)
 
 # %% [markdown]
 # Sort `coordinates` and `mapping` according to `mapping`
@@ -259,24 +262,27 @@ n_bins = 1
 
 # %%
 import pathlib
+
 fragments_train = pfa.data.Fragments(folder_data / train_dataset_name / "fragments" / promoter_name)
 folds_training = pickle.load(open(fragments_train.path / "folds.pkl", "rb"))
 
 # %%
 # train/test split
 cells_all = np.arange(fragments.n_cells)
-genes_all = np.arange(fragments.n_genes)
+genes_all = np.arange(fragments.n_regions)
 
 folds = []
 for fold_training in folds_training:
     genes_test = fold_training["genes_validation"]
     cells_test = cells_all
-    
-    folds.append({
-        "cells_test":cells_all,
-        "genes_test":fold_training["genes_validation"],
-        "genes_train":fold_training["genes_train"]
-    })
+
+    folds.append(
+        {
+            "cells_test": cells_all,
+            "genes_test": fold_training["genes_validation"],
+            "genes_train": fold_training["genes_train"],
+        }
+    )
 pickle.dump(folds, (fragments.path / "folds.pkl").open("wb"))
 
 # %% [markdown]

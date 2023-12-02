@@ -1,215 +1,225 @@
 import pandas as pd
 import numpy as np
+import tqdm.auto as tqdm
 
 import chromatinhd as chd
-import chromatinhd.peakcounts
+import chromatinhd.data.peakcounts
 
-import pickle
+import pathlib
 
-import torch
-import scanpy as sc
-import tqdm.auto as tqdm
+from chromatinhd_manuscript.designs_pred import dataset_peakcaller_combinations as design_1
+from chromatinhd_manuscript.designs_pred import (
+    traindataset_testdataset_peakcaller_combinations as design_2,
+)
 
 device = "cuda:1"
 
-folder_root = chd.get_output()
-folder_data = folder_root / "data"
-
-import itertools
-
-from chromatinhd_manuscript.designs import dataset_peakcaller_combinations as design_1
-from chromatinhd_manuscript.designs import (
-    traindataset_testdataset_peakcaller_combinations as design_2,
-)
 
 design_2["dataset"] = design_2["testdataset"]
 
 design = pd.concat([design_1, design_2])
 design.index = np.arange(len(design))
-print(design)
 
 # design = design.loc[~design["peakcaller"].str.startswith("rolling")].copy()
-# design = design.query("dataset == 'morf_20'").copy()
-# design = design.query("peakcaller == '1k1k'").copy()
-# design = design.query("peakcaller == 'stack'").copy()
-# design = design.loc[
-#     ~((design["dataset"] == "alzheimer") & (design["peakcaller"] == "genrich"))
-# ]
 # design = design.query("dataset == 'pbmc10k'")
-# design = design.query("dataset == 'pbmc10k'")
-design = design.query("promoter == '10k10k'")
+design = design.query("dataset == 'lymphoma'")
+# design = design.query("peakcaller in ['cellranger', 'macs2_leiden_0.1_merged']")
+# design = design.query("peakcaller in ['rolling_50', 'rolling_100', 'rolling_500']")
+# design = design.query("peakcaller == 'rolling_500'")
+# design = design.query("peakcaller == 'cellranger'")
+# design = design.query("peakcaller == 'genrich'")
+# design = design.query("peakcaller == 'macs2_leiden_0.1'")
+# design = design.query("peakcaller == 'macs2_leiden_0.1_merged'")
+# design = design.query("peakcaller == 'encode_screen'")
+# design = design.query("peakcaller == 'cellranger'")
+# design = design.query("regions == '10k10k'")
+design = design.query("regions == '100k100k'")
 # design = design.query("testdataset == 'pbmc10k_gran-pbmc10k'")
 # design = design.query("testdataset == 'lymphoma-pbmc10k'")
+
+##
+# design for pbmc10k gene subset (used in ablation)
+design = chd.utils.crossing(
+    pd.DataFrame({"dataset": ["pbmc10k/subsets/top250"]}),
+    pd.DataFrame({"peakcaller": ["macs2_leiden_0.1_merged", "rolling_100", "rolling_500", "rolling_50"]}),
+    pd.DataFrame({"regions": ["10k10k", "20k20k", "100k100k", "200k200k", "500k500k", "1m1m"]}),
+)
+# design = chd.utils.crossing(
+#     pd.DataFrame({"dataset": ["hspc"]}),
+#     # pd.DataFrame({"peakcaller": ["macs2_leiden_0.1_merged", "cellranger", "rolling_500", "rolling_100", "rolling_50", "encode_screen"]}),
+#     pd.DataFrame({"peakcaller": ["encode_screen"]}),
+#     pd.DataFrame({"regions": ["100k100k"]}),
+# )
+design = chd.utils.crossing(
+    pd.DataFrame({"dataset": ["hspc_focus"]}),
+    pd.DataFrame(
+        {
+            "peakcaller": [
+                "macs2_leiden_0.1_merged",
+                "cellranger",
+                "rolling_500",
+                "rolling_100",
+                "rolling_50",
+                "encode_screen",
+            ]
+        }
+    ),
+    pd.DataFrame({"regions": ["500k500k"]}),
+)
+# design = pd.DataFrame({"dataset": ["pbmc10k_int"], "peakcaller": ["macs2_leiden_0.1_merged"], "regions": ["10k10k"]})
+# design = pd.DataFrame({"dataset": ["hspc_gmp"], "peakcaller": ["encode_screen"], "regions": ["100k100k"]})
+# design = pd.DataFrame({"dataset": ["hspc_gmp"], "peakcaller": ["macs2_leiden_0.1_merged"], "regions": ["10k10k"]})
+##
 
 htslib_folder = pathlib.Path("/data/peak_free_atac/software/htslib-1.16/")
 tabix_location = htslib_folder / "tabix"
 
-
-design["force"] = False
+design["force"] = True
+# design["force"] = True
 print(design)
 
-for (dataset_name, promoters_name), design_dataset in design.groupby(
-    ["dataset", "promoter"]
-):
-    # transcriptome
-    folder_data_preproc = folder_data / dataset_name
+for (dataset_name, regions_name), design_dataset in design.groupby(["dataset", "regions"]):
+    folder_data_preproc = chd.get_output() / "data" / dataset_name.split("/")[0]
+    dataset_folder = chd.get_output() / "datasets" / dataset_name
 
-    # fragments
-    # promoter_name, window = "1k1k", np.array([-1000, 1000])
-    if promoters_name == "10k10k":
-        window = np.array([-10000, 10000])
-    elif promoters_name == "100k100k":
-        window = np.array([-100000, 100000])
-    elif promoters_name == "20kpromoter":
-        window = np.array([-20000, 0])
-
-    fragments = chd.data.Fragments(folder_data_preproc / "fragments" / promoters_name)
+    fragments = chd.data.Fragments(dataset_folder / "fragments" / regions_name)
+    regions = chd.data.Regions(dataset_folder / "regions" / regions_name)
 
     for peakcaller, subdesign in design_dataset.groupby("peakcaller"):
-        if promoters_name == "10k10k":
-            peakcounts = chd.peakcounts.FullPeak(
-                folder=chd.get_output() / "peakcounts" / dataset_name / peakcaller
-            )
-        else:
-            peakcounts = chd.peakcounts.FullPeak(
-                folder=chd.get_output()
-                / "peakcounts"
-                / dataset_name
-                / peakcaller
-                / promoters_name
-            )
+        fragments_location = folder_data_preproc / "atac_fragments.tsv.gz"
 
-        desired_outputs = [peakcounts.path / ("counts.pkl")]
-        force = subdesign["force"].iloc[0]
-        if not all([desired_output.exists() for desired_output in desired_outputs]):
-            force = True
-
-        if force:
-            print(subdesign)
-
-            try:
-                promoters = pd.read_csv(
-                    folder_data_preproc / ("promoters_" + promoters_name + ".csv"),
-                    index_col=0,
-                )
-            except FileNotFoundError as e:
-                print(e)
+        print(subdesign.iloc[0])
+        if not fragments_location.exists():
+            fragments_location = folder_data_preproc / "fragments.tsv.gz"
+            if not fragments_location.exists():
+                print("No atac fragments found")
                 continue
 
-            if peakcaller == "stack":
-                peaks = promoters.reset_index()[["chr", "start", "end", "gene"]]
-            elif peakcaller.startswith("rolling"):
-                step_size = int(peakcaller.split("_")[1])
-                peaks = []
-                for gene, promoter in promoters.iterrows():
-                    starts = np.arange(
-                        promoter["start"], promoter["end"], step=step_size
-                    )
-                    ends = np.hstack([starts[1:], [promoter["end"]]])
-                    peaks.append(
-                        pd.DataFrame(
-                            {
-                                "chrom": promoter["chr"],
-                                "start": starts,
-                                "ends": ends,
-                                "gene": gene,
-                            }
-                        )
-                    )
-                peaks = pd.concat(peaks)
+        if peakcaller.startswith("rolling"):
+            fragments = chd.data.Fragments(chd.get_output() / "datasets" / dataset_name / "fragments" / regions_name)
+            peakcounts = chd.data.peakcounts.Windows.create(
+                path=chd.get_output() / "datasets" / dataset_name / "peakcounts" / peakcaller / regions_name,
+                fragments=fragments,
+                window_size=int(peakcaller.split("_")[1]),
+                tabix_location=tabix_location,
+                fragments_location=fragments_location,
+                reset=True,
+            )
+        else:
+            peakcounts = chd.data.peakcounts.PeakCounts(
+                path=chd.get_output() / "datasets" / dataset_name / "peakcounts" / peakcaller / regions_name
+            )
 
-                peaks_folder = folder_root / "peaks" / dataset_name / peakcaller
-                peaks_folder.mkdir(exist_ok=True, parents=True)
-                peaks.to_csv(
-                    peaks_folder / "peaks.bed", index=False, header=False, sep="\t"
-                )
-            elif peakcaller == "1k1k":
-                peaks = promoters.copy().reset_index()[["chr", "start", "end", "gene"]]
-                peaks["start"] = peaks["start"] - window[0] - 1000
-                peaks["end"] = peaks["start"] - window[0] + 1000
-            elif peakcaller == "gene_body":
-                peaks = promoters.copy().reset_index()[
-                    ["chr", "start", "end", "gene", "tss"]
-                ]
-                peaks["start"] = peaks["tss"]
-            else:
-                peaks_folder = folder_root / "peaks" / dataset_name / peakcaller
+            force = subdesign["force"].iloc[0]
+            if not peakcounts.counted:
+                force = True
+
+            if force:
+                # print(subdesign)
+
+                region_coordinates = regions.coordinates.copy()
+                window = regions.window
+
                 try:
-                    peaks = pd.read_table(
-                        peaks_folder / "peaks.bed",
-                        names=["chrom", "start", "end"],
-                        usecols=[0, 1, 2],
+                    regions.coordinates
+                except:
+                    print("No regions found")
+                    continue
+
+                if peakcaller == "stack":
+                    peaks = region_coordinates.reset_index()[["chrom", "start", "end", "gene"]]
+                elif peakcaller == "1k1k":
+                    peaks = region_coordinates.copy().reset_index()[["chrom", "start", "end", "gene"]]
+                    peaks["start"] = peaks["start"] - window[0] - 1000
+                    peaks["end"] = peaks["start"] - window[0] + 1000
+                elif peakcaller == "gene_body":
+                    peaks = pd.DataFrame(
+                        [
+                            {
+                                "chrom": row["chrom"],
+                                "start": int(row["start"]) if row["strand"] == -1 else row["tss"],
+                                "end": int(row["end"]) if row["strand"] == 1 else row["tss"],
+                                "gene": gene,
+                                "tss": row["tss"],
+                            }
+                            for gene, row in region_coordinates.iterrows()
+                        ]
                     )
-                except FileNotFoundError as e:
-                    print(e)
-                    continue
+                    peaks["start"] = peaks["tss"].astype(int)
+                    peaks["end"] = peaks["end"].astype(int)
+                    print(peaks)
+                else:
+                    peaks_folder = chd.get_output() / "peaks" / dataset_name / peakcaller
+                    try:
+                        peaks = pd.read_table(
+                            peaks_folder / "peaks.bed",
+                            names=["chrom", "start", "end"],
+                            usecols=[0, 1, 2],
+                        )
+                    except FileNotFoundError as e:
+                        print(e)
+                        continue
 
-                if peakcaller == "genrich":
-                    peaks["start"] += 1
+                    if peakcaller == "genrich":
+                        peaks["start"] += 1
 
-            import pybedtools
+                import pybedtools
 
-            promoters_bed = pybedtools.BedTool.from_dataframe(
-                promoters.reset_index()[["chr", "start", "end", "gene"]]
-            )
-            peaks_bed = pybedtools.BedTool.from_dataframe(peaks)
+                regionss = region_coordinates.reset_index()[["chrom", "start", "end", "gene"]]
+                regionss["start"] = np.clip(regionss["start"], 0, None)
 
-            # create peaks dataframe
-            if peakcaller != "stack":
-                intersect = promoters_bed.intersect(peaks_bed)
-                intersect = intersect.to_dataframe()
+                # create peaks dataframe
+                if (peakcaller != "stack") and (not peakcaller.startswith("rolling")):
+                    regionss_bed = pybedtools.BedTool.from_dataframe(regionss)
+                    peaks_bed = pybedtools.BedTool.from_dataframe(peaks)
 
-                # peaks = intersect[["score", "strand", "thickStart", "name"]]
-                peaks = intersect
-            peaks.columns = ["chrom", "start", "end", "gene"]
-            peaks = peaks.loc[peaks["start"] != -1]
-            peaks.index = pd.Index(
-                peaks.chrom
-                + ":"
-                + peaks.start.astype(str)
-                + "-"
-                + peaks.end.astype(str),
-                name="peak",
-            )
+                    intersect = regionss_bed.intersect(peaks_bed)
+                    intersect = intersect.to_dataframe()
 
-            peaks["relative_begin"] = (
-                peaks["start"]
-                - promoters.loc[peaks["gene"], "start"].values
-                + window[0]
-            )
-            peaks["relative_stop"] = (
-                peaks["end"] - promoters.loc[peaks["gene"], "start"].values + window[0]
-            )
+                    # peaks = intersect[["score", "strand", "thickStart", "name"]]
+                    peaks = intersect
+                peaks.columns = ["chrom", "start", "end", "gene"]
+                peaks = peaks.loc[peaks["start"] != -1]
+                peaks.index = pd.Index(
+                    peaks.chrom + ":" + peaks.start.astype(str) + "-" + peaks.end.astype(str),
+                    name="peak",
+                )
 
-            peaks["relative_start"] = np.where(
-                promoters.loc[peaks["gene"], "strand"] == 1,
-                peaks["relative_begin"],
-                -peaks["relative_stop"],
-            )
-            peaks["relative_end"] = np.where(
-                promoters.loc[peaks["gene"], "strand"] == -1,
-                -peaks["relative_begin"],
-                peaks["relative_stop"],
-            )
+                peaks["relative_begin"] = (
+                    peaks["start"] - region_coordinates.loc[peaks["gene"], "start"].values + window[0]
+                )
+                peaks["relative_stop"] = (
+                    peaks["end"] - region_coordinates.loc[peaks["gene"], "start"].values + window[0]
+                )
 
-            peaks["gene_ix"] = fragments.var["ix"][peaks["gene"]].values
+                peaks["relative_start"] = np.where(
+                    region_coordinates.loc[peaks["gene"], "strand"] == 1,
+                    peaks["relative_begin"],
+                    -peaks["relative_stop"],
+                )
+                peaks["relative_end"] = np.where(
+                    region_coordinates.loc[peaks["gene"], "strand"] == -1,
+                    -peaks["relative_begin"],
+                    peaks["relative_stop"],
+                )
 
-            peaks["peak"] = peaks.index
+                peaks["gene_ix"] = fragments.var.index.get_indexer(peaks["gene"])
 
-            peaks.index = peaks.peak + "_" + peaks.gene
-            peaks.index.name = "peak_gene"
+                peaks["peak"] = peaks.index
 
-            peakcounts.peaks = peaks
+                peaks.index = peaks.peak + "_" + peaks.gene
+                peaks.index.name = "peak_gene"
 
-            # count
-            fragments.obs["ix"] = np.arange(fragments.obs.shape[0])
+                peakcounts.peaks = peaks
 
-            fragments_location = folder_data_preproc / "atac_fragments.tsv.gz"
-            if not fragments_location.exists():
-                fragments_location = folder_data_preproc / "fragments.tsv.gz"
-                if not fragments_location.exists():
-                    print("No atac fragments found")
-                    continue
-            peakcounts.count_peaks(
-                fragments_location, fragments.obs.index, tabix_location=tabix_location
-            )
+                # count
+                fragments.obs["ix"] = np.arange(fragments.obs.shape[0])
+
+                peakcounts.count_peaks(
+                    fragments_location,
+                    fragments.obs.index,
+                    tabix_location=tabix_location,
+                    do_count=peakcaller not in ["rolling_100", "rolling_50", "rolling_500"],
+                )
+
+                print(peakcounts.var is not None)

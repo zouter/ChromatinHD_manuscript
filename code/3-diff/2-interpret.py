@@ -8,7 +8,7 @@ import tqdm.auto as tqdm
 import chromatinhd as chd
 import chromatinhd.data
 import chromatinhd.loaders.fragmentmotif
-import chromatinhd.loaders.minibatching
+import chromatinhd.loaders.minibatches
 
 import pickle
 
@@ -37,14 +37,10 @@ for dataset_name, design_dataset in design.groupby("dataset"):
     # promoter_name, window = "1k1k", np.array([-1000, 1000])
     promoter_name, window = "10k10k", np.array([-10000, 10000])
     # promoter_name, window = "20kpromoter", np.array([-10000, 0])
-    promoters = pd.read_csv(
-        folder_data_preproc / ("promoters_" + promoter_name + ".csv"), index_col=0
-    )
+    promoters = pd.read_csv(folder_data_preproc / ("promoters_" + promoter_name + ".csv"), index_col=0)
     window_width = window[1] - window[0]
 
-    fragments = chromatinhd.data.Fragments(
-        folder_data_preproc / "fragments" / promoter_name
-    )
+    fragments = chromatinhd.data.Fragments(folder_data_preproc / "fragments" / promoter_name)
     fragments.window = window
 
     print(fragments.n_genes)
@@ -72,72 +68,45 @@ for dataset_name, design_dataset in design.groupby("dataset"):
 
             print(f"{dataset_name=} {promoter_name=} {method_name=}")
             prediction = chd.flow.Flow(
-                chd.get_output()
-                / "prediction_likelihood"
-                / dataset_name
-                / promoter_name
-                / latent_name
-                / method_name
+                chd.get_output() / "prediction_likelihood" / dataset_name / promoter_name / latent_name / method_name
             )
 
             models = []
-            for fold_ix, fold in [
-                (fold_ix, fold) for fold_ix, fold in enumerate(folds)
-            ][fold_slice]:
+            for fold_ix, fold in [(fold_ix, fold) for fold_ix, fold in enumerate(folds)][fold_slice]:
                 if not (prediction.path / "probs.pkl").exists():
                     force = True
                 print(prediction.path)
 
                 if force:
-                    model = pickle.load(
-                        (prediction.path / f"model_{fold_ix}.pkl").open("rb")
-                    )
+                    model = pickle.load((prediction.path / f"model_{fold_ix}.pkl").open("rb"))
 
                     latent = pd.read_pickle(latent_folder / (latent_name + ".pkl"))
 
                     device = "cuda"
                     model = model.to(device).eval()
 
-                    design_gene = pd.DataFrame(
-                        {"gene_ix": np.arange(fragments.n_genes)}
-                    )
-                    design_latent = pd.DataFrame(
-                        {"active_latent": np.arange(latent.shape[1])}
-                    )
-                    design_coord = pd.DataFrame(
-                        {"coord": np.arange(window[0], window[1] + 1, step=25)}
-                    )
-                    design = chd.utils.crossing(
-                        design_gene, design_latent, design_coord
-                    )
+                    design_gene = pd.DataFrame({"region_ix": np.arange(fragments.n_regions)})
+                    design_latent = pd.DataFrame({"active_latent": np.arange(latent.shape[1])})
+                    design_coord = pd.DataFrame({"coord": np.arange(window[0], window[1] + 1, step=25)})
+                    design = chd.utils.crossing(design_gene, design_latent, design_coord)
                     # batch_size = 100000
                     batch_size = 5000
-                    design["batch"] = np.floor(
-                        np.arange(design.shape[0]) / batch_size
-                    ).astype(int)
+                    design["batch"] = np.floor(np.arange(design.shape[0]) / batch_size).astype(int)
 
                     probs = []
                     for _, design_subset in tqdm.tqdm(design.groupby("batch")):
-                        pseudocoordinates = torch.from_numpy(
-                            design_subset["coord"].values
-                        ).to(device)
-                        pseudocoordinates = (pseudocoordinates - window[0]) / (
-                            window[1] - window[0]
-                        )
+                        pseudocoordinates = torch.from_numpy(design_subset["coord"].values).to(device)
+                        pseudocoordinates = (pseudocoordinates - window[0]) / (window[1] - window[0])
                         pseudolatent = torch.nn.functional.one_hot(
-                            torch.from_numpy(design_subset["active_latent"].values).to(
-                                device
-                            ),
+                            torch.from_numpy(design_subset["active_latent"].values).to(device),
                             latent.shape[1],
                         ).to(torch.float)
-                        gene_ix = torch.from_numpy(design_subset["gene_ix"].values).to(
-                            device
-                        )
+                        region_ix = torch.from_numpy(design_subset["region_ix"].values).to(device)
 
                         prob = model.evaluate_pseudo(
                             pseudocoordinates.to(device),
                             latent=pseudolatent.to(device),
-                            gene_ix=gene_ix,
+                            region_ix=region_ix,
                         )
 
                         probs.append(prob.numpy())
@@ -153,7 +122,7 @@ for dataset_name, design_dataset in design.groupby("dataset"):
 
                     pickle.dump(probs, (prediction.path / "probs.pkl").open("wb"))
 
-                    design["gene_ix"] = design["gene_ix"].astype("category")
+                    design["region_ix"] = design["region_ix"].astype("category")
                     design["active_latent"] = design["active_latent"].astype("category")
                     design["batch"] = design["batch"].astype("category")
                     design["coord"] = design["coord"].astype("category")

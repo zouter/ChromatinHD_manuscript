@@ -70,9 +70,7 @@ prediction_name = "v20"
 # prediction_name = "v20_initdefault"
 
 # fragments
-promoters = pd.read_csv(
-    folder_data_preproc / ("promoters_" + promoter_name + ".csv"), index_col=0
-)
+promoters = pd.read_csv(folder_data_preproc / ("promoters_" + promoter_name + ".csv"), index_col=0)
 window_width = window[1] - window[0]
 
 fragments = chd.data.Fragments(folder_data_preproc / "fragments" / promoter_name)
@@ -88,7 +86,7 @@ class Prediction(chd.flow.Flow):
 
 # folds & minibatching
 folds = pickle.load((fragments.path / "folds" / (splitter + ".pkl")).open("rb"))
-folds, cellxgene_batch_size = get_folds_inference(fragments, folds, n_cells_step=2000)
+folds, cellxregion_batch_size = get_folds_inference(fragments, folds, n_cells_step=2000)
 folds = folds  # [:1]
 
 # design
@@ -106,17 +104,12 @@ design_row = design[prediction_name]
 fragments.window = window
 
 # %%
-design_row["loader_parameters"]["cellxgene_batch_size"] = cellxgene_batch_size
+design_row["loader_parameters"]["cellxregion_batch_size"] = cellxregion_batch_size
 
 # %%
 print(prediction_name)
 prediction = chd.flow.Flow(
-    chd.get_output()
-    / "prediction_positional"
-    / dataset_name
-    / promoter_name
-    / splitter
-    / prediction_name
+    chd.get_output() / "prediction_positional" / dataset_name / promoter_name / splitter / prediction_name
 )
 
 # %% [markdown]
@@ -150,9 +143,7 @@ symbol = "TCF3"
 # symbol = "CCL4"
 genes_oi = transcriptome.var["symbol"] == symbol
 gene = transcriptome.var.index[genes_oi][0]
-folds, cellxgene_batch_size = get_folds_inference(
-    fragments, folds, n_cells_step=2000, genes_oi=genes_oi
-)
+folds, cellxregion_batch_size = get_folds_inference(fragments, folds, n_cells_step=2000, genes_oi=genes_oi)
 folds = folds  # [:1]
 
 gene_ix = transcriptome.gene_ix(symbol)
@@ -169,37 +160,22 @@ scores_folder = prediction.path / "scoring" / "windowsize_gene" / gene
 windowsize_scoring = chd.scoring.prediction.Scoring.load(scores_folder)
 
 # %%
-deltacor = windowsize_scoring.genescores.mean("model").sel(
-    phase="validation", gene=gene
-)["deltacor"]
-lost = windowsize_scoring.genescores.mean("model").sel(phase="validation", gene=gene)[
-    "lost"
-]
-reldeltacor = windowsize_scoring.genescores.mean("model").sel(
-    phase="validation", gene=gene
-)["deltacor"] / (
-    1
-    - windowsize_scoring.genescores.mean("model").sel(phase="validation", gene=gene)[
-        "retained"
-    ]
+deltacor = windowsize_scoring.genescores.mean("model").sel(phase="validation", gene=gene)["deltacor"]
+lost = windowsize_scoring.genescores.mean("model").sel(phase="validation", gene=gene)["lost"]
+reldeltacor = windowsize_scoring.genescores.mean("model").sel(phase="validation", gene=gene)["deltacor"] / (
+    1 - windowsize_scoring.genescores.mean("model").sel(phase="validation", gene=gene)["retained"]
 )
 
 # %%
-deltacor.coords["window_size"] = pd.MultiIndex.from_frame(
-    windowsize_scoring.design[["window", "size"]]
-)
-lost.coords["window_size"] = pd.MultiIndex.from_frame(
-    windowsize_scoring.design[["window", "size"]]
-)
+deltacor.coords["window_size"] = pd.MultiIndex.from_frame(windowsize_scoring.design[["window", "size"]])
+lost.coords["window_size"] = pd.MultiIndex.from_frame(windowsize_scoring.design[["window", "size"]])
 
 # %%
 sns.heatmap(deltacor.to_pandas().unstack())
 
 # %%
 fig, ax = plt.subplots(figsize=(30, 5))
-ax.plot(
-    lost.to_pandas().unstack().index, np.log1p(lost).to_pandas().unstack(), marker="."
-)
+ax.plot(lost.to_pandas().unstack().index, np.log1p(lost).to_pandas().unstack(), marker=".")
 # ax.set_xlim([-20000, -8000])
 # ax.set_xlim([3000, 6000])
 ax.set_xlim(*window)
@@ -217,13 +193,7 @@ ax.set_xlim(*window)
 chd.utils.paircor(deltacor.unstack().values, np.log(0.1 + lost.unstack().values))
 
 # %%
-sns.heatmap(
-    np.corrcoef(
-        deltacor.to_pandas()
-        .unstack()
-        .T.loc[:, (lost.unstack().sum("size") > 10).values]
-    )
-)
+sns.heatmap(np.corrcoef(deltacor.to_pandas().unstack().T.loc[:, (lost.unstack().sum("size") > 10).values]))
 
 # %%
 deltacor

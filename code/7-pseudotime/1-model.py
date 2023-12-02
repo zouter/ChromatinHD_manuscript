@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.14.5
+#       jupytext_version: 1.14.7
 #   kernelspec:
 #     display_name: Python 3 (ipykernel)
 #     language: python
@@ -65,9 +65,7 @@ folder_data_preproc = folder_data / dataset_name
 # %%
 # promoter_name, window = "4k2k", (2000, 4000)
 promoter_name, window = "10k10k", np.array([-10000, 10000])
-promoters = pd.read_csv(
-    folder_data_preproc / ("promoters_" + promoter_name + ".csv"), index_col=0
-)
+promoters = pd.read_csv(folder_data_preproc / ("promoters_" + promoter_name + ".csv"), index_col=0)
 window_width = window[1] - window[0]
 
 # %%
@@ -90,44 +88,44 @@ cells_validation = np.arange(int(fragments.n_cells * 9 / 10), fragments.n_cells)
 import chromatinhd.loaders.fragments
 
 # n_cells_step = 1000
-# n_genes_step = 1000
+# n_regions_step = 1000
 
 n_cells_step = 100
-n_genes_step = 5000
+n_regions_step = 5000
 
 # n_cells_step = 2000
-# n_genes_step = 500
+# n_regions_step = 500
 
-loaders_train = chromatinhd.loaders.pool.LoaderPool(
+loaders_train = chromatinhd.loaders.pool.LoaderPoolOld(
     chromatinhd.loaders.fragments.Fragments,
-    {"fragments": fragments, "cellxgene_batch_size": n_cells_step * n_genes_step},
+    {"fragments": fragments, "cellxregion_batch_size": n_cells_step * n_regions_step},
     n_workers=20,
     shuffle_on_iter=True,
 )
 minibatches_train = chd.loaders.minibatching.create_bins_random(
     cells_train,
-    np.arange(fragments.n_genes),
+    np.arange(fragments.n_regions),
     fragments.n_genes,
-    n_genes_step=n_genes_step,
+    n_regions_step=n_regions_step,
     n_cells_step=n_cells_step,
     use_all=True,
-    permute_genes=False,
+    permute_regions=False,
 )
 loaders_train.initialize(minibatches_train)
 
-loaders_validation = chromatinhd.loaders.pool.LoaderPool(
+loaders_validation = chromatinhd.loaders.pool.LoaderPoolOld(
     chromatinhd.loaders.fragments.Fragments,
-    {"fragments": fragments, "cellxgene_batch_size": n_cells_step * n_genes_step},
+    {"fragments": fragments, "cellxregion_batch_size": n_cells_step * n_regions_step},
     n_workers=5,
 )
 minibatches_validation = chd.loaders.minibatching.create_bins_random(
     cells_validation,
-    np.arange(fragments.n_genes),
+    np.arange(fragments.n_regions),
     fragments.n_genes,
-    n_genes_step=n_genes_step,
+    n_regions_step=n_regions_step,
     n_cells_step=n_cells_step,
     use_all=True,
-    permute_genes=False,
+    permute_regions=False,
 )
 loaders_validation.initialize(minibatches_validation)
 

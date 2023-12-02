@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.14.5
+#       jupytext_version: 1.14.7
 #   kernelspec:
 #     display_name: Python 3 (ipykernel)
 #     language: python
@@ -475,7 +475,7 @@ model = eqtl_model.Model.create(transcriptome, genotype, gene_variants_mapping)
 model_dummy = eqtl_model.Model.create(transcriptome, genotype, gene_variants_mapping, dummy = True)
 
 # %%
-loaders = chd.loaders.LoaderPool(
+loaders = chd.loaders.LoaderPoolOld(
     eqtl_model.Loader,
     {"transcriptome":transcriptome, "genotype":genotype, "gene_variants_mapping":gene_variants_mapping},
     n_workers=10,
@@ -505,7 +505,7 @@ trainer.train()
 # ## Inference & interpretion
 
 # %%
-loaders_inference = chd.loaders.LoaderPool(
+loaders_inference = chd.loaders.LoaderPoolOld(
     eqtl_model.Loader,
     {"transcriptome":transcriptome, "genotype":genotype, "gene_variants_mapping":gene_variants_mapping},
     n_workers=5,

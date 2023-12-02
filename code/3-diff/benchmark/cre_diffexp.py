@@ -6,7 +6,7 @@ import tqdm.auto as tqdm
 import chromatinhd as chd
 import chromatinhd.data
 import chromatinhd.loaders.fragmentmotif
-import chromatinhd.loaders.minibatching
+import chromatinhd.loaders.minibatches
 
 import scanpy as sc
 
@@ -41,18 +41,14 @@ for dataset_name, design_dataset in design.groupby("dataset"):
 
     promoter_name, window = "10k10k", np.array([-10000, 10000])
 
-    promoters = pd.read_csv(
-        folder_data_preproc / ("promoters_" + promoter_name + ".csv"), index_col=0
-    )
+    promoters = pd.read_csv(folder_data_preproc / ("promoters_" + promoter_name + ".csv"), index_col=0)
 
     for latent_name, subdesign in design_dataset.groupby("latent"):
         latent_folder = folder_data_preproc / "latent"
         latent = pickle.load((latent_folder / (latent_name + ".pkl")).open("rb"))
         cluster_info = pd.read_pickle(latent_folder / (latent_name + "_info.pkl"))
 
-        for (peakcaller, diffexp), subdesign in subdesign.groupby(
-            ["peakcaller", "diffexp"]
-        ):
+        for (peakcaller, diffexp), subdesign in subdesign.groupby(["peakcaller", "diffexp"]):
             scores_dir = (
                 chd.get_output()
                 / "prediction_differential"
@@ -73,10 +69,7 @@ for dataset_name, design_dataset in design.groupby("dataset"):
                 try:
                     print(f"{dataset_name=} {latent_name=} {peakcaller=}")
                     peakcounts = chd.peakcounts.FullPeak(
-                        folder=chd.get_output()
-                        / "peakcounts"
-                        / dataset_name
-                        / peakcaller
+                        folder=chd.get_output() / "peakcounts" / dataset_name / peakcaller
                     )
                     adata_atac = sc.AnnData(
                         peakcounts.counts.astype(np.float32),
@@ -110,21 +103,15 @@ for dataset_name, design_dataset in design.groupby("dataset"):
                             peakscores_cluster = (
                                 pd.DataFrame(
                                     {
-                                        "logfoldchanges": adata_atac.uns[
-                                            "rank_genes_groups"
-                                        ]["scores"][cluster_oi]
+                                        "logfoldchanges": adata_atac.uns["rank_genes_groups"]["scores"][cluster_oi]
                                         * 10,
-                                        "peak": adata_atac.uns["rank_genes_groups"][
-                                            "names"
-                                        ][cluster_oi],
+                                        "peak": adata_atac.uns["rank_genes_groups"]["names"][cluster_oi],
                                     }
                                 )
                                 .set_index("peak")
                                 .assign(cluster=cluster_oi)
                             )
-                            peakscores_cluster["score"] = peakscores_cluster[
-                                "logfoldchanges"
-                            ]
+                            peakscores_cluster["score"] = peakscores_cluster["logfoldchanges"]
                             peakscores_cluster["pvals_adj"] = 0.0
                             # import IPython
 
@@ -132,29 +119,23 @@ for dataset_name, design_dataset in design.groupby("dataset"):
                             # raise ValueError()
                         elif diffexp in ["scanpy", "scanpy_wilcoxon"]:
                             peakscores_cluster = (
-                                sc.get.rank_genes_groups_df(
-                                    adata_atac, group=cluster_oi
-                                )
+                                sc.get.rank_genes_groups_df(adata_atac, group=cluster_oi)
                                 .rename(columns={"names": "peak", "scores": "score"})
                                 .set_index("peak")
                                 .assign(cluster=cluster_oi)
                             )
                         else:
                             raise ValueError(diffexp)
-                        peakscores_cluster = peakcounts.peaks.join(
-                            peakscores_cluster, on="peak"
-                        ).sort_values("score", ascending=False)
+                        peakscores_cluster = peakcounts.peaks.join(peakscores_cluster, on="peak").sort_values(
+                            "score", ascending=False
+                        )
                         peakscores.append(peakscores_cluster)
                     peakscores = pd.concat(peakscores)
-                    peakscores["cluster"] = pd.Categorical(
-                        peakscores["cluster"], categories=cluster_info.index
-                    )
+                    peakscores["cluster"] = pd.Categorical(peakscores["cluster"], categories=cluster_info.index)
                     peakscores["length"] = peakscores["end"] - peakscores["start"]
 
-                    peakresult = (
-                        chromatinhd.differential.DifferentialSlices.from_peakscores(
-                            peakscores, window, len(promoters.index)
-                        )
+                    peakresult = chromatinhd.differential.DifferentialSlices.from_peakscores(
+                        peakscores, window, len(promoters.index)
                     )
 
                     pickle.dump(peakresult, (scores_dir / "slices.pkl").open("wb"))

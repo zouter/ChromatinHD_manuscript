@@ -37,8 +37,9 @@ dataset_peakcaller_combinations = pd.DataFrame.from_records(
                 "e18brain",
                 "brain",
                 "pbmc10k_gran",
+                "pbmc3k",
+                "pbmc10kx",
                 "hspc",
-                # "pbmc10k_eqtl",
             ],
             ["10k10k", "20kpromoter", "100k100k"],
             [
@@ -62,6 +63,8 @@ dataset_peakcaller_combinations = pd.DataFrame.from_records(
                 "brain",
                 # "alzheimer", # No bam file available, so no genrich
                 "pbmc10k_gran",
+                "pbmc3k",
+                "pbmc10kx",
                 # "morf_20",
             ],
             ["10k10k", "100k100k"],
@@ -74,8 +77,9 @@ dataset_peakcaller_combinations = pd.DataFrame.from_records(
                 "e18brain",
                 "brain",
                 "pbmc10k_gran",
+                "pbmc3k",
+                "pbmc10kx",
                 "hspc",
-                # "morf_20", # was not processed using cellranger
             ],
             ["10k10k", "100k100k"],
             ["cellranger"],

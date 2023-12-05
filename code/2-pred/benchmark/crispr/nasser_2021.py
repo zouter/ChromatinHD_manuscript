@@ -97,6 +97,11 @@ data["Significant"].mean()
 # %%
 data_orig["Gene"].value_counts()
 
+# %%
+plotdata = data_orig.query("Gene == 'CD40'")
+fig, ax = plt.subplots(figsize = (30, 2))
+ax.plot(plotdata["start"], plotdata["HS_LS_logratio"], ".")
+
 # %% [markdown]
 # ### Load interpretation
 

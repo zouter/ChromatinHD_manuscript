@@ -49,8 +49,8 @@ import chromatinhd as chd
 folder_root = chd.get_output()
 folder_data = folder_root / "data"
 
-dataset_name = "pbmc3k"
-main_url = "https://cf.10xgenomics.com/samples/cell-arc/2.0.0/pbmc_granulocyte_sorted_3k/pbmc_granulocyte_sorted_3k"
+dataset_name = "pbmc10k_gran"
+main_url = "https://cf.10xgenomics.com/samples/cell-arc/2.0.0/pbmc_unsorted_10k/pbmc_unsorted_10k"
 genome = "GRCh38"
 organism = "hs"
 
@@ -95,9 +95,6 @@ print(
 )
 
 # %%
-f"{main_url}_{filename}"
-
-# %%
 to_download = [
     "filtered_feature_bc_matrix.h5",
     "atac_fragments.tsv.gz",
@@ -108,14 +105,8 @@ to_download = [
 
 for filename in to_download:
     if not (folder_data_preproc / filename).exists():
-        import urllib.request
-        opener = urllib.request.build_opener()
-        opener.addheaders = [('User-agent', 'Mozilla/5.0')]
-        urllib.request.install_opener(opener)
-        urllib.request.urlretrieve(f"{main_url}_{filename}", folder_data_preproc / filename)
-
-import os
-os.system(f"cat {folder_data_preproc}/atac_peaks.bed | sed '/^#/d' > {folder_data_preproc}/peaks.tsv")
+        # !wget {main_url}_{filename} -O {folder_data_preproc}/{filename}
+# !cat {folder_data_preproc}/atac_peaks.bed | sed '/^#/d' > {folder_data_preproc}/peaks.tsv
 
 # %% [markdown]
 # ## Create transcriptome

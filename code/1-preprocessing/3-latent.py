@@ -42,7 +42,8 @@ import chromatinhd as chd
 folder_root = chd.get_output()
 folder_data = folder_root / "data"
 
-dataset_name = "pbmc10k"
+dataset_name = "pbmc10kx"
+# dataset_name = "pbmc10k"
 # dataset_name = "e18brain"
 # dataset_name = "lymphoma"
 # dataset_name = "alzheimer"
@@ -75,9 +76,9 @@ resolution = 0.1
 sc.tl.leiden(transcriptome.adata, resolution = resolution)
 
 # %%
-if (dataset == "pbmc10k") and (resolution == 0.1):
+if (dataset_name == "pbmc10k") and (resolution == 0.1):
     raise ValueError()
-clustering = chd.data.Clustering.from_labels(transcriptome.adata.obs["leiden"], folder_dataset / "latent" /  ("leiden_" + str(resolution)))
+clustering = chd.data.Clustering.from_labels(transcriptome.adata.obs["leiden"], path = folder_dataset / "latent" /  ("leiden_" + str(resolution)))
 
 # %%
 clustering.cluster_info["dimension"] = np.arange(clustering.n_clusters)
@@ -161,7 +162,7 @@ resolution = 0.1
 latent_name = "leiden_" + str(resolution)
 
 # %%
-clustering = chd.data.Clustering.from_labels(transcriptome.adata.obs["cluster"], folder_dataset / "latent" /  ("leiden_" + str(resolution)))
+clustering = chd.data.Clustering.from_labels(transcriptome.adata.obs["cluster"], path = folder_dataset / "latent" /  ("leiden_" + str(resolution)))
 
 # %%
 sc.pl.umap(transcriptome.adata, color = "celltype")

@@ -21,9 +21,10 @@ design = pd.concat([design_1, design_2])
 design.index = np.arange(len(design))
 
 # design = design.loc[~design["peakcaller"].str.startswith("rolling")].copy()
-# design = design.query("dataset == 'pbmc10k'")
-design = design.query("dataset == 'lymphoma'")
-# design = design.query("peakcaller in ['cellranger', 'macs2_leiden_0.1_merged']")
+design = design.query("regions in ['10k10k', '100k100k']")
+design = design.query("dataset in ['pbmc10kx', 'pbmc10k_gran', 'pbmc3k']")
+# design = design.query("dataset == 'lymphoma'")
+design = design.query("peakcaller not in ['1k1k', 'gene_body', 'stack']")
 # design = design.query("peakcaller in ['rolling_50', 'rolling_100', 'rolling_500']")
 # design = design.query("peakcaller == 'rolling_500'")
 # design = design.query("peakcaller == 'cellranger'")
@@ -33,39 +34,39 @@ design = design.query("dataset == 'lymphoma'")
 # design = design.query("peakcaller == 'encode_screen'")
 # design = design.query("peakcaller == 'cellranger'")
 # design = design.query("regions == '10k10k'")
-design = design.query("regions == '100k100k'")
+# design = design.query("regions == '100k100k'")
 # design = design.query("testdataset == 'pbmc10k_gran-pbmc10k'")
 # design = design.query("testdataset == 'lymphoma-pbmc10k'")
 
 ##
 # design for pbmc10k gene subset (used in ablation)
-design = chd.utils.crossing(
-    pd.DataFrame({"dataset": ["pbmc10k/subsets/top250"]}),
-    pd.DataFrame({"peakcaller": ["macs2_leiden_0.1_merged", "rolling_100", "rolling_500", "rolling_50"]}),
-    pd.DataFrame({"regions": ["10k10k", "20k20k", "100k100k", "200k200k", "500k500k", "1m1m"]}),
-)
+# design = chd.utils.crossing(
+#     pd.DataFrame({"dataset": ["pbmc10k/subsets/top250"]}),
+#     pd.DataFrame({"peakcaller": ["macs2_leiden_0.1_merged", "rolling_100", "rolling_500", "rolling_50"]}),
+#     pd.DataFrame({"regions": ["10k10k", "20k20k", "100k100k", "200k200k", "500k500k", "1m1m"]}),
+# )
 # design = chd.utils.crossing(
 #     pd.DataFrame({"dataset": ["hspc"]}),
 #     # pd.DataFrame({"peakcaller": ["macs2_leiden_0.1_merged", "cellranger", "rolling_500", "rolling_100", "rolling_50", "encode_screen"]}),
 #     pd.DataFrame({"peakcaller": ["encode_screen"]}),
 #     pd.DataFrame({"regions": ["100k100k"]}),
 # )
-design = chd.utils.crossing(
-    pd.DataFrame({"dataset": ["hspc_focus"]}),
-    pd.DataFrame(
-        {
-            "peakcaller": [
-                "macs2_leiden_0.1_merged",
-                "cellranger",
-                "rolling_500",
-                "rolling_100",
-                "rolling_50",
-                "encode_screen",
-            ]
-        }
-    ),
-    pd.DataFrame({"regions": ["500k500k"]}),
-)
+# design = chd.utils.crossing(
+#     pd.DataFrame({"dataset": ["hspc_focus"]}),
+#     pd.DataFrame(
+#         {
+#             "peakcaller": [
+#                 "macs2_leiden_0.1_merged",
+#                 "cellranger",
+#                 "rolling_500",
+#                 "rolling_100",
+#                 "rolling_50",
+#                 "encode_screen",
+#             ]
+#         }
+#     ),
+#     pd.DataFrame({"regions": ["500k500k"]}),
+# )
 # design = pd.DataFrame({"dataset": ["pbmc10k_int"], "peakcaller": ["macs2_leiden_0.1_merged"], "regions": ["10k10k"]})
 # design = pd.DataFrame({"dataset": ["hspc_gmp"], "peakcaller": ["encode_screen"], "regions": ["100k100k"]})
 # design = pd.DataFrame({"dataset": ["hspc_gmp"], "peakcaller": ["macs2_leiden_0.1_merged"], "regions": ["10k10k"]})
@@ -74,7 +75,7 @@ design = chd.utils.crossing(
 htslib_folder = pathlib.Path("/data/peak_free_atac/software/htslib-1.16/")
 tabix_location = htslib_folder / "tabix"
 
-design["force"] = True
+design["force"] = False
 # design["force"] = True
 print(design)
 

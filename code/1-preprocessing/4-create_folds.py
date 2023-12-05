@@ -41,33 +41,7 @@ import io
 import chromatinhd as chd
 
 # %%
-folder_root = chd.get_output()
-folder_data = folder_root / "data"
-
-# dataset_name = "alzheimer"
-# dataset_name = "brain"
-# dataset_name = "lymphoma"
-# dataset_name = "e18brain"
-# dataset_name = "pbmc10k"
-# dataset_name = "pbmc10k_gran"
-dataset_name = "hspc"
-# dataset_name = "hspc_gmp"
-
-dataset_folder = chd.get_output() / "datasets" / dataset_name
-
-# %%
-# promoter_name = "10k10k"
-promoter_name = "100k100k"
-
-# %%
-transcriptome = chd.data.Transcriptome(dataset_folder / "transcriptome")
-fragments = chd.data.Fragments(dataset_folder / "fragments" / promoter_name)
-
-# %%
-(fragments.path / "folds").mkdir(exist_ok = True)
-
-# %%
-for dataset_name in ["pbmc10k", "hspc", "e18brain", "lymphoma"]:
+for dataset_name in ["pbmc10k", "hspc", "e18brain", "lymphoma", "pbmc10k_gran"]:
     dataset_folder = chd.get_output() / "datasets" / dataset_name
     fragments = chd.data.Fragments(dataset_folder / "fragments" / promoter_name)
     folds = chd.data.folds.Folds(dataset_folder / "folds" / "5x1", reset = True)
@@ -75,3 +49,5 @@ for dataset_name in ["pbmc10k", "hspc", "e18brain", "lymphoma"]:
 
     folds = chd.data.folds.Folds(dataset_folder / "folds" / "5x5", reset = True)
     folds.sample_cells(fragments, 5, 5)
+
+# %%

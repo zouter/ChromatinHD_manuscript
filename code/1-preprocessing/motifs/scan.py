@@ -50,8 +50,8 @@ import chromatinhd as chd
 folder_root = chd.get_output()
 folder_data = folder_root / "data"
 
-# dataset_name = "pbmc10k"
-# organism = "hs"
+dataset_name = "pbmc10k"
+organism = "hs"
 
 dataset_name = "pbmc10k/subsets/top250"
 organism = "hs"
@@ -63,26 +63,11 @@ folder_data_preproc = folder_data / dataset_name
 
 # %%
 import gzip
-motifs_folder = chd.get_output() / "data" / "motifs" / organism / "hocomoco"
+motifs_folder = chd.get_output() / "data" / "motifs" / organism / "hocomocov12"
 motifs_folder.mkdir(parents=True, exist_ok=True)
 
 # %%
-pwms = chd.data.motifscan.read_pwms(motifs_folder / "pwms.txt")
-
-# %%
-motifs = pd.DataFrame({"motif": pwms.keys()}).set_index("motif")
-motif_cutoffs = pd.read_table(
-    motifs_folder / "pwm_cutoffs.txt",
-    names=["motif", "cutoff_001", "cutoff_0005", "cutoff_0001"],
-    skiprows=1,
-).set_index("motif")
-motifs = motifs.join(motif_cutoffs)
-annot = (
-    pd.read_table(motifs_folder / "annot.txt")
-    .rename(columns={"Model": "motif", "Transcription factor": "gene_label"})
-    .set_index("motif")
-)
-motifs = motifs.join(annot)
+pwms, motifs = chd.data.motifscan.download.get_hocomoco(motifs_folder, organism = organism)
 
 # %%
 import genomepy
@@ -93,23 +78,53 @@ fasta_file = "/data/genome/GRCh38/GRCh38.fa"
 
 # %%
 regions_name = "100k100k"
+# regions_name = "10k10k"
 regions = chd.data.Regions(chd.get_output() / "datasets" / dataset_name / "regions" / regions_name)
 
 # %%
-motifscan_name = "hocomoco_0001"
+motifscan_name = "hocomocov12_1e-3"
 motifscan = chd.data.Motifscan.from_pwms(
     pwms,
     regions,
     motifs=motifs,
-    cutoff_col="cutoff_0001",
+    cutoff_col="cutoff_0.001",
     fasta_file=fasta_file,
     path=chd.get_output() / "datasets" / dataset_name / "motifscans" / regions_name / motifscan_name,
 )
 
-# %%
 motifscan.create_region_indptr()
+motifscan.create_indptr()
 
 # %%
-plt.hist(motifscan.coordinates[:])
+motifscan_name = "hocomocov12_5e-4"
+motifscan = chd.data.Motifscan.from_pwms(
+    pwms,
+    regions,
+    motifs=motifs,
+    cutoff_col="cutoff_0.0005",
+    fasta_file=fasta_file,
+    path=chd.get_output() / "datasets" / dataset_name / "motifscans" / regions_name / motifscan_name,
+)
+
+motifscan.create_region_indptr()
+motifscan.create_indptr()
+
+# %%
+motifscan_name = "hocomocov12_1e-4"
+motifscan = chd.data.Motifscan.from_pwms(
+    pwms,
+    regions,
+    motifs=motifs,
+    cutoff_col="cutoff_0.0001",
+    fasta_file=fasta_file,
+    path=chd.get_output() / "datasets" / dataset_name / "motifscans" / regions_name / motifscan_name,
+)
+
+motifscan.create_region_indptr()
+motifscan.create_indptr()
+
+# %%
+plt.hist(motifscan.coordinates[:], bins = 100)
+""
 
 # %%

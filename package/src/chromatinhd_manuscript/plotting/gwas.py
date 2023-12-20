@@ -14,10 +14,7 @@ class SNPs(Panel):
         ax = self.ax
 
         snpmain_colors = {
-            snpmain: color
-            for snpmain, color in zip(
-                plotdata["snp_main"].unique(), sns.color_palette("tab10")
-            )
+            snpmain: color for snpmain, color in zip(plotdata["snp_main"].unique(), sns.color_palette("tab10"))
         }
 
         ax.scatter(
@@ -59,9 +56,7 @@ class SNPs(Panel):
 
 
 class SNPsBroken(Panel):
-    def __init__(
-        self, plotdata, regions, width, transform, *args, gap=1, height=0.1, **kwargs
-    ):
+    def __init__(self, plotdata, regions, width, transform, *args, gap=1, height=0.1, **kwargs):
         super().__init__(
             (width, height),
             *args,
@@ -73,10 +68,7 @@ class SNPsBroken(Panel):
         plotdata = plotdata.loc[~pd.isnull(plotdata["position_broken"])]
 
         snpmain_colors = {
-            snpmain: color
-            for snpmain, color in zip(
-                plotdata["snp_main"].unique(), sns.color_palette("tab10")
-            )
+            snpmain: color for snpmain, color in zip(plotdata["snp_main"].unique(), sns.color_palette("tab10"))
         }
 
         ax.scatter(

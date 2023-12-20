@@ -13,7 +13,7 @@ dataset_peakcaller_combinations = pd.DataFrame.from_records(
                 "brain",
                 "pbmc10k_gran",
                 "hspc",
-                # "pbmc10k_eqtl",
+                "liver",
             ],
             ["10k10k", "20kpromoter", "100k100k"],
             [
@@ -37,7 +37,6 @@ dataset_peakcaller_combinations = pd.DataFrame.from_records(
                 "brain",
                 # "alzheimer", # No bam file available, so no genrich
                 "pbmc10k_gran",
-                # "morf_20",
             ],
             ["10k10k", "100k100k"],
             ["genrich"],
@@ -50,7 +49,6 @@ dataset_peakcaller_combinations = pd.DataFrame.from_records(
                 "brain",
                 "pbmc10k_gran",
                 "hspc",
-                # "morf_20", # was not processed using cellranger
             ],
             ["10k10k", "100k100k"],
             ["cellranger"],
@@ -62,21 +60,17 @@ dataset_peakcaller_combinations = pd.DataFrame.from_records(
 dataset_latent_combinations = pd.DataFrame.from_records(
     itertools.chain(
         itertools.product(
-            ["lymphoma"],
-            ["celltype"],
-        ),
-        itertools.product(
             [
+                "lymphoma",
                 "pbmc10k",
                 "e18brain",
                 "brain",
                 "pbmc10k_gran",
-                # "pbmc10k_eqtl",
+                "liver",
+                "hepatocytes",
+                "hspc",
             ],
             ["leiden_0.1"],
-        ),
-        itertools.product(
-            ["overexpression"],
         ),
     ),
     columns=["dataset", "latent"],
@@ -97,22 +91,25 @@ dataset_latent_method_combinations = pd.concat(
                         "e18brain",
                         "brain",
                         "pbmc10k_gran",
-                        # "pbmc10k_eqtl",
+                        "liver",
+                        "hspc",
+                        "hepatocytes",
                     ]
                 )
             ],
-            pd.DataFrame({"method": ["v9_128-64-32"]}),
+            pd.DataFrame({"method": ["v30", "v31"]}),
+            pd.DataFrame({"splitter": ["5x1"]}),
+            pd.DataFrame({"regions": ["10k10k", "100k100k"]}),
         ),
     ]
 )
-dataset_latent_method_combinations["regions"] = "10k10k"
 
 
 dataset_latent_peakcaller_diffexp_combinations = pd.concat(
     [
         chd.utils.crossing(
             dataset_latent_peakcaller_combinations,
-            pd.DataFrame({"diffexp": ["scanpy"]}),
+            pd.DataFrame({"diffexp": ["t-test", "t-test-foldchange"]}),
         ),
         chd.utils.crossing(
             dataset_latent_peakcaller_combinations.query(

@@ -163,6 +163,95 @@ params.append(
     ),
 )
 
+
+params.append(
+    dict(
+        model_params=dict(
+            encoder="shared_lowrank",
+            encoder_params=dict(
+                binwidths=(5000, 1000, 500, 100, 50, 25),
+            ),
+        ),
+        train_params=dict(),
+        label="binary_shared_lowrank_[5k,1k,500,100,50,25]bw",
+    ),
+)
+
+
+lrs = (1e-1, 5e-2, 1e-2, 5e-3, 1e-3)
+lr_titration_ids = []
+for lr in lrs:
+    params.append(
+        dict(
+            model_params=dict(
+                encoder="shared",
+                encoder_params=dict(
+                    binwidths=(5000, 1000, 500, 100, 50, 25),
+                ),
+            ),
+            train_params=dict(lr=lr),
+            label=f"binary_shared_[5k,1k,500,100,50,25]bw_lr{lr}",
+        ),
+    )
+    lr_titration_ids.append(params[-1]["label"])
+
+
+params.append(
+    dict(
+        model_params=dict(
+            encoder="shared",
+            encoder_params=dict(
+                binwidths=(5000, 1000, 500, 100, 50, 25),
+            ),
+        ),
+        train_params=dict(n_cells_step=5000),
+        label="binary_shared_[5k,1k,500,100,50,25]bw_5000ncellsstep",
+    ),
+)
+
+
+params.append(
+    dict(
+        model_params=dict(
+            encoder="shared",
+            encoder_params=dict(
+                binwidths=(5000, 1000, 500, 100, 50, 25),
+            ),
+        ),
+        train_params=dict(n_cells_step=5000, early_stopping=False),
+        label="binary_shared_[5k,1k,500,100,50,25]bw_5000ncellsstep_noearlystop",
+    ),
+)
+
+
+params.append(
+    dict(
+        model_params=dict(
+            encoder="shared",
+            encoder_params=dict(
+                binwidths=(5000, 1000, 500, 100, 50, 25),
+            ),
+        ),
+        train_params=dict(n_cells_step=5000, early_stopping=False, n_epochs=100),
+        label="binary_shared_[5k,1k,500,100,50,25]bw_5000ncellsstep_noearlystop_100epochs",
+    ),
+)
+
+
+params.append(
+    dict(
+        model_params=dict(
+            encoder="shared",
+            encoder_params=dict(
+                binwidths=(5000, 1000, 500, 100, 50, 25),
+            ),
+        ),
+        train_params=dict(n_cells_step=5000, early_stopping=False, n_epochs=500),
+        label="binary_shared_[5k,1k,500,100,50,25]bw_5000ncellsstep_noearlystop_500epochs",
+    ),
+)
+
+
 labels = []
 for param in params:
     param["hex"] = hashlib.md5(str({k: v for k, v in param.items() if k not in ["label"]}).encode()).hexdigest()

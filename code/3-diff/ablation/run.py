@@ -17,15 +17,17 @@ from params import params
 
 device = "cuda:0"
 
-dry_run = False
 
 design = design.query("dataset == 'pbmc10k/subsets/top250'")
 design = design.query("clustering == 'leiden_0.1'")
 # design = design.query("regions == '10k10k'")
-# design = design.query("method == 'radial_binary_1000-31frequencies_splitdistance_wd0'")
+# design = design.query("method == 'binary_shared_lowrank_[5k,1k,500,100,50,25]bw'")
+# design = design.query("method == 'binary_shared_[5k,1k,500,100,50,25]bw'")
+# design = design.query("method == 'binary_split_[5k,1k,500,100,50,25]bw'")
 
 design = design.copy()
 design["force"] = False
+dry_run = False
 # design["force"] = True
 # dry_run = True
 
@@ -34,7 +36,8 @@ print(design)
 for (dataset_name, regions_name), subdesign in design.groupby(["dataset", "regions"]):
     print(f"{dataset_name=}")
     dataset_folder = chd.get_output() / "datasets" / dataset_name
-    fragments = chromatinhd.data.Fragments(dataset_folder / "fragments" / regions_name)
+    fragments = chd.flow.Flow.from_path(dataset_folder / "fragments" / regions_name)
+    transcriptome = chd.data.Transcriptome(dataset_folder / "transcriptome")
 
     for (splitter, clustering_name), subdesign in subdesign.groupby(["splitter", "clustering"]):
         # folds & minibatching
@@ -60,6 +63,9 @@ for (dataset_name, regions_name), subdesign in design.groupby(["dataset", "regio
             force = subdesign["force"].iloc[0]
             if performance.scores["scored"].sel_xr().all() and not force:
                 continue
+
+            if method_info["model_params"]["encoder"] == "shared_lowrank":
+                method_info["model_params"]["encoder_params"]["transcriptome"] = transcriptome
 
             models = chd.models.diff.model.binary.Models.create(
                 fragments=fragments,

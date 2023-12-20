@@ -1,3 +1,8 @@
+"""
+Create all motifscan views for the different datasets
+Make sure to first run scanp.ipynb to create the motifscans for the whole genome
+"""
+
 import pandas as pd
 import numpy as np
 import tqdm.auto as tqdm
@@ -15,15 +20,26 @@ from chromatinhd_manuscript.designs_pred import (
 device = "cuda:1"
 
 design = chd.utils.crossing(
-    pd.DataFrame({"dataset": ["pbmc10k", "hspc"], "organism": ["hs", "hs"]}),
+    pd.DataFrame.from_records(
+        [
+            ["pbmc10k", "hs"],
+            ["pbmc10kx", "hs"],
+            ["pbmc3k", "hs"],
+            ["pbmc10k_gran", "hs"],
+            ["e18brain", "mm"],
+            ["hspc", "hs"],
+            ["lymphoma", "hs"],
+            ["liver", "mm"],
+        ],
+        columns=["dataset", "organism"],
+    ),
     pd.DataFrame({"motifs": ["hocomocov12"]}),
     pd.DataFrame({"regions": ["10k10k", "100k100k"]}),
-    pd.DataFrame(
-        {"cutoff": ["cutoff_0.001", "cutoff_0.0005", "cutoff_0.0001"], "cutoff_label": ["1e-3", "5e-4", "1e-4"]}
-    ),
+    pd.DataFrame({"cutoff": ["cutoff_0.0001"], "cutoff_label": ["1e-4"]}),
 )
+design = design.query("dataset == 'liver'")
 # design["force"] = False
-design["force"] = True
+# design["force"] = True
 
 for _, row in design.iterrows():
     print(row)
@@ -39,25 +55,19 @@ for _, row in design.iterrows():
 
     motifscan_name = motifs_name + "_" + row["cutoff_label"]
 
-    if organism == "hs":
-        fasta_file = "/data/genome/GRCh38/GRCh38.fa"
-    else:
-        raise ValueError(f"Unknown organism {organism}")
+    if row["organism"] == "hs":
+        genome_folder = chd.get_output() / "genomes" / "GRCh38"
+    elif row["organism"] == "mm":
+        genome_folder = chd.get_output() / "genomes" / "mm10"
+    parent = chd.flow.Flow.from_path(genome_folder / "motifscans" / motifscan_name)
 
-    motifscan = chd.data.Motifscan(
+    motifscan = chd.data.motifscan.MotifscanView(
         path=chd.get_output() / "datasets" / dataset_name / "motifscans" / regions_name / motifscan_name,
     )
     if motifscan.scanned and not row["force"]:
         continue
-    motifscan = chd.data.Motifscan.from_pwms(
-        pwms,
+    motifscan = chd.data.motifscan.MotifscanView.from_motifscan(
+        parent,
         regions,
-        motifs=motifs,
-        cutoff_col=row["cutoff"],
-        fasta_file=fasta_file,
         path=chd.get_output() / "datasets" / dataset_name / "motifscans" / regions_name / motifscan_name,
-        overwrite=True,
     )
-
-    motifscan.create_region_indptr()
-    motifscan.create_indptr()

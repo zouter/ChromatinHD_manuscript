@@ -26,7 +26,8 @@ from chromatinhd_manuscript.designs_pred import (
 design = design.loc[
     (
         design["dataset"].isin(
-            ["hspc", "pbmc10k"]
+            # ["hspc", "pbmc10k"]
+            ["hspc"]
             # ["e18brain"]
             # ["lymphoma"]
             # ["pbmc10k", "brain", "e18brain", "pbmc10k_gran", "lymphoma"]
@@ -35,7 +36,7 @@ design = design.loc[
 ]
 # design = design.loc[(design["dataset"].isin(["pbmc10k"]))]
 # design = design.loc[(design["regions"] == "20kpromoter")]
-design = design.loc[(design["regions"] == "10k10k")]
+# design = design.loc[(design["regions"] == "10k10k")]
 # design = design.loc[(design["regions"] == "100k100k")]
 design = design.loc[(design["splitter"] == "5x1")]
 

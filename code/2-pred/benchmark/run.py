@@ -30,8 +30,9 @@ design = design.query("method == 'v33'")
 # design = design.query("method == 'v22'")
 # design = design.query("dataset == 'pbmc10k'")
 # design = design.query("dataset == 'hspc'")
-design = design.query("dataset == 'e18brain'")
-# design = design.query("dataset == 'lymphoma'")
+# design = design.query("dataset == 'pbmc10k_gran'")
+# design = design.query("dataset == 'e18brain'")
+design = design.query("dataset == 'lymphoma'")
 # design = design.query("dataset == 'pbmc3k'")
 # design = design.query("regions == '10k10k'")
 # design = design.query("regions == '20kpromoter'")
@@ -76,15 +77,15 @@ for (dataset_name, regions_name), subdesign in design.groupby(["dataset", "regio
             )
             print(performance.scores.coords_pointed["region"])
 
-            censorer = chd.models.pred.interpret.censorers.MultiWindowCensorer(fragments.regions.window)
-            regionmultiwindow = chd.models.pred.interpret.RegionMultiWindow.create(
-                path=prediction.path / "scoring" / "regionmultiwindow",
-                folds=folds,
-                transcriptome=transcriptome,
-                fragments=fragments,
-                censorer=censorer,
-                overwrite=force,
-            )
+            # censorer = chd.models.pred.interpret.censorers.MultiWindowCensorer(fragments.regions.window)
+            # regionmultiwindow = chd.models.pred.interpret.RegionMultiWindow.create(
+            #     path=prediction.path / "scoring" / "regionmultiwindow",
+            #     folds=folds,
+            #     transcriptome=transcriptome,
+            #     fragments=fragments,
+            #     censorer=censorer,
+            #     overwrite=force,
+            # )
 
             method_info = params[method_name]
 
@@ -92,10 +93,11 @@ for (dataset_name, regions_name), subdesign in design.groupby(["dataset", "regio
 
             for region in tqdm.tqdm(transcriptome.var.sort_values("dispersions_norm", ascending=False).index):
                 if performance.scores["scored"][region].all():
-                    if (performance.scores["cor"][region, :, "test"].mean() < 0.2) or (
-                        regionmultiwindow.scores["scored"][region].all()
-                    ):
-                        continue
+                    continue
+                    # if (performance.scores["cor"][region, :, "test"].mean() < 0.2) or (
+                    #     regionmultiwindow.scores["scored"][region].all()
+                    # ):
+                    #     continue
 
                 print(transcriptome.symbol(region))
 
@@ -116,5 +118,5 @@ for (dataset_name, regions_name), subdesign in design.groupby(["dataset", "regio
 
                 if performance.scores["cor"][region, :, "test"].mean() < 0.2:
                     continue
-                print("scoring region multi window")
-                regionmultiwindow.score(models, device="cpu")
+                # print("scoring region multi window")
+                # regionmultiwindow.score(models, device="cpu")

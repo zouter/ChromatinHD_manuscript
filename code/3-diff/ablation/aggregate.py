@@ -117,7 +117,7 @@ plotdata = scores["likelihood"].sel(phase = "test").mean("fold").to_pandas().T
 dataset_name = "pbmc10k/subsets/top250"
 transcriptome = chd.data.Transcriptome(chd.get_output() / "datasets" / dataset_name / "transcriptome")
 regions_name = "100k100k"
-fragments = chd.data.Fragments(chd.get_output() / "datasets" / dataset_name / "fragments" / regions_name)
+fragments = chd.flow.Flow.from_path(chd.get_output() / "datasets" / dataset_name / "fragments" / regions_name)
 
 # %%
 import statsmodels.api as sm

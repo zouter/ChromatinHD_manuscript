@@ -31,16 +31,7 @@ dataset_baseline_combinations = pd.DataFrame.from_records(
 dataset_peakcaller_combinations = pd.DataFrame.from_records(
     itertools.chain(
         itertools.product(
-            [
-                "pbmc10k",
-                "lymphoma",
-                "e18brain",
-                "brain",
-                "pbmc10k_gran",
-                "pbmc3k",
-                "pbmc10kx",
-                "hspc",
-            ],
+            ["pbmc10k", "lymphoma", "e18brain", "brain", "pbmc10k_gran", "pbmc3k", "pbmc10kx", "hspc", "liver"],
             ["10k10k", "20kpromoter", "100k100k"],
             [
                 "rolling_100",

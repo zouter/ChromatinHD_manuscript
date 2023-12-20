@@ -2,7 +2,7 @@ import pandas as pd
 import itertools
 import chromatinhd as chd
 
-from params import binwidth_titration_ids, w_delta_p_scale_titration_ids
+from params import binwidth_titration_ids, w_delta_p_scale_titration_ids, lr_titration_ids
 
 dataset_splitter_combinations = pd.DataFrame.from_records(
     itertools.chain(
@@ -34,8 +34,14 @@ dataset_splitter_method_combinations = pd.concat(
                         "binary_25bw",
                         *binwidth_titration_ids,
                         *w_delta_p_scale_titration_ids,
-                        "binary_split_[5k,1k,500,100,50,25]bw",
+                        *lr_titration_ids,
+                        "binary_shared_lowrank_[5k,1k,500,100,50,25]bw",
                         "binary_shared_[5k,1k,500,100,50,25]bw",
+                        "binary_split_[5k,1k,500,100,50,25]bw",
+                        "binary_shared_[5k,1k,500,100,50,25]bw_5000ncellsstep",
+                        "binary_shared_[5k,1k,500,100,50,25]bw_5000ncellsstep_noearlystop",
+                        "binary_shared_[5k,1k,500,100,50,25]bw_5000ncellsstep_noearlystop_100epochs",
+                        "binary_shared_[5k,1k,500,100,50,25]bw_5000ncellsstep_noearlystop_500epochs",
                     ]
                 }
             ),

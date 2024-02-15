@@ -1,14 +1,17 @@
-import pandas as pd
-import numpy as np
-import torch
+from chromatinhd_manuscript.designs_diff import (
+    dataset_latent_method_combinations as design,
+)
+from chromatinhd_manuscript.diff_params import params
+
+import pickle
 
 import chromatinhd as chd
 import chromatinhd.data
 import matplotlib.pyplot as plt
-
+import numpy as np
+import pandas as pd
+import torch
 import tqdm.auto as tqdm
-
-import pickle
 
 device = "cuda:0"
 # device = "cuda:1"
@@ -17,13 +20,11 @@ device = "cuda:0"
 folder_root = chd.get_output()
 folder_data = folder_root / "data"
 
-from chromatinhd_manuscript.designs_diff import (
-    dataset_latent_method_combinations as design,
-)
 
 design = design.query("splitter == '5x1'")
 design = design.query("method == 'v31'")
-design = design.query("dataset == 'liver'")
+# design = design.query("dataset == 'hspc'")
+# design = design.query("dataset == 'alzheimer'")
 # design = design.query("dataset in ['pbmc10k', 'pbmc10kx']")
 
 design = design.copy()
@@ -32,7 +33,6 @@ design["force"] = False
 # design["force"] = True
 # dry_run = True
 
-from chromatinhd_manuscript.diff_params import params
 
 for (dataset_name, regions_name), subdesign in design.groupby(["dataset", "regions"]):
     print(f"{dataset_name=}")
@@ -61,6 +61,7 @@ for (dataset_name, regions_name), subdesign in design.groupby(["dataset", "regio
             models.clustering = clustering
 
             regionpositional = chd.models.diff.interpret.RegionPositional(models.path / "scoring" / "regionpositional")
+            regionpositional.regions = fragments.regions
 
             if models.trained:
                 print(models.trained)

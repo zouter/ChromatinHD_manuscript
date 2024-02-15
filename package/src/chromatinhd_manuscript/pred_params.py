@@ -47,6 +47,7 @@ params.append(
             encoder="radial_binary",
             nonlinear="silu",
             library_size_encoder="linear",
+            distance_encoder="direct",
         ),
         train_params=dict(
             weight_decay=1e-1,

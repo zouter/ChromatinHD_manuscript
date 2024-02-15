@@ -30,6 +30,9 @@ design = chd.utils.crossing(
             ["hspc", "hs"],
             ["lymphoma", "hs"],
             ["liver", "mm"],
+            ["hepatocytes", "mm"],
+            ["pbmc20k", "hs"],
+            ["alzheimer", "hs"],
         ],
         columns=["dataset", "organism"],
     ),
@@ -37,8 +40,8 @@ design = chd.utils.crossing(
     pd.DataFrame({"regions": ["10k10k", "100k100k"]}),
     pd.DataFrame({"cutoff": ["cutoff_0.0001"], "cutoff_label": ["1e-4"]}),
 )
-design = design.query("dataset == 'liver'")
-# design["force"] = False
+design = design.query("dataset == 'alzheimer'")
+design["force"] = False
 # design["force"] = True
 
 for _, row in design.iterrows():

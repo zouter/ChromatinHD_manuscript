@@ -8,7 +8,7 @@ import itertools
 def extract_hic(promoter, c, balance="VC_SQRT", step=1000):
     window = np.array([promoter.start - promoter.tss, promoter.end - promoter.tss])
 
-    promoter_str = f"{promoter.chr}:{promoter.start}-{promoter.end}"
+    promoter_str = f"{promoter.chrom}:{promoter.start}-{promoter.end}"
     if balance is not False:
         hic = c.matrix(balance=balance, as_pixels=True, join=True).fetch(promoter_str)
     else:
@@ -24,13 +24,13 @@ def extract_hic(promoter, c, balance="VC_SQRT", step=1000):
     # sns.heatmap(np.log1p(hicmat), cmap="viridis", ax=ax)
 
     if promoter["strand"] == 1:
-        hic[["start1", "end1", "start2", "end2"]] = hic[
-            ["start1", "end1", "start2", "end2"]
-        ].apply(lambda x: (x - promoter.tss) * promoter["strand"])
+        hic[["start1", "end1", "start2", "end2"]] = hic[["start1", "end1", "start2", "end2"]].apply(
+            lambda x: (x - promoter.tss) * promoter["strand"]
+        )
     else:
-        hic[["end1", "start1", "end2", "start2"]] = hic[
-            ["start1", "end1", "start2", "end2"]
-        ].apply(lambda x: (x - promoter.tss) * promoter["strand"])
+        hic[["end1", "start1", "end2", "start2"]] = hic[["start1", "end1", "start2", "end2"]].apply(
+            lambda x: (x - promoter.tss) * promoter["strand"]
+        )
 
     bins_hic = (
         pd.concat(
@@ -69,12 +69,8 @@ def extract_hic(promoter, c, balance="VC_SQRT", step=1000):
         assert len(bins_hic) == int((window[1] - window[0]) / step) + 1
 
     # add windows to hic
-    hic["window1"] = (
-        bins_hic.reset_index().set_index("start").loc[hic["start1"]]["window"].values
-    )
-    hic["window2"] = (
-        bins_hic.reset_index().set_index("start").loc[hic["start2"]]["window"].values
-    )
+    hic["window1"] = bins_hic.reset_index().set_index("start").loc[hic["start1"]]["window"].values
+    hic["window2"] = bins_hic.reset_index().set_index("start").loc[hic["start2"]]["window"].values
 
     hic = pd.concat(
         [
@@ -106,8 +102,7 @@ def clean_hic(hic, bins_hic):
         .fillna({"balanced": 0.0})
     )
     hic["distance"] = np.abs(
-        hic.index.get_level_values("window1").astype(float)
-        - hic.index.get_level_values("window2").astype(float)
+        hic.index.get_level_values("window1").astype(float) - hic.index.get_level_values("window2").astype(float)
     )
     hic.loc[hic["distance"] <= 1000, "balanced"] = 0.0
     return hic, bins_hic
@@ -176,8 +171,7 @@ def create_matching(
     matching["balanced"] = matching_hic.reindex(matching.index)["balanced"].fillna(0)
     matching["cor"] = matching_chd.reindex(matching.index)["cor"].fillna(0)
     matching["distance"] = np.abs(
-        matching.index.get_level_values("window1")
-        - matching.index.get_level_values("window2")
+        matching.index.get_level_values("window1") - matching.index.get_level_values("window2")
     )
 
     return matching
@@ -185,24 +179,13 @@ def create_matching(
 
 def pool_prepare_hic(hic, bins_hic, distance_cutoff=1001):
     hic["distance"] = np.abs(
-        hic.index.get_level_values("window1").astype(float)
-        - hic.index.get_level_values("window2").astype(float)
+        hic.index.get_level_values("window1").astype(float) - hic.index.get_level_values("window2").astype(float)
     )
 
-    x_distance = (
-        hic["distance"]
-        .unstack()
-        .reindex(index=bins_hic.index, columns=bins_hic.index)
-        .fillna(0)
-    )
+    x_distance = hic["distance"].unstack().reindex(index=bins_hic.index, columns=bins_hic.index).fillna(0)
     assert (x_distance.index == x_distance.columns).all()
 
-    x = (
-        hic["balanced"]
-        .unstack()
-        .reindex(index=bins_hic.index, columns=bins_hic.index)
-        .fillna(0)
-    )
+    x = hic["balanced"].unstack().reindex(index=bins_hic.index, columns=bins_hic.index).fillna(0)
     x = x.values + x.T.values
     x[x_distance.values <= distance_cutoff] = 0
     return x
@@ -225,8 +208,7 @@ def maxipool_hic(hic, bins_hic, distance_cutoff=1000, k=1):
     x2.columns.name = "window2"
     hic2 = x2.stack().to_frame().rename(columns={0: "balanced"})
     hic2["distance"] = np.abs(
-        hic2.index.get_level_values("window1").astype(float)
-        - hic2.index.get_level_values("window2").astype(float)
+        hic2.index.get_level_values("window1").astype(float) - hic2.index.get_level_values("window2").astype(float)
     )
     hic2.loc[hic2["distance"] <= 1000, "balanced"] = 0.0
     return hic2
@@ -246,8 +228,7 @@ def meanpool_hic(hic, bins_hic, distance_cutoff=1000, k=1):
     x2.columns.name = "window2"
     hic2 = x2.stack().to_frame().rename(columns={0: "balanced"})
     hic2["distance"] = np.abs(
-        hic2.index.get_level_values("window1").astype(float)
-        - hic2.index.get_level_values("window2").astype(float)
+        hic2.index.get_level_values("window1").astype(float) - hic2.index.get_level_values("window2").astype(float)
     )
     hic2.loc[hic2["distance"] <= 1000, "balanced"] = 0.0
     return hic2

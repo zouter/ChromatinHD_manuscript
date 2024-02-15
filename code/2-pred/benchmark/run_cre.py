@@ -10,45 +10,27 @@ from chromatinhd_manuscript.designs_pred import (
     dataset_splitter_peakcaller_predictor_combinations as design,
 )
 
-# design = design.loc[(design["peakcaller"].str.startswith("stack"))]
-# design = design.loc[~(design["peakcaller"].str.startswith("rolling_"))]
-# design = design.loc[(design["peakcaller"] == "macs2_leiden_0.1_merged")]
-# design = design.loc[(design["peakcaller"].isin(["rolling_100"]))]
-# design = design.loc[(design["peakcaller"].isin(["cellranger", "rolling_500"]))]
-# design = design.loc[(design["predictor"] == "linear")]
-# design = design.loc[(design["predictor"].isin(["linear", "lasso"]))]
-# design = design.loc[(design["predictor"] == "linear_magic")]
-# design = design.loc[(design["predictor"] == "lasso_magic")]
-# design = design.loc[(design["peakcaller"].isin(["gene_body"]))]
-# design = design.loc[(design["predictor"] == "lasso")]
-# design = design.loc[(design["predictor"] == "xgboost")]
-# design = design.loc[(design["dataset"] != "alzheimer")]
-design = design.loc[
-    (
-        design["dataset"].isin(
-            # ["hspc", "pbmc10k"]
-            ["hspc"]
-            # ["e18brain"]
-            # ["lymphoma"]
-            # ["pbmc10k", "brain", "e18brain", "pbmc10k_gran", "lymphoma"]
-        )
-    )
-]
-# design = design.loc[(design["dataset"].isin(["pbmc10k"]))]
+# design = design.loc[(design["dataset"].isin(["hspc"]))]
+# design = design.loc[~(design["dataset"].isin(["pbmc20k"]))]
+# design = design.loc[(design["dataset"].isin(["alzheimer"]))]
 # design = design.loc[(design["regions"] == "20kpromoter")]
 # design = design.loc[(design["regions"] == "10k10k")]
 # design = design.loc[(design["regions"] == "100k100k")]
+design = design.loc[(design["layer"] == "magic")]
 design = design.loc[(design["splitter"] == "5x1")]
+# design = design.loc[(design["peakcaller"] == "macs2_leiden_0.1_merged")]
+# design = design.loc[(design["peakcaller"] == "encode_screen")]
+# design = design.loc[(design["peakcaller"] == "rolling_500")]
+design = design.loc[(design["predictor"] == "lasso")]
 
 dry_run = False
 design["force"] = False
-print(design)
-
 # design["force"] = True
 # dry_run = True
 
+print(design)
+
 for _, design_row in design.iterrows():
-    print(design_row)
     dataset_name = design_row["dataset"]
     regions_name = design_row["regions"]
     peakcaller = design_row["peakcaller"]
@@ -74,6 +56,8 @@ for _, design_row in design.iterrows():
         if not peakcounts.counted:
             print("Not counted: ", peakcounts)
             continue
+
+        print(design_row)
         transcriptome = chd.data.Transcriptome(chd.get_output() / "datasets" / dataset_name / "transcriptome")
         folds = chd.data.folds.Folds(chd.get_output() / "datasets" / dataset_name / "folds" / splitter)
         prediction.initialize(peakcounts, transcriptome, folds)

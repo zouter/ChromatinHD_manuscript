@@ -58,23 +58,22 @@ folder_data = folder_root / "data"
 
 dataset_name = "pbmc10k"
 
-promoter_name, window = "100k100k", np.array([-100000, 100000])
+regions_name, window = "100k100k", np.array([-100000, 100000])
 # promoter_name, promoter = "10k10k", np.array([-10000, 10000])
 
 folder_data_preproc = folder_data / dataset_name
 folder_data_preproc.mkdir(exist_ok=True, parents=True)
 
-promoters = pd.read_csv(
-    folder_data_preproc / ("promoters_" + promoter_name + ".csv"), index_col=0
-)
+regions = chd.data.Regions(chd.get_output() / "datasets" / dataset_name / "regions" / regions_name)
 
 cool_name = "harris_2023_500bp"
 step = 500
 
 if cool_name == "harris_2023_500bp":
-    c = hicstraw.HiCFile(str(chd.get_output() / "ENCFF555ISR.hic"))
+    # c = hicstraw.HiCFile(str(chd.get_output() / "ENCFF555ISR.hic"))
+    c = hicstraw.HiCFile("/home/wsaelens/NAS2/wsaelens/projects/chromatinhd/chromatinhd_manuscript/output/HiC/ENCFF555ISR.hic")
 
-hic_file = folder_data_preproc / "hic" / promoter_name / f"{cool_name}.pkl"
+hic_file = folder_data_preproc / "hic" / regions_name / f"{cool_name}.pkl"
 hic_file.parent.mkdir(exist_ok=True, parents=True)
 
 # %%
@@ -87,17 +86,18 @@ if (
     (not hic_file.exists())
 ):
     gene_hics = {}
-    for gene in tqdm.tqdm(promoters.index):
-        promoter = promoters.loc[gene]
+    for gene in tqdm.tqdm(regions.coordinates.index):
+        print(gene)
+        promoter = regions.coordinates.loc[gene]
 
         if cool_name == "gu_2021_500bp":
             promoter = promoter.copy()
-            promoter.chr = promoter.chr[3:]
+            promoter.chrom = promoter.chrom[3:]
 
         balance = "weight" if cool_name == "matrix_1kb" else "VC_SQRT"
 
         try:
-            mzd = c.getMatrixZoomData(promoter["chr"], promoter["chr"], "observed", "VC_SQRT", "BP", 500)
+            mzd = c.getMatrixZoomData(promoter["chrom"], promoter["chrom"], "observed", balance, "BP", 500)
             numpy_matrix = mzd.getRecordsAsMatrix(promoter["start"], promoter["end"], promoter["start"], promoter["end"])
 
             bins_hic = pd.DataFrame(
@@ -119,7 +119,7 @@ if (
     pickle.dump(gene_hics, open(hic_file, "wb"))
 
 # %%
-promoter = promoters.loc["ENSG00000171791"]
+promoter = regions.coordinates.loc["ENSG00000171791"]
 
 hic = gene_hics[promoter.name][0]
 hic["distance"] = np.abs(

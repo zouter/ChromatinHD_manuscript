@@ -17,25 +17,6 @@ peakcaller_diffexp_combinations["color"] = peakcallers.reindex(peakcaller_diffex
     "color"
 ].values
 
-# peakcaller_diffexp_combinations.loc[
-#     peakcaller_diffexp_combinations["type"] == "baseline", "color"
-# ] = "#888888"
-# peakcaller_diffexp_combinations.loc[
-#     peakcaller_diffexp_combinations["type"] == "ours", "color"
-# ] = "#0074D9"
-# peakcaller_diffexp_combinations.loc[
-#     peakcaller_diffexp_combinations["type"] == "rolling", "color"
-# ] = "#FF851B"
-# peakcaller_diffexp_combinations.loc[
-#     peakcaller_diffexp_combinations["type"] == "peak", "color"
-# ] = "#FF4136"
-# peakcaller_diffexp_combinations.loc[
-#     peakcaller_diffexp_combinations["type"] == "predefined", "color"
-# ] = "#2ECC40"
-# peakcaller_diffexp_combinations.loc[
-#     pd.isnull(peakcaller_diffexp_combinations["color"]), "color"
-# ] = "#DDDDDD"
-
 peakcaller_diffexp_combinations = peakcaller_diffexp_combinations.set_index(["peakcaller", "diffexp"])
 peakcaller_diffexp_combinations["label"] = (
     peakcaller_diffexp_combinations.index.get_level_values("diffexp")
@@ -64,26 +45,6 @@ peakcaller_predictor_combinations["color"] = peakcallers.reindex(peakcaller_pred
     "color"
 ].values
 
-# peakcaller_predictor_combinations.loc[
-#     peakcaller_predictor_combinations["type"] == "baseline", "color"
-# ] = "#888888"
-# peakcaller_predictor_combinations.loc[
-#     peakcaller_predictor_combinations["type"] == "ours", "color"
-# ] = "#0074D9"
-# peakcaller_predictor_combinations.loc[
-#     peakcaller_predictor_combinations["type"] == "rolling", "color"
-# ] = "#FF851B"
-# peakcaller_predictor_combinations.loc[
-#     peakcaller_predictor_combinations["type"] == "peak", "color"
-# ] = "#FF4136"
-# peakcaller_predictor_combinations.loc[
-#     peakcaller_predictor_combinations["type"] == "predefined", "color"
-# ] = "#2ECC40"
-# peakcaller_predictor_combinations.loc[
-#     pd.isnull(peakcaller_predictor_combinations["color"]), "color"
-# ] = "#DDDDDD"
-
-
 peakcaller_predictor_combinations = peakcaller_predictor_combinations.set_index(["peakcaller", "predictor"])
 peakcaller_predictor_combinations["label"] = (
     peakcaller_predictor_combinations.index.get_level_values("peakcaller")
@@ -105,6 +66,7 @@ simulation_predictor_methods["color"] = "#AAAAAA"
 
 ## Baseline methods
 
+
 from chromatinhd_manuscript.designs_pred import dataset_splitter_baselinemethods_combinations
 
 baseline_predictor_methods = pd.DataFrame(
@@ -120,7 +82,7 @@ baseline_predictor_methods.loc["baseline_v21", "label"] = "ArchR 21"
 peakcaller_diffexp_methods = peakcaller_diffexp_combinations.copy().reset_index()
 peakcaller_diffexp_methods.index = pd.Series(
     [
-        (peakcaller + "_" + diffexp)
+        (peakcaller + "/" + diffexp)
         for peakcaller, diffexp in zip(
             peakcaller_diffexp_methods["peakcaller"],
             peakcaller_diffexp_methods["diffexp"],
@@ -142,24 +104,24 @@ peakcaller_predictor_methods.index = pd.Series(
     name="method",
 )
 
+chromatinhd_color = "#0074D9"
 
-methods = pd.concat([peakcaller_diffexp_methods, peakcaller_predictor_methods], names=["method"])
-methods.loc["ChromatinHD", "label"] = "ChromatinHD"
-methods.loc["ChromatinHD", "color"] = "#0074D9"
-methods.loc["ChromatinHD", "label"] = "ChromatinHD"
-methods.loc["v20", "color"] = "#0074D9"
+differential_methods = peakcaller_diffexp_methods
+differential_methods.loc["chd", "label"] = "ChromatinHD"
+differential_methods.loc["chd", "color"] = chromatinhd_color
 
 
 ## Prediction methods
 prediction_methods = pd.concat([peakcaller_predictor_methods, simulation_predictor_methods, baseline_predictor_methods])
-prediction_methods.loc["counter", "label"] = "Counter"
-prediction_methods.loc["counter", "color"] = "#0074D9"
-prediction_methods.loc["counter", "type"] = "ours"
+
+prediction_methods.loc["v31", "label"] = "ChromatinHD"
+prediction_methods.loc["v31", "color"] = chromatinhd_color
+prediction_methods.loc["v31", "type"] = "ours"
 
 prediction_methods.loc["v32", "label"] = "ChromatinHD"
-prediction_methods.loc["v32", "color"] = "#0074D9"
+prediction_methods.loc["v32", "color"] = chromatinhd_color
 prediction_methods.loc["v32", "type"] = "ours"
 
 prediction_methods.loc["v33", "label"] = "ChromatinHD"
-prediction_methods.loc["v33", "color"] = "#0074D9"
+prediction_methods.loc["v33", "color"] = chromatinhd_color
 prediction_methods.loc["v33", "type"] = "ours"

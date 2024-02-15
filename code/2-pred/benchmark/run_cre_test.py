@@ -1,102 +1,72 @@
-# Script to predict and score performance of CRE-based models for prediction of gene expression using a test dataset
+# Script to predict and score performance of CRE-based models for prediction of gene expression using test cells
 
 import chromatinhd as chd
 import pickle
 import pandas as pd
-import chromatinhd.models.positional.peak.prediction_test
+import chromatinhd.models.pred.model.peakcounts
+import chromatinhd.data.peakcounts
 
-from chromatinhd_manuscript.designs import (
+from chromatinhd_manuscript.designs_pred import (
     traindataset_testdataset_splitter_peakcaller_predictor_combinations as design,
 )
 
+design["dataset"] = design["testdataset"]
+
+# design = design.loc[(design["dataset"].isin(["pbmc10k_gran-pbmc10k"]))]
+
+# design = design.loc[(design["dataset"].isin(["pbmc10kx-pbmc10k"]))]
+# design = design.loc[(design["dataset"].isin(["lymphoma-pbmc10k", "pbmc3k-pbmc10k"]))]
+design = design.loc[(design["splitter"] == "5x1")]
+design = design.loc[(design["layer"] == "magic")]
+design = design.loc[(design["predictor"] == "lasso")]
+# design = design.loc[(design["peakcaller"] == "encode_screen")]
+design = design.loc[(design["peakcaller"] == "macs2_summits")]
+# design = design.loc[(design["peakcaller"] == "macs2_leiden_0.1_merged")]
+# design = design.loc[(design["peakcaller"].str.startswith("rolling"))]
+
+dry_run = False
 design["force"] = False
-
-predictors = {
-    "linear": chromatinhd.models.positional.peak.prediction_test.PeaksGeneLinear,
-    "lasso": chromatinhd.models.positional.peak.prediction_test.PeaksGeneLasso,
-    "xgboost": chromatinhd.models.positional.peak.prediction_test.PeaksGeneXGBoost,
-}
-
-# design = design.loc[~(design["peakcaller"].str.startswith("rolling"))]
-design = design.loc[(design["peakcaller"].str.startswith("gene_body"))]
-# design = design.loc[(design["predictor"] == "linear")]
-# design = design.loc[(design["predictor"] == "xgboost")]
-# design = design.loc[(design["testdataset"] != "pbmc3k-pbmc10k")]
-# design = design.loc[(design["testdataset"] != "pbmc3k-pbmc10k")]
-# design = design.loc[(design["splitter"] == "random_5fold")]
+# design["force"] = True
+# dry_run = True
 
 print(design)
 
-
 for _, design_row in design.iterrows():
     print(design_row)
+    dataset_name = design_row["dataset"]
     traindataset_name = design_row["traindataset"]
-    testdataset_name = design_row["testdataset"]
-    promoter_name = design_row["promoter"]
+    regions_name = design_row["regions"]
     peakcaller = design_row["peakcaller"]
+    layer = design_row["layer"]
     predictor = design_row["predictor"]
-    trainsplitter = design_row["splitter"]
+    splitter = design_row["splitter"]
     prediction_path = (
-        chd.get_output()
-        / "prediction_positional"
-        / testdataset_name
-        / promoter_name
-        / "all"
-        / peakcaller
-        / predictor
+        chd.get_output() / "pred" / dataset_name / regions_name / splitter / layer / peakcaller / predictor
     )
 
-    desired_outputs = [prediction_path / "scoring" / "overall" / "scores.pkl"]
     force = design_row["force"]
-    if not all([desired_output.exists() for desired_output in desired_outputs]):
-        force = True
 
-    if force:
-        traintranscriptome = chd.data.Transcriptome(
-            chd.get_output() / "data" / traindataset_name / "transcriptome"
-        )
-        trainpeakcounts = chd.peakcounts.FullPeak(
-            folder=chd.get_output() / "peakcounts" / traindataset_name / peakcaller
-        )
+    prediction = chd.models.pred.model.peakcounts.PredictionTest(prediction_path, reset=force)
 
-        testtranscriptome = chd.data.Transcriptome(
-            chd.get_output() / "data" / testdataset_name / "transcriptome"
-        )
-        testpeakcounts = chd.peakcounts.FullPeak(
-            folder=chd.get_output() / "peakcounts" / testdataset_name / peakcaller
-        )
-
+    if not dry_run:
         try:
-            testpeakcounts.peaks
-        except FileNotFoundError as e:
-            print(e)
+            peakcounts = chd.flow.Flow.from_path(
+                chd.get_output() / "datasets" / dataset_name / "peakcounts" / peakcaller / regions_name
+            )
+            train_peakcounts = chd.flow.Flow.from_path(
+                chd.get_output() / "datasets" / traindataset_name / "peakcounts" / peakcaller / regions_name
+            )
+            print(train_peakcounts, peakcounts)
+        except FileNotFoundError:
+            print("Not found: ", dataset_name, regions_name, peakcaller)
             continue
-
-        peaks = trainpeakcounts.peaks
-        gene_peak_links = peaks.reset_index()
-        gene_peak_links["gene"] = pd.Categorical(
-            gene_peak_links["gene"], categories=traintranscriptome.adata.var.index
+        if not peakcounts.counted:
+            print("Not counted: ", peakcounts)
+            continue
+        train_transcriptome = chd.data.Transcriptome(
+            chd.get_output() / "datasets" / traindataset_name / "transcriptome"
         )
-
-        fragments = chromatinhd.data.Fragments(
-            chd.get_output() / "data" / traindataset_name / "fragments" / promoter_name
-        )
-        folds = pickle.load(
-            (fragments.path / "folds" / (trainsplitter + ".pkl")).open("rb")
-        )[:1]
-
-        method_class = predictors[predictor]
-        prediction = method_class(
-            prediction_path,
-            traintranscriptome,
-            trainpeakcounts,
-            testtranscriptome,
-            testpeakcounts,
-        )
-
-        prediction.score(
-            gene_peak_links,
-            folds,
-        )
-
-        prediction.scores = prediction.scores
+        transcriptome = chd.data.Transcriptome(chd.get_output() / "datasets" / dataset_name / "transcriptome")
+        folds = chd.data.folds.Folds(chd.get_output() / "datasets" / dataset_name / "folds" / splitter)
+        prediction.initialize(train_peakcounts, train_transcriptome, peakcounts, transcriptome, folds)
+        prediction.score(layer=layer, predictor=predictor)

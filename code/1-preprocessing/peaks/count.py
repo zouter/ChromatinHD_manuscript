@@ -21,23 +21,23 @@ design = pd.concat([design_1, design_2])
 design.index = np.arange(len(design))
 
 # design = design.loc[~design["peakcaller"].str.startswith("rolling")].copy()
-design = design.query("regions in ['10k10k', '100k100k']")
-# design = design.query("dataset in ['pbmc10kx', 'pbmc10k_gran', 'pbmc3k']")
-design = design.query("dataset == 'liver'")
+# design = design.query("regions in ['10k10k', '100k100k']")
+# design = design.query("dataset in ['hspc', 'e18brain', 'pbmc3k-pbmc10k', 'lymphoma-pbmc10k']")
+# design = design.query("dataset == 'hspc'")
 # design = design.query("peakcaller not in ['1k1k', 'gene_body', 'stack']")
-design = design.query("peakcaller in ['rolling_50', 'rolling_100', 'rolling_500']")
+# design = design.query("peakcaller in ['macs2_summits', 'macs2_leiden_0.1_merged', 'encode_screen']")
 # design = design.query("peakcaller == 'rolling_500'")
 # design = design.query("peakcaller == 'cellranger'")
-# design = design.query("peakcaller == 'genrich'")
+design = design.query("peakcaller == 'macs2_summits'")
 # design = design.query("peakcaller == 'macs2_improved'")
 # design = design.query("peakcaller == 'macs2_leiden_0.1'")
 # design = design.query("peakcaller == 'macs2_leiden_0.1_merged'")
 # design = design.query("peakcaller == 'encode_screen'")
+# design = design.query("peakcaller == 'macs2_summits'")
 # design = design.query("peakcaller == 'cellranger'")
-# design = design.query("regions == '10k10k'")
+# design = design.query("peakcaller == 'encode_screen'")
+design = design.query("regions == '10k10k'")
 # design = design.query("regions == '100k100k'")
-# design = design.query("testdataset == 'pbmc10k_gran-pbmc10k'")
-# design = design.query("testdataset == 'lymphoma-pbmc10k'")
 
 ##
 # design for pbmc10k gene subset (used in ablation)
@@ -82,6 +82,8 @@ print(design)
 
 for (dataset_name, regions_name), design_dataset in design.groupby(["dataset", "regions"]):
     folder_data_preproc = chd.get_output() / "data" / dataset_name.split("/")[0]
+    if dataset_name == "hepatocytes":
+        folder_data_preproc = chd.get_output() / "data" / "liver"
     dataset_folder = chd.get_output() / "datasets" / dataset_name
 
     fragments = chd.data.Fragments(dataset_folder / "fragments" / regions_name)
@@ -90,10 +92,10 @@ for (dataset_name, regions_name), design_dataset in design.groupby(["dataset", "
     for peakcaller, subdesign in design_dataset.groupby("peakcaller"):
         fragments_location = folder_data_preproc / "atac_fragments.tsv.gz"
 
-        print(subdesign.iloc[0])
         if not fragments_location.exists():
             fragments_location = folder_data_preproc / "fragments.tsv.gz"
             if not fragments_location.exists():
+                print(subdesign)
                 print("No atac fragments found")
                 continue
 
@@ -117,9 +119,13 @@ for (dataset_name, regions_name), design_dataset in design.groupby(["dataset", "
                 force = True
 
             if force:
-                # print(subdesign)
+                print(subdesign)
+                try:
+                    region_coordinates = regions.coordinates.copy()
+                except FileNotFoundError:
+                    print("No regions found", dataset_name, regions_name)
+                    continue
 
-                region_coordinates = regions.coordinates.copy()
                 window = regions.window
 
                 try:

@@ -44,7 +44,7 @@ class Baseline:
     def fitted(self, region, fold_ix):
         return True
 
-    def get_prediction(self, region, fold_ix, cell_ixs, return_raw=False):
+    def get_prediction(self, region, fold_ix, cell_ixs, return_raw=False, fragments=None, transcriptome=None):
         region_ix = self.fragments.var.index.get_loc(region)
         minibatch = chd.loaders.minibatches.Minibatch(cell_ixs, np.array([region_ix]))
         data = self.loader.load(minibatch)
@@ -111,7 +111,8 @@ from chromatinhd_manuscript.designs_pred import dataset_baseline_combinations as
 design = design.copy()
 design["force"] = False
 
-design = design.query("dataset in ['e18brain', 'lymphoma']")
+# design = design.query("dataset in ['liver']")
+# design = design.query("dataset in ['e18brain', 'lymphoma']")
 # design = design.query("regions == '10k10k'")
 
 for (dataset_name, regions_name), subdesign in design.groupby(["dataset", "regions"]):
@@ -146,6 +147,7 @@ for (dataset_name, regions_name), subdesign in design.groupby(["dataset", "regio
                 print("scoring", prediction.path)
 
                 selected_transcripts = pickle.load((folder_data_preproc / "selected_transcripts.pkl").open("rb"))
+                print(folder_data_preproc)
                 models = method2cls[method_name](fragments, transcriptome, selected_transcripts, layer=layer)
 
                 performance.score(models)

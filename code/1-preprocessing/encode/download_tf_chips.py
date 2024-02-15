@@ -120,7 +120,7 @@ import pybedtools
 # %%
 !wget https://www.encodeproject.org/files/GRCh38_EBV.chrom.sizes/@@download/GRCh38_EBV.chrom.sizes.tsv -O {chd.get_output()}/chromosome.sizes
 chromosome_sizes = chd.get_output() / "chromosome.sizes"
-
+()
 final_files = {}
 for file_accession, file in files.iterrows():
     final_files[file_accession] = pybedtools.BedTool(bed_folder / file["filename_sorted"]).slop(b = 100, g = chromosome_sizes)

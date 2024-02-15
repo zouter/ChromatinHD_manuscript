@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.14.5
+#       jupytext_version: 1.14.7
 #   kernelspec:
 #     display_name: Python 3
 #     language: python
@@ -181,7 +181,7 @@ footprints_name = "HINT"
 
 footprints_file.parent.mkdir(exist_ok = True, parents = True)
 if not footprints_file.exists():
-    !rsync -a --progress wsaelens@updeplasrv6.epfl.ch:{footprints_file} {footprints_file.parent} -v
+    # !rsync -a --progress wsaelens@updeplasrv6.epfl.ch:{footprints_file} {footprints_file.parent} -v
 import pybedtools
 bed_footprints = pybedtools.BedTool(str(footprints_file))
 
@@ -207,7 +207,7 @@ footprints = bed_footprints.to_dataframe().query("score > exp(5)")
 # footprints_file = chd.get_git_root() / "tmp" / footprints_name / "interval.all.fps.0.01.bed.gz"
 # footprints_file.parent.mkdir(exist_ok = True, parents = True)
 # if not footprints_file.exists():
-#     !wget https://resources.altius.org/~jvierstra/projects/footprinting.2020/per.dataset/{footprints_name}/interval.all.fps.0.01.bed.gz -O {footprints_file}
+    # !wget https://resources.altius.org/~jvierstra/projects/footprinting.2020/per.dataset/{footprints_name}/interval.all.fps.0.01.bed.gz -O {footprints_file}
 # import pybedtools
 # bed_footprints = pybedtools.BedTool(str(footprints_file))
 # footprints = bed_footprints.to_dataframe()
@@ -232,13 +232,13 @@ for gene in tqdm.tqdm(genes_oi):
 features_file = chd.get_output() / "bed/gm1282_tf_chipseq" / "files.csv"
 features_file.parent.mkdir(exist_ok = True, parents = True)
 if not features_file.exists():
-    !rsync -a --progress wsaelens@updeplasrv6.epfl.ch:{features_file} {features_file.parent} -v
+    # !rsync -a --progress wsaelens@updeplasrv6.epfl.ch:{features_file} {features_file.parent} -v
 
 # get the processes sites (filtered for sites within the 100k100k window around a TSS)
 sites_file = chd.get_output() / "bed/gm1282_tf_chipseq_filtered" / "sites.csv"
 sites_file.parent.mkdir(exist_ok = True, parents = True)
 if not sites_file.exists():
-    !rsync -a --progress wsaelens@updeplasrv6.epfl.ch:{sites_file} {sites_file.parent} -v
+    # !rsync -a --progress wsaelens@updeplasrv6.epfl.ch:{sites_file} {sites_file.parent} -v
 
 # %%
 sites = pd.read_csv(sites_file, index_col = 0)
@@ -303,13 +303,13 @@ for gene in tqdm.tqdm(genes_oi):
 
 # %% [markdown]
 # ## Combine scores
-windowscores_genes = {}
-for gene in tqdm.tqdm(genes_oi):
-    if gene in chdscores_genes:
-        windowscores = chdscores_genes[gene].copy()
-        windowscores["n_footprints"] = footprintscores_genes[gene].reindex(windowscores.index).fillna(0)
-        windowscores["n_sites"] = chipscores_genes[gene].reindex(windowscores.index).fillna(0)
-        windowscores_genes[gene] = windowscores
+# windowscores_genes = {}
+# for gene in tqdm.tqdm(genes_oi):
+#     if gene in chdscores_genes:
+#         windowscores = chdscores_genes[gene].copy()
+#         windowscores["n_footprints"] = footprintscores_genes[gene].reindex(windowscores.index).fillna(0)
+#         windowscores["n_sites"] = chipscores_genes[gene].reindex(windowscores.index).fillna(0)
+#         windowscores_genes[gene] = windowscores
 
 # %% [markdown]
 # ### Individual gene
@@ -618,7 +618,7 @@ sns.heatmap(plotdata, vmin = -1, vmax = 1, cmap = "coolwarm",  annot = True, fmt
 ax.set_yticks([])
 fig.plot()
 
-  # %%
+# %%
 contingencies = np.stack(genescores["contingencies"]).sum(0)
 odds = pd.DataFrame((contingencies[0] * contingencies[3]) / (contingencies[1] * contingencies[2]), index = metrics, columns = metrics)
 norm = mpl.colors.LogNorm(vmin = 1/8, vmax = 8)

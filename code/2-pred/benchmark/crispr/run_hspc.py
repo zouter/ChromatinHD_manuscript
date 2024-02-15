@@ -32,7 +32,17 @@ fragments = chd.data.Fragments(chd.get_output() / "datasets" / dataset_name / "f
 
 folds = chd.data.folds.Folds(chd.get_output() / "datasets" / dataset_name / "folds" / "5x5")
 
-genes_oi = ["ENSG00000102145", "ENSG00000184897", "ENSG00000105610", "ENSG00000179218"]
+genes_oi = [
+    "ENSG00000102145",
+    "ENSG00000184897",
+    "ENSG00000105610",
+    "ENSG00000179218",
+    # "ENSG00000102103",
+    # "ENSG00000094631",
+    # "ENSG00000104805",
+    # "ENSG00000087086",
+    "ENSG00000108179",  # PPIF
+]
 
 ##
 from chromatinhd_manuscript.pred_params import params

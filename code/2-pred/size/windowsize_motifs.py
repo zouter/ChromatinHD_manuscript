@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.14.5
+#       jupytext_version: 1.14.7
 #   kernelspec:
 #     display_name: Python 3
 #     language: python
@@ -539,7 +539,7 @@ sc.pl.umap(transcriptome.adata, color=transcriptome.gene_id(["ZEB1"]))
 # %%
 import pathlib
 if not pathlib.Path("41592_2016_BFnmeth3772_MOESM205_ESM.xlsx").exists():
-    !wget https://static-content.springer.com/esm/art%3A10.1038%2Fnmeth.3772/MediaObjects/41592_2016_BFnmeth3772_MOESM205_ESM.xlsx
+    # !wget https://static-content.springer.com/esm/art%3A10.1038%2Fnmeth.3772/MediaObjects/41592_2016_BFnmeth3772_MOESM205_ESM.xlsx
 
 # %%
 # !pip install openpyxl

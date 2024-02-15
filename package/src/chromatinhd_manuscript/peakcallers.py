@@ -6,6 +6,8 @@ peakcallers = pd.DataFrame(
         {"peakcaller": "macs2_leiden_0.1", "label": "MACS2 per celltype"},
         {"peakcaller": "genrich", "label": "Genrich"},
         {"peakcaller": "macs2_leiden_0.1_merged", "label": "MACS2 per celltype merged"},
+        {"peakcaller": "macs2_summit", "label": "MACS2 summit +- 200bp"},
+        {"peakcaller": "macs2_summits", "label": "MACS2 summits +- 200bp"},
         {"peakcaller": "1k1k", "label": "-1kb ← TSS → +1kb"},
         {"peakcaller": "encode_screen", "label": "ENCODE screen"},
         {"peakcaller": "stack", "label": "-10kb ← TSS → +10kb"},
@@ -23,6 +25,8 @@ peakcallers.loc[
             "macs2_improved",
             "macs2_leiden_0.1_merged",
             "macs2_leiden_0.1",
+            "macs2_summit",
+            "macs2_summits",
             "genrich",
         ]
     ),
@@ -45,9 +49,13 @@ peakcallers.loc[
     "type",
 ] = "rolling"
 
-peakcallers["color"] = pd.Series(
-    {"peak": "#FF4136", "predefined": "#2ECC40", "rolling": "#FF851B"}
-)[peakcallers["type"]].values
+peakcallers["color"] = pd.Series({"peak": "#FF4136", "predefined": "#2ECC40", "rolling": "#FF851B"})[
+    peakcallers["type"]
+].values
+
+peakcallers["color"] = pd.Series({"peak": "#FF4136", "predefined": "#2ECC40", "rolling": "#B10DC9"})[
+    peakcallers["type"]
+].values
 
 
 diffexps = pd.DataFrame(

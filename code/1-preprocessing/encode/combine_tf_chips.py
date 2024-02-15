@@ -40,17 +40,10 @@ folder_root = chd.get_output()
 folder_data = folder_root / "data"
 
 # transcriptome
-# dataset_name = "lymphoma"
 dataset_name = "pbmc10k"
-# dataset_name = "pbmc10k_gran"
-# dataset_name = "e18brain"
-folder_data_preproc = folder_data / dataset_name
-
-# fragments
-promoter_name = "100k100k"
-promoters = pd.read_csv(
-    folder_data_preproc / ("promoters_" + promoter_name + ".csv"), index_col=0
-)
+folder_dataset = chd.get_output() / "datasets"/ dataset_name
+regions = chd.data.Regions(folder_dataset / "regions" / "100k100k")
+promoters = regions.coordinates
 
 # %%
 def center_peaks(peaks, promoter):
@@ -61,7 +54,7 @@ def center_peaks(peaks, promoter):
             [
                 (peak["start"] - promoter["tss"]) * promoter["strand"],
                 (peak["end"] - promoter["tss"]) * promoter["strand"],
-            ][:: promoter["strand"]]
+            ][:: int(promoter["strand"])]
             for _, peak in peaks.iterrows()
         ]
     return peaks

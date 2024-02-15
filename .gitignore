@@ -184,3 +184,11 @@ code/__old/data.txt
 manuscript
 .Rproj.user
 code/2-positional/7-pairs/fig.png
+code/1-preprocessing/qtl/hg38ToMm10.over.chain.gz
+code/1-preprocessing/qtl/mm10ToHg38.over.chain.gz
+
+code/*/*.txt
+code/*/*.png
+code/*/*.pdf
+code/*/*.gz
+code/*/*.xlsx

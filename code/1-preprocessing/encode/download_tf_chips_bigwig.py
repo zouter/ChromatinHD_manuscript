@@ -28,16 +28,52 @@ import tempfile
 import requests
 
 # %%
-bed_folder = chd.get_output() / "bed" / "gm1282_tf_chipseq_bw"
+bed_folder = chd.get_output() / "bed" / "wtc11_tf_chipseq_bw"
+url = "https://www.encodeproject.org/metadata/?type=Experiment&replicates.library.biosample.donor.organism.scientific_name=Homo+sapiens&assay_title=TF+ChIP-seq&status=released&biosample_ontology.term_name=WTC11&target.label!=CTCF&target.label!=EP300&target.label!=POLR2A&assembly=GRCh38&control_type!=*&target.label!=POLR2AphosphoS2&target.label!=POLR2AphosphoS5"
+targets = [
+    "ERG"
+]
 
-
-# %%
-bed_folder = chd.get_output() / "bed" / "gm1282_tf_chipseq_bw"
-url = "https://www.encodeproject.org/metadata/?type=Experiment&replicates.library.biosample.donor.organism.scientific_name=Homo+sapiens&assay_title=TF+ChIP-seq&status=released&biosample_ontology.term_name=GM12878&target.label!=CTCF&target.label!=EP300&target.label!=POLR2A&assembly=GRCh38&control_type!=*&target.label!=POLR2AphosphoS2&target.label!=POLR2AphosphoS5"
+# bed_folder = chd.get_output() / "bed" / "gm1282_tf_chipseq_bw"
+# url = "https://www.encodeproject.org/metadata/?type=Experiment&replicates.library.biosample.donor.organism.scientific_name=Homo+sapiens&assay_title=TF+ChIP-seq&status=released&biosample_ontology.term_name=GM12878&target.label!=CTCF&target.label!=EP300&target.label!=POLR2A&assembly=GRCh38&control_type!=*&target.label!=POLR2AphosphoS2&target.label!=POLR2AphosphoS5"
+# targets = [
+#     # "POU2F2", "ETV6", "IRF4",
+#     "POU2F2", "ETV6" ,"TCF3" ,"SPI1" ,"RELA" ,"EBF1" ,"IRF4" ,"PAX5" ,"ZEB1" ,"RELB" ,"IRF1" ,"RUNX3" ,"TBX21" ,"TCF7", "IRF7",
+# ]
 
 bed_folder = chd.get_output() / "bed" / "k562_tf_chipseq_bw"
 url = "https://www.encodeproject.org/metadata/?type=Experiment&replicates.library.biosample.donor.organism.scientific_name=Homo+sapiens&assay_title=TF+ChIP-seq&status=released&biosample_ontology.term_name=K562&target.label!=CTCF&target.label!=EP300&target.label!=POLR2A&assembly=GRCh38&control_type!=*&target.label!=POLR2AphosphoS2&target.label!=POLR2AphosphoS5"
-# url = "https://www.encodeproject.org/search/?type=Experiment&replicates.library.biosample.donor.organism.scientific_name=Homo+sapiens&assay_title=TF+ChIP-seq&status=released&biosample_ontology.term_name=GM12878&target.label!=CTCF&target.label!=EP300&target.label!=POLR2A&assembly=GRCh38&control_type!=*&target.label!=POLR2AphosphoS2&target.label!=POLR2AphosphoS5"
+targets = [
+    "IRF9",
+    "SP2",
+    "GATA1", 
+    "GATA2", 
+    "TAL1", 
+    "KLF1",
+    "NFE2",
+    ]
+
+
+# bed_folder = chd.get_output() / "bed" / "erythroblast_tf_chipseq_bw"
+# url = "https://www.encodeproject.org/metadata/?type=Experiment&replicates.library.biosample.donor.organism.scientific_name=Homo+sapiens&assay_title=TF+ChIP-seq&status=released&biosample_ontology.term_name=erythroblast&target.label!=CTCF&target.label!=EP300&target.label!=POLR2A&assembly=GRCh38&control_type!=*&target.label!=POLR2AphosphoS2&target.label!=POLR2AphosphoS5"
+# targets = ["GATA1", "GATA2"]
+
+# bed_folder = chd.get_output() / "bed" / "hl60_tf_chipseq_bw"
+# url = "https://www.encodeproject.org/metadata/?type=Experiment&replicates.library.biosample.donor.organism.scientific_name=Homo+sapiens&assay_title=TF+ChIP-seq&status=released&biosample_ontology.term_name=HL-60&target.label!=CTCF&target.label!=EP300&target.label!=POLR2A&assembly=GRCh38&control_type!=*&target.label!=POLR2AphosphoS2&target.label!=POLR2AphosphoS5"
+# targets = ["SPI1"]
+
+# bed_folder = chd.get_output() / "bed" / "gm12891_tf_chipseq_bw"
+# url = "https://www.encodeproject.org/metadata/?type=Experiment&replicates.library.biosample.donor.organism.scientific_name=Homo+sapiens&assay_title=TF+ChIP-seq&status=released&biosample_ontology.term_name=GM12891&target.label!=CTCF&target.label!=EP300&target.label!=POLR2A&assembly=GRCh38&control_type!=*&target.label!=POLR2AphosphoS2&target.label!=POLR2AphosphoS5"
+# targets = [
+#     "POU2F2", "ETV6",
+# ]
+
+
+# bed_folder = chd.get_output() / "bed" / "gm12891_tf_chipseq_bw"
+# url = "https://www.encodeproject.org/metadata/?type=Experiment&replicates.library.biosample.donor.organism.scientific_name=Homo+sapiens&assay_title=TF+ChIP-seq&status=released&biosample_ontology.term_name=GM12891&target.label!=CTCF&target.label!=EP300&target.label!=POLR2A&assembly=GRCh38&control_type!=*&target.label!=POLR2AphosphoS2&target.label!=POLR2AphosphoS5"
+# targets = [
+#     "POU2F2", "ETV6",
+# ]
 
 if not bed_folder.exists():
     bed_folder.mkdir(exist_ok = True, parents = True)
@@ -58,18 +94,15 @@ files.head()
 files["file_format"].value_counts()
 files["output_type"].value_counts()
 
+# %%
 files = files.loc[files["output_type"] == "fold change over control"]
 files = files.loc[files["file_assembly"] == "GRCh38"]
-files = files.groupby("experiment_target").first().reset_index()
+# files = files.groupby("experiment_target").reset_index()
 files["experiment_target"].value_counts()
 
-targets = [
-    "POU2F2" ,"TCF3" ,"SPI1" ,"RELA" ,"EBF1" ,"IRF4" ,"PAX5" ,"ZEB1" ,"RELB" ,"IRF1" ,"RUNX3" ,"TBX21" ,"TCF7"
-]
-targets = ["GATA1", "GATA2"]
 files_oi = pd.Series(False, files.index)
 for target in targets:
-    files_oi[files["experiment_target"].str.contains(target)] = True
+    files_oi[files["experiment_target"] == (target + "-human")] = True
 files = files.loc[files_oi]
 files["experiment_target"].value_counts()
 
@@ -109,3 +142,4 @@ for _, file in files.iterrows():
 
 # %%
 str(bed_folder / file["filename"])
+# %%

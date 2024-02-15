@@ -35,22 +35,16 @@ filtered_bed_folder = chd.get_output() / "bed" / "gm1282_tf_chipseq_filtered"
 filtered_bed_folder.mkdir(exist_ok = True, parents = True)
 
 files = pd.read_csv(bed_folder / "files.csv", index_col = 0)
+
 # %%
 folder_root = chd.get_output()
 folder_data = folder_root / "data"
 
 # transcriptome
-# dataset_name = "lymphoma"
 dataset_name = "pbmc10k"
-# dataset_name = "pbmc10k_gran"
-# dataset_name = "e18brain"
-folder_data_preproc = folder_data / dataset_name
-
-# fragments
-promoter_name = "100k100k"
-promoters = pd.read_csv(
-    folder_data_preproc / ("promoters_" + promoter_name + ".csv"), index_col=0
-)
+folder_dataset = chd.get_output() / "datasets"/ dataset_name
+regions = chd.data.Regions(folder_dataset / "regions" / "100k100k")
+promoters = regions.coordinates
 
 # %%
 def process_gene(gene):
@@ -59,7 +53,7 @@ def process_gene(gene):
 
     promoter_start = promoter["start"]
     promoter_end = promoter["end"]
-    promoter_chrom = promoter["chr"]
+    promoter_chrom = promoter["chrom"]
 
     for file_accession, file in files.iterrows():
         filtered_file = bed_folder / f"{file.accession}_{gene}.bed"

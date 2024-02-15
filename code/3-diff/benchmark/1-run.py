@@ -17,16 +17,17 @@ from chromatinhd_manuscript.diff_params import params
 
 design = design.query("splitter == '5x1'")
 design = design.query("method == 'v31'")
-# design = design.query("dataset == 'pbmc10k'")
+# design = design.query("dataset == 'alzheimer'")
+design = design.query("regions == '100k100k'")
 # design = design.query("dataset == 'liver'")
-design = design.query("dataset == 'hepatocytes'")
+# design = design.query("dataset == 'hepatocytes'")
 # design = design.query("dataset in ['pbmc10k', 'pbmc10kx']")
 
 design = design.copy()
 dry_run = False
-design["force"] = True
-design["force"] = True
-dry_run = True
+design["force"] = False
+# design["force"] = True
+# dry_run = True
 
 
 for (dataset_name, regions_name), subdesign in design.groupby(["dataset", "regions"]):
@@ -50,7 +51,11 @@ for (dataset_name, regions_name), subdesign in design.groupby(["dataset", "regio
 
             force = subdesign["force"].iloc[0]
 
-            clustering = chd.flow.Flow.from_path(chd.get_output() / "datasets" / dataset_name / "latent" / latent)
+            try:
+                clustering = chd.flow.Flow.from_path(chd.get_output() / "datasets" / dataset_name / "latent" / latent)
+            except FileNotFoundError:
+                print("latent not found", dataset_name, latent)
+                continue
 
             method_info = params[method_name]
             models = chd.models.diff.model.binary.Models.create(

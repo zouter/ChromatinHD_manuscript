@@ -40,14 +40,15 @@ import chromatinhd as chd
 folder_root = chd.get_output()
 folder_data = folder_root / "data"
 
-dataset_name = "pbmc10k_gran"
+dataset_name = "pbmc10kx"
+# dataset_name = "pbmc10k_gran"
 # dataset_name = "pbmc10k"
 # dataset_name = "lymphoma"
 # dataset_name = "e18brain"
 # dataset_name = "alzheimer"
 # dataset_name = "brain"
-dataset_name = "hspc"
-dataset_name = "hspc_gmp"
+# dataset_name = "hspc"
+# dataset_name = "hspc_gmp"
 
 folder_data_preproc = folder_data / dataset_name
 folder_data_preproc.mkdir(exist_ok = True, parents = True)
@@ -140,3 +141,5 @@ pybedtools.BedTool(original_peaks_folder / "peaks.bed").sort().merge().saveas(pe
 # %%
 x = pybedtools.BedTool(original_peaks_folder / "peaks.bed").sort().merge()
 x.to_dataframe().to_csv(peaks_folder / "peaks.bed", header = False, index = False, sep = "\t")
+
+# %%

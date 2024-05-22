@@ -46,7 +46,8 @@ folder_data = folder_root / "data"
 
 train_dataset_name = "pbmc10k"; test_dataset_name = "pbmc3k"; organism = "hs"
 train_dataset_name = "pbmc10k"; test_dataset_name = "lymphoma"; organism = "hs"
-# train_dataset_name = "pbmc10k"; test_dataset_name = "pbmc10k_gran"; organism = "hs"
+train_dataset_name = "pbmc10k"; test_dataset_name = "pbmc10k_gran"; organism = "hs"
+train_dataset_name = "pbmc10k"; test_dataset_name = "pbmc10kx"; organism = "hs"
 
 dataset_name = test_dataset_name + "-" + train_dataset_name
 

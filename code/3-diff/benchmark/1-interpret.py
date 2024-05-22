@@ -23,7 +23,7 @@ folder_data = folder_root / "data"
 
 design = design.query("splitter == '5x1'")
 design = design.query("method == 'v31'")
-# design = design.query("dataset == 'hspc'")
+design = design.query("dataset == 'pbmc10k'")
 # design = design.query("dataset == 'alzheimer'")
 # design = design.query("dataset in ['pbmc10k', 'pbmc10kx']")
 
@@ -71,4 +71,5 @@ for (dataset_name, regions_name), subdesign in design.groupby(["dataset", "regio
                         models=models,
                         device="cpu",
                         step=25,
+                        # regions = ["ENSG00000125347"]
                     )

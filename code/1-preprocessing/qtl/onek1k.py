@@ -38,337 +38,227 @@ import chromatinhd as chd
 
 # %%
 folder_qtl = chd.get_output() / "data" / "qtl" / "hs" / "onek1k"
-folder_qtl.mkdir(exist_ok = True, parents=True)
+
+# %%
+remote_root = pathlib.Path("/home/wsaelens/NAS2/wsaelens/projects/chromatinhd/chromatinhd_manuscript/output")
+assert remote_root.exists()
+local_root = chd.get_output()
+
+remote_folder = remote_root / "data" / "qtl" / "hs" / "onek1k"
+remote_folder.mkdir(exist_ok = True, parents=True)
+
+local_folder = folder_qtl
+
+# symlink remote_folder to local_folder
+if local_folder.is_dir() and not local_folder.is_symlink():
+    local_folder.rmdir()
+if not local_folder.is_symlink():
+    local_folder.symlink_to(remote_folder)
 
 # %% [markdown]
-# ## Download & cleaning
+# ## Download & process
 
 # %%
-# !wget https://onek1k.s3.ap-southeast-2.amazonaws.com/onek1k_eqtl_dataset.zip -O {folder_qtl}/onek1k_eqtl_dataset.zip
+if not (remote_folder / "eqtl_table.tsv.gz").exists():
+    # !wget https://onek1k.s3.ap-southeast-2.amazonaws.com/eqtl/eqtl_table.tsv.gz -O {folder_qtl / "eqtl_table.tsv.gz"}
 
 # %%
-# !unzip {folder_qtl}/onek1k_eqtl_dataset.zip
+import gzip
+lines_significant = []
+with gzip.open(folder_qtl / "eqtl_table.tsv.gz", "rt") as f:
+    line = f.readline()
+    columns = line.strip().split("\t")
+    for line in tqdm.tqdm(f):
+        line = line.strip().split("\t")
+        if float(line[16]) < 0.05: # 14=p-value, 15=q-value, 16=fdr
+            lines_significant.append(line)
+            if (len(lines_significant) % 10000) == 0:
+                print(len(lines_significant), lines_significant[-1][1])
 
 # %%
-# !ls -lh onek1k_eqtl_dataset.tsv
+data = pd.DataFrame(lines_significant, columns=pd.Series(columns).str.lower())
+
+# %%
+data["fdr"] = data["fdr"].astype(float)
+
+# %%
+data["cell_type"] = data["cell_type"].astype("category")
+data["rsid"] = data["rsid"].astype("category")
+data["gene_id"] = data["gene_id"].astype("category")
+data["gene"] = data["gene"].astype("category")
+data["genotyped"] = data["genotyped"].astype("category")
+data["cell_id"] = data["cell_id"].astype("category")
+
+# %%
+pickle.dump(data, open(folder_qtl / "eqtl_table.pkl", "wb"))
 
 # %% [markdown]
-# Something weird is going on with this tsv given that the first line contains both the header and the first line of data...
+# ## Read all data of significant SNPs
 
 # %%
-# !head -n 3 onek1k_eqtl_dataset.tsv
+# data = pickle.load(open(folder_qtl / "eqtl_table.pkl", "rb"))
 
 # %%
-import pathlib
+folder_qtl_reference = chd.get_output() / "data" / "qtl" / "hs" / "gwas"
+qtl_name = "gwas_immune"
+qtl_mapped_reference = pd.read_pickle(folder_qtl_reference / ("qtl_mapped_" + qtl_name + ".pkl"))
+
+snps_oi = qtl_mapped_reference["snp_main"].unique()
+snps_oi = set(qtl_mapped_reference["snp"].unique())
+len(snps_oi)
 
 # %%
-eqtl_file = pathlib.Path(".") / "onek1k_eqtl_dataset.tsv"
+import gzip
+lines_significant = []
+with gzip.open(folder_qtl / "eqtl_table.tsv.gz", "rt") as f:
+    line = f.readline()
+    columns = line.strip().split("\t")
+    for line in tqdm.tqdm(f):
+        line = line.strip().split("\t")
+        if line[2] in snps_oi:
+            lines_significant.append(line)
+            if (len(lines_significant) % 1000000) == 0:
+                print(len(lines_significant), lines_significant[-1][1])
 
 # %%
-with eqtl_file.open("r") as original: data = original.read()
-a, b = data.split("\n", 1)
-a1, a2 = a.split("bin")
-a2 = "bin" + a2
-with eqtl_file.open("w") as modified: modified.write(a1 + "\n" + a2 + "\n" + b)
+data = pd.DataFrame(lines_significant, columns=pd.Series(columns).str.lower())
 
 # %%
-# !head -n 3 onek1k_eqtl_dataset.tsv
+data["fdr"] = data["fdr"].astype(float)
+data["rsquare"] = data["rsquare"].astype(float)
+
+# %%
+data["cell_type"] = data["cell_type"].astype("category")
+data["rsid"] = data["rsid"].astype("category")
+data["gene_id"] = data["gene_id"].astype("category")
+data["gene"] = data["gene"].astype("category")
+data["genotyped"] = data["genotyped"].astype("category")
+data["cell_id"] = data["cell_id"].astype("category")
+
+# %%
+data["pos"] = data["pos"].astype(float).astype(int)
+data["spearmans_rho"] = data["spearmans_rho"].astype(float)
+
+# %%
+data["rsquare"] = data["rsquare"].astype(float)
+data["q_value"] = data["q_value"].astype(float)
+data["pos"] = data["pos"].astype(float).astype(int)
+
+# %%
+data = data[["cell_type", "rsid", "gene", "gene_id", "chr", "pos", "q_value", "fdr", "rsquare", "genotyped", "spearmans_rho"]]
+
+# %%
+pickle.dump(data, open(folder_qtl / "eqtl_table_gwas_immune.pkl", "wb"))
 
 # %% [markdown]
-# Something else is weird about the data: some genomics positions are not stored as full integers, but rather in scientific notation, e.g. `7.2e+07`. I hope this truly means that the position is 72,000,000 or otherwise we're a bit screwed. Just as a check, not all positions of this size are stored like this, so I think we're safe
+# ## Process further
 
 # %%
-# !head -n 100000 {eqtl_file} | tail -n 1
+data = pickle.load(open(folder_qtl / "eqtl_table.pkl", "rb")) # only significant
+# data = pickle.load(open(folder_qtl / "eqtl_table_gwas_immune.pkl", "rb"))
 
 # %% [markdown]
-# However, we still need to convert this somehow. Let's do it in python and read this position column for now as a float. Let's also load in all relevant str columns as categorical to massively reduce memory footprint.
+# ### Select SNPs of interest from GWAS
 
 # %%
-eqtl_file = pathlib.Path(".") / "onek1k_eqtl_dataset.tsv"
+folder_qtl_reference = chd.get_output() / "data" / "qtl" / "hs" / "gwas"
+qtl_name = "gwas_immune"
+qtl_mapped_reference = pd.read_pickle(folder_qtl_reference / ("qtl_mapped_" + qtl_name + ".pkl"))
 
-# %%
-import polars as pl
-
-# %%
-eqtl = pl.read_csv(
-    eqtl_file,
-    sep = "\t",
-    has_header = True,
-    dtypes = {
-        "POS":pl.Float64,
-        "CELL_ID":pl.Categorical,
-        "CELL_TYPE":pl.Categorical,
-        "GENE":pl.Categorical,
-        "GENE_ID":pl.Categorical,
-        "GENOTYPED":pl.Categorical
-    }
-)
-eqtl = eqtl.with_column(pl.col("POS").cast(pl.Int64))
-eqtl = eqtl.rename(dict(zip(eqtl.columns, [col.lower() for col in eqtl.columns])))
+snps_oi = qtl_mapped_reference["snp_main"].unique()
+snps_oi = qtl_mapped_reference["snp"].unique()
 
 # %% [markdown]
-# Let's store this in a more efficient format than a 13GB tsv 🙄
+# ### Determine cell-type specific SNPs
 
 # %%
-eqtl["cell_id"].value_counts()
+snps_oi = celltype_snp_significant.columns[celltype_snp_significant.any()]
 
 # %%
-eqtl.filter(pl.col("q_value") < 0.05)["cell_id"].value_counts().to_pandas().set_index("cell_id").plot(kind = "bar")
+mapping = {
+    "CD4 T":["CD4 Effector memory/TEMRA", "CD4 Naive/Central memory T cell", "CD4 SOX4 T cell"],
+    "CD8 T":["CD8 Effector memory", "CD8 Naive/Central memory T cell", "CD8 S100B T cell"],
+    "Monocyte":["Classic Monocyte", "Non-classic Monocyte"],
+    "NK":["Natural Killer Cell", "Natural Killer Recruiting Cell"],
+    "cDC":["Dendritic Cell"],
+    "B":["Naïve/Immature B Cell", "Memory B Cell", "Plasma Cell"]
+}
+
+# %%
+data_oi = data.loc[data["rsid"].isin(snps_oi)].copy()
+data_oi["rsid"] = data_oi["rsid"].astype(str).astype("category")
+
+celltype_snp_qvalues = data_oi.groupby(["cell_type", "rsid"])["fdr"].min().unstack()
+celltype_snp_significant = celltype_snp_qvalues < 0.05
+celltype_snp_r = data_oi.groupby(["cell_type", "rsid"])["spearmans_rho"].mean().unstack()
+
+# %%
+celltype_snp_significant
+
+# %%
+celltype_snp_r2
+
+# %%
+celltype_snp_r2.loc["Plasma Cell"].sort_values()
+
+# %%
+data_oi
+
+# %%
+data_oi.set_index(["cell_type", "rsid"])
+
+# %%
+celltype_snp_qvalues
+
+# %%
+group_snps = []
+for group, cell_types in mapping.items():
+    other_cell_types = [x for x in data_oi["cell_type"].unique() if x not in cell_types]
+    
+    group_snps.append(pd.DataFrame({
+        "snp":celltype_snp_significant.columns[celltype_snp_significant.loc[cell_types].any(axis = 0) & ~celltype_snp_significant.loc[other_cell_types].any(axis = 0)],
+        "group":group
+    }))
+
+    # celltype_snps
+    # data_oi.loc[data_oi["cell_type"].isin(cell_types), "cell_type"] = group
+group_snps = pd.concat(group_snps)
+
+# %%
+qtl_mapped = pd.DataFrame({"snp":group_snps["snp"], "disease/trait":group_snps["group"]})
+
+# %%
+pickle.dump(qtl_mapped, open(folder_qtl / "qtl_mapped_gwas_specific.pkl", "wb"))
 
 # %% [markdown]
 # Corresponds quite well to figure 2B (bottom right):
 # ![](https://www.science.org/cms/10.1126/science.abf3041/asset/55db8185-d844-4f4d-90dd-e86b32693427/assets/images/large/science.abf3041-f2.jpg)
 
 # %% [markdown]
-# It's important to note that the dataframe is sorted by celltype, chromosome and position. We will resort it here by chromosome and position, ignoring the celltype. This is useful for any binary search later
+# ## SPecific
 
 # %%
-eqtl = eqtl.sort([pl.col("chr"), pl.col("pos")])
+# # !zcat {folder_qtl / "eqtl_table.tsv.gz"} | grep rs4795397 > {folder_qtl / "eqtl_table_rs4795397.tsv"}
+# # !zcat {folder_qtl / "eqtl_table.tsv.gz"} | grep rs443623 > {folder_qtl / "eqtl_table_rs443623.tsv"}
+# !zcat {folder_qtl / "eqtl_table.tsv.gz"} | grep rs59754851 > {folder_qtl / "eqtl_table_rs59754851.tsv"}
 
 # %%
-eqtl.write_parquet(eqtl_file2)
+data = pd.read_table(folder_qtl / "eqtl_table_rs443623.tsv", nrows=1000, names = [x.lower() for x in gzip.open(folder_qtl / "eqtl_table.tsv.gz", "rt").readline().strip().split("\t")])
 
 # %%
-np.searchsorted(eqtl["pos"].to_numpy(), 10000000)
+data.query("gene == 'HLA-DOA'")
 
 # %%
-# # !cp onek1k_eqtl_dataset.parquet /home/wsaelens/NAS2/wsaelens/projects/chromatinhd/chromatinhd_manuscript/output/data/eqtl/onek1k/raw/
-
-# %% [markdown]
-# ## Create 
+data["significant"] = data["fdr"] < 0.05
 
 # %%
-folder_root = chd.get_output()
-folder_data = folder_root / "data"
-
-# dataset_name = "lymphoma"
-dataset_name = "pbmc10k"; organism = "hs"; chromosomes = ["chr"+str(i) for i in range(23)] + ["chrX", "chrY"]
-# dataset_name = "e18brain"
-# dataset_name = "alzheimer"
-# dataset_name = "brain"
-
-# dataset_name = "FLI1_7"
-# dataset_name = "PAX2_7"
-# dataset_name = "NHLH1_7"
-# dataset_name = "CDX2_7"
-# dataset_name = "CDX1_7"
-# dataset_name = "MSGN1_7"
-# dataset_name = "KLF4_7"
-# dataset_name = "KLF5_7"
-# dataset_name = "PTF1A_4"
-
-folder_data_preproc = folder_data / dataset_name
-
-transcriptome = chd.data.Transcriptome(folder_data_preproc / "transcriptome")
+data.query("significant")["gene"].value_counts()
 
 # %%
-promoter_name, window = "10k10k", np.array([-10000, 10000])
-# promoter_name, window = "1k1k", np.array([-1000, 1000])
-promoters = pd.read_csv(folder_data_preproc / ("promoters_" + promoter_name + ".csv"), index_col = 0)
+data.iloc[0]
 
 # %%
-eqtl_file2 = pathlib.Path(".") / "onek1k_eqtl_dataset.parquet"
-eqtl = pl.read_parquet(eqtl_file2).filter(pl.col("fdr") < 0.05).to_pandas()
+data.sort_values("fdr").query("round == 1").query("gene == 'ORMDL3'").set_index("cell_type")["q_value"].plot.bar()
 
 # %%
-eqtl["chrom"] = "chr" + eqtl["chr"].astype(str)
-
-# %% [markdown]
-# ### Get SNP info
-
-# %%
-import sqlalchemy as sql
-import pymysql
-
-# %%
-n = 1000
-
-# %%
-chunks = [eqtl["rsid"][i:i+n] for i in range(0, len(eqtl["rsid"]), n)]
-
-# %%
-len(chunks)
-
-# %%
-import tqdm.auto as tqdm
-
-# %%
-snp_info = []
-for snp_names in tqdm.tqdm(chunks):
-    snp_names = ",".join("'" + snp_names + "'")
-    query = f"select name,chrom,chromStart,chromENd from snp151 where name in ({snp_names})"
-    result = pd.read_sql(query,"mysql+pymysql://genome@genome-mysql.cse.ucsc.edu/{organism}?charset=utf8mb4".format(organism='hg38')).set_index("name")
-    snp_info.append(result)
-
-# %%
-snp_info = pd.concat(snp_info)
-
-# %%
-snp_info.to_pickle(folder_qtl / "snp_info.pkl")
-
-# %%
-promoters.loc[transcriptome.gene_id("ANXA4")]
-
-# %%
-eqtl_oi = eqtl.query("gene == 'FCAR'")
-
-# %%
-eqtl_oi
-
-# %%
-fig, ax = plt.subplots()
-ax.scatter(eqtl_oi["pos"], np.log(eqtl_oi["q_value"]))
-
-
-# %% [markdown]
-# ### Link QTLs to SNP location
-
-# %%
-snp_info = pd.read_pickle(folder_qtl / "snp_info.pkl")[["chrom", "chromENd"]].rename(columns = {"chromENd":"pos"})
-snp_info.index.name = "snp"
-snp_info = snp_info.loc[snp_info["chrom"].isin(chromosomes)]
-snp_info = snp_info.groupby(level = 0).first()
-
-# %%
-eqtl = eqtl.drop(columns = ["pos", "chrom"]).rename(columns = {"rsid":"snp"}).join(snp_info, on = "snp")
-
-# %%
-chromosome_mapping = pd.Series(np.arange(len(chromosomes)), chromosomes)
-promoters["chr_int"] = chromosome_mapping[promoters["chr"]].values
-
-# %%
-eqtl = eqtl.loc[eqtl.chrom.isin(chromosomes)].copy()
-
-# %%
-eqtl["chr"] = chromosome_mapping[eqtl["chrom"]].values
-
-# %%
-assert np.all(np.diff(eqtl["chr"].to_numpy()) >= 0), "Should be sorted by chr"
-
-# %%
-n = []
-
-position_ixs = []
-motif_ixs = []
-scores = []
-
-for gene_ix, promoter_info in enumerate(promoters.itertuples()):
-    chr_int = promoter_info.chr_int
-    chr_start = np.searchsorted(eqtl["chr"].to_numpy(), chr_int)
-    chr_end = np.searchsorted(eqtl["chr"].to_numpy(), chr_int + 1)
-    
-    pos_start = chr_start + np.searchsorted(eqtl["pos"].iloc[chr_start:chr_end].to_numpy(), promoter_info.start)
-    pos_end = chr_start + np.searchsorted(eqtl["pos"].iloc[chr_start:chr_end].to_numpy(), promoter_info.end)
-    
-    eqtls_promoter = eqtl.iloc[pos_start:pos_end].copy()
-    eqtls_promoter["relpos"] = eqtls_promoter["pos"] - promoter_info.start
-    
-    if promoter_info.strand == -1:
-        eqtls_promoter = eqtls_promoter.iloc[::-1].copy()
-        eqtls_promoter["relpos"] = -eqtls_promoter["relpos"] + (window[1] - window[0]) + 1
-        
-    # if promoter_info.chr == 'chr6':
-    #     eqtls_promoter = eqtls_promoter.loc[[]]
-    
-    n.append(len(eqtls_promoter))
-    
-    position_ixs += (eqtls_promoter["relpos"] + (gene_ix * (window[1] - window[0]))).astype(int).tolist()
-    motif_ixs += (eqtls_promoter["cell_id"].cat.codes.values).astype(int).tolist()
-    scores += (eqtls_promoter["fdr"]).tolist()
-    
-    # if transcriptome.var.iloc[gene_ix]["symbol"] == "TYMP":
-    #     break
-    
-    # if len(eqtls_promoter) > 10:
-    #     break
-
-# %% [markdown]
-# Control with sequence
-
-# %%
-# onehot_promoters = pickle.load((folder_data_preproc / ("onehot_promoters_" + promoter_name + ".pkl")).open("rb"))
-# eqtls_promoter.groupby("snp").first().head(20)
-# onehot_promoters[gene_ix, 11000]
-
-# %%
-promoters["n"] = n
-
-# %%
-(promoters["n"] == 0).mean()
-
-# %%
-promoters.sort_values("n", ascending = False).head(30).assign(symbol = lambda x:transcriptome.symbol(x.index).values)
-
-# %% [markdown]
-# Just as a check, ENSG00000196126, encoding for HLA-DR, is very polymorphic and should therefore have plenty of SNPs and eQTLs
-
-# %%
-assert promoters.loc["ENSG00000196126", "n"] > 100
-
-# %%
-motifs_oi = eqtl[["cell_id", "cell_type"]].groupby(["cell_id"]).first()
-motifs_oi["n"] = eqtl.groupby("cell_id").size()
-
-# %%
-motifs_oi.sort_values("n", ascending = False)
-
-# %%
-import scipy.sparse
-
-# convert to csr, but using coo as input
-motifscores = scipy.sparse.csr_matrix((scores, (position_ixs, motif_ixs)), shape = (len(promoters) * (window[1] - window[0]), motifs_oi.shape[0]))
-
-# %%
-motifscan_name = "onek1k_0.2"
-
-# %% [markdown]
-# ### Save
-
-# %%
-import chromatinhd as chd
-
-# %%
-motifscan = chd.data.Motifscan(chd.get_output() / "motifscans" / dataset_name / promoter_name / motifscan_name)
-
-# %%
-motifscan.indices = motifscores.indices
-motifscan.indptr = motifscores.indptr
-motifscan.data = motifscores.data
-motifscan.shape = motifscores.shape
-
-# %%
-motifscan
-
-# %%
-# motifscan_folder = chd.get_output() / "motifscans" / dataset_name / promoter_name
-# motifscan_folder.mkdir(parents=True, exist_ok=True)
-
-# %%
-pickle.dump(motifs_oi, open(motifscan.path / "motifs.pkl", "wb"))
-
-# %%
-# !ls -lh {motifscan.path}
-
-# %% [markdown]
-# ## Explore enrichemnt (TEMP)
-
-# %%
-enrichment = pd.read_pickle(chd.get_output() / "prediction_likelihood/pbmc10k/10k10k/leiden_0.1/v4_128-64-32_30_rep/scoring/cellranger/onek1k_0.2/motifscores_all.pkl")
-
-# %%
-group_motif_matching = pd.DataFrame([
-    [0, "cd4et"],
-    [0, "cd4nc"],
-    [0, "cd4sox4"],
-], columns = ["group", "motif"]).set_index(["group", "motif"])
-
-# %%
-group_motif_matching.join(enrichment.reset_index().set_index(["group", "motif"]))[["logodds_peak", "logodds_region"]].style.bar(axis = 1)
-
-# %%
-fig, ax = plt.subplots()
-ax.set_aspect(1)
-ax.scatter(enrichment["logodds_peak"], enrichment["logodds_region"], c = enrichment["group"])
-ax.axline((0, 0), slope = 1)
-
-# %%
+data.sort_values("fdr").head(20).style.bar(subset = ["spearmans_rho"], vmin = -.4, vmax = .4)

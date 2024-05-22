@@ -279,6 +279,7 @@ for i, (celltype, row) in enumerate(plotdata.iterrows()):
         )
     )
 ax_celltypelabel.axis("off")
+
 peaks_folder = chd.get_output() / "peaks" / dataset_name
 peaks_panel = fig.main.add_under(
     chdm.plotting.Peaks(

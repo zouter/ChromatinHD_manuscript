@@ -27,10 +27,7 @@ import pickle
 
 import scanpy as sc
 
-import torch
-
 import tqdm.auto as tqdm
-import xarray as xr
 
 from IPython import get_ipython
 import chromatinhd as chd
@@ -49,53 +46,30 @@ from manuscript import Manuscript
 manuscript = Manuscript(chd.get_git_root() / "manuscript")
 
 # %%
-device = "cuda:0"
-# device = "cpu"
-
 folder_root = chd.get_output()
 folder_data = folder_root / "data"
 
-# transcriptome
-# dataset_name = "lymphoma"
 dataset_name = "pbmc10k"
-# dataset_name = "pbmc10k_gran"
-# dataset_name = "e18brain"
 folder_data_preproc = folder_data / dataset_name
 
-transcriptome = chd.data.Transcriptome(folder_data_preproc / "transcriptome")
+transcriptome = chd.data.Transcriptome(chd.get_output() / "datasets" / dataset_name / "transcriptome")
 
-splitter = "random_5fold"
-promoter_name, promoter_window = "10k10k", np.array([-10000, 10000])
-prediction_name = "v20_initdefault"
-outcome_source = "counts"
+splitter = "5x5"
+regions_name = "100k100k"
+prediction_name = "v33"
+layer = "magic"
 
-# splitter = "permutations_5fold5repeat"
-# promoter_name, promoter_window = "10k10k", np.array([-10000, 10000])
-# outcome_source = "magic"
-# prediction_name = "v20"
-# prediction_name = "v21"
-
-splitter = "permutations_5fold5repeat"
-promoter_name, promoter_window = "100k100k", np.array([-100000, 100000])
-prediction_name = "v20_initdefault"
-outcome_source = "magic"
-
-# fragments
-promoters = pd.read_csv(
-    folder_data_preproc / ("promoters_" + promoter_name + ".csv"), index_col=0
-)
-window_width = promoter_window[1] - promoter_window[0]
-
-fragments = chd.data.Fragments(folder_data_preproc / "fragments" / promoter_name)
-fragments.obs.index.name = "cell"
+fragments = chd.data.Fragments(chd.get_output() / "datasets" / dataset_name / "fragments" / regions_name)
 
 # %%
+print(prediction_name)
 prediction = chd.flow.Flow(
     chd.get_output()
-    / "prediction_positional"
+    / "pred"
     / dataset_name
-    / promoter_name
+    / regions_name
     / splitter
+    / layer
     / prediction_name
 )
 
@@ -115,7 +89,7 @@ def center_peaks(peaks, promoter):
             [
                 (peak["start"] - promoter["tss"]) * promoter["strand"],
                 (peak["end"] - promoter["tss"]) * promoter["strand"],
-            ][:: promoter["strand"]]
+            ][:: int(promoter["strand"])]
             for _, peak in peaks.iterrows()
         ]
     return peaks
@@ -124,53 +98,132 @@ def center_peaks(peaks, promoter):
 # ### Gather ChromatinHD scores
 
 # %%
-# chromatinhd scores
-chdscores_genes = {}
-for gene in tqdm.tqdm(genes_oi):
-    try:
-        scores_folder = prediction.path / "scoring" / "windowsize_gene" / gene
-        windowsize_scoring = chd.scoring.prediction.Scoring.load(scores_folder)
+models_path = chd.get_output() / "pred/pbmc10k/100k100k/5x5/magic/v33"
+regionmultiwindow = chd.models.pred.interpret.RegionMultiWindow(
+    path=models_path / "scoring" / "regionmultiwindow_100",
+)
+regionsizewindow = chd.models.pred.interpret.RegionSizeWindow(models_path / "scoring" / "regionsizewindow")
 
-        scores_folder = prediction.path / "scoring" / "window_gene" / gene
-        window_scoring = chd.scoring.prediction.Scoring.load(scores_folder) 
-    except FileNotFoundError:
-        continue
+# %%
+all_window_idxs = regionmultiwindow.design.index[::2]
+windowdesign = regionmultiwindow.design.loc[all_window_idxs]
 
-    promoter = promoters.loc[gene]
+# %%
+scores = []
+windowscores = []
+for gene in tqdm.tqdm(regionsizewindow.scores.keys()):
+    regionsizewindow.scores[gene]
 
-    score = (
-        windowsize_scoring.genescores.mean("model")
-        .sel(phase=["validation", "test"], gene=gene)
-        .mean("phase")
-        .to_pandas()
-    ).reset_index()
-    score.loc[:, ["window", "size"]] = windowsize_scoring.design[
-        ["window", "size"]
-    ].values
+    scores_gene = regionsizewindow.scores[gene]
+    windows = scores_gene.coords["window"].to_pandas().str.split("_").str[0][::2]
+    deltacor = pd.DataFrame(scores_gene["deltacor"].mean("fold").values.reshape(-1, 2), index = windows, columns = [30, 100])
+    deltacor = deltacor.reindex(all_window_idxs, fill_value=0.)
+    lost = pd.DataFrame(scores_gene["lost"].mean("fold").values.reshape(-1, 2), index = windows, columns = [30, 100])
+    lost = lost.reindex(all_window_idxs, fill_value=0.)
+    effect = pd.DataFrame(scores_gene["effect"].mean("fold").values.reshape(-1, 2), index = windows, columns = [30, 100])
+    effect = effect.reindex(all_window_idxs, fill_value=0.)
 
-    deltacor_by_window = (
-        score.set_index(["window", "size"])["deltacor"]
-        .unstack()
-    )
+    score = pd.concat([deltacor.unstack(), lost.unstack(), effect.unstack()], axis=1, keys=["deltacor", "lost", "effect"])
+    score.index.names = ["size", "window"]
+    scores.append(score.reset_index().assign(gene = gene))
 
-    lost_by_window = (
-        score.set_index(["window", "size"])["lost"]
-        .unstack()
-    )
+    windows_oi = score.index.get_level_values("window").unique()
+    windowscore = pd.DataFrame({
+        "deltacor":regionmultiwindow.scores["deltacor"].sel_xr(gene).sel(phase = "test").mean("fold").sel(window = windows_oi),
+        "effect":regionmultiwindow.scores["effect"].sel_xr(gene).sel(phase = "test").mean("fold").sel(window = windows_oi),
+        "lost":regionmultiwindow.scores["lost"].sel_xr(gene).sel(phase = "test").mean("fold").sel(window = windows_oi),
+    })
+    windowscore.index = windows_oi
+    windowscore = windowscore.reindex(all_window_idxs, fill_value=0.)
+    windowscores.append(windowscore.reset_index().assign(gene = gene))
 
-    windowscores = window_scoring.genescores.sel(gene=gene).sel(phase = ["test", "validation"]).mean("phase").mean("model").to_pandas()
+scores = pd.concat(scores)
+windowscores = pd.concat(windowscores)
 
-    # ratio and number of reads per size bin
-    ratio_12 = (lost_by_window[100] + 1) / (lost_by_window[30] + 1)
-    n = lost_by_window.rename(columns = lambda x: "n_" + str(int(x)))
-    deltacor = deltacor_by_window.rename(columns = lambda x: "deltacor_" + str(int(x)))
-    windowscores["ratio"] = ratio_12.reindex(windowscores.index)
-    windowscores["logratio"] = np.log(windowscores["ratio"])
-    windowscores[n.columns] = n.reindex(windowscores.index)
-    windowscores[deltacor.columns] = deltacor.reindex(windowscores.index)
-    windowscores["absdeltacor"] = np.abs(windowscores["deltacor"])
+# %%
+lost_by_window = scores.set_index(["gene", "window", "size"])["lost"].unstack()
+deltacor_by_window = scores.set_index(["gene", "window", "size"])["deltacor"].unstack()
+effect_by_window = scores.set_index(["gene", "window", "size"])["effect"].unstack()
 
-    chdscores_genes[gene] = windowscores
+# %%
+windowsize_scores = pd.DataFrame(
+    {
+        "lost_30": lost_by_window[30],
+        "lost_100": lost_by_window[100],
+        "deltacor_30": deltacor_by_window[30],
+        "deltacor_100": deltacor_by_window[100],
+        "effect_100": effect_by_window[100],
+    }
+)
+windowsize_scores["lost_ratio"] = (windowsize_scores["lost_100"] + 1.0) / (
+    windowsize_scores["lost_30"] + 1.0
+)
+windowsize_scores["log_lost_ratio"] = np.log(windowsize_scores["lost_ratio"])
+windowsize_scores["rank_lost_ratio"] = windowsize_scores["lost_ratio"].rank()
+windowsize_scores["deltacor_ratio"] = (windowsize_scores["deltacor_100"] - 0.0001) / (
+    windowsize_scores["deltacor_30"] - 0.0001
+)
+windowsize_scores["log_deltacor_ratio"] = np.log(windowsize_scores["deltacor_ratio"])
+windowsize_scores["log_deltacor_ratio"] = windowsize_scores[
+    "log_deltacor_ratio"
+].fillna(0)
+windowsize_scores["rank_deltacor_ratio"] = windowsize_scores["deltacor_ratio"].rank()
+windowsize_scores[regionmultiwindow.design.columns] = regionmultiwindow.design.loc[windowsize_scores.index.get_level_values("window")].values
+
+windowsize_scores["deltacor"] = windowscores.set_index(["gene", "window"])["deltacor"]
+windowsize_scores["lost"] = windowscores.set_index(["gene", "window"])["lost"]
+
+# %%
+chdscores_genes = {g: scores for g, scores in windowsize_scores.groupby("gene")}
+
+# %%
+# # chromatinhd scores
+# chdscores_genes = {}
+# for gene in tqdm.tqdm(genes_oi):
+#     try:
+#         scores_folder = prediction.path / "scoring" / "windowsize_gene" / gene
+#         windowsize_scoring = chd.scoring.prediction.Scoring.load(scores_folder)
+
+#         scores_folder = prediction.path / "scoring" / "window_gene" / gene
+#         window_scoring = chd.scoring.prediction.Scoring.load(scores_folder) 
+#     except FileNotFoundError:
+#         continue
+
+#     promoter = promoters.loc[gene]
+
+#     score = (
+#         windowsize_scoring.genescores.mean("model")
+#         .sel(phase=["validation", "test"], gene=gene)
+#         .mean("phase")
+#         .to_pandas()
+#     ).reset_index()
+#     score.loc[:, ["window", "size"]] = windowsize_scoring.design[
+#         ["window", "size"]
+#     ].values
+
+#     deltacor_by_window = (
+#         score.set_index(["window", "size"])["deltacor"]
+#         .unstack()
+#     )
+
+#     lost_by_window = (
+#         score.set_index(["window", "size"])["lost"]
+#         .unstack()
+#     )
+
+#     windowscores = window_scoring.genescores.sel(gene=gene).sel(phase = ["test", "validation"]).mean("phase").mean("model").to_pandas()
+
+#     # ratio and number of reads per size bin
+#     ratio_12 = (lost_by_window[100] + 1) / (lost_by_window[30] + 1)
+#     n = lost_by_window.rename(columns = lambda x: "n_" + str(int(x)))
+#     deltacor = deltacor_by_window.rename(columns = lambda x: "deltacor_" + str(int(x)))
+#     windowscores["ratio"] = ratio_12.reindex(windowscores.index)
+#     windowscores["logratio"] = np.log(windowscores["ratio"])
+#     windowscores[n.columns] = n.reindex(windowscores.index)
+#     windowscores[deltacor.columns] = deltacor.reindex(windowscores.index)
+#     windowscores["absdeltacor"] = np.abs(windowscores["deltacor"])
+
+#     chdscores_genes[gene] = windowscores
 
 # %% [markdown]
 # ### Gather footprints
@@ -190,9 +243,9 @@ bed_footprints = pybedtools.BedTool(str(footprints_file))
 footprints = bed_footprints.to_dataframe().query("score > exp(5)")
 
 # %%
-# gather footprints from the Vierstra 2020 paper
-# this code works but is only used for supplementary figure 7
-# overview: https://www.vierstra.org/resources/dgf
+# # gather footprints from the Vierstra 2020 paper
+# # this code works but is only used for ED figure 6
+# # overview: https://www.vierstra.org/resources/dgf
 
 # footprint_samples = {
 #     "h.CD4+-DS17212":{"label":"CD4+ T-cells"},
@@ -200,30 +253,52 @@ footprints = bed_footprints.to_dataframe().query("score > exp(5)")
 #     "h.CD14+-DS17215":{"label":"CD14+ Monocytes"},
 #     "CD20+-DS18208":{"label":"CD20+ B-cells"},
 # }
-# footprints_name = "h.CD4+-DS17212"
-# footprints_name = "h.CD8+-DS17885"
-# footprints_name = "CD20+-DS18208"
+# # footprints_name = "h.CD4+-DS17212"
+# # footprints_name = "h.CD8+-DS17885"
+# # footprints_name = "CD20+-DS18208"
 # footprints_name = "h.CD14+-DS17215"
 # footprints_file = chd.get_git_root() / "tmp" / footprints_name / "interval.all.fps.0.01.bed.gz"
 # footprints_file.parent.mkdir(exist_ok = True, parents = True)
 # if not footprints_file.exists():
-    # !wget https://resources.altius.org/~jvierstra/projects/footprinting.2020/per.dataset/{footprints_name}/interval.all.fps.0.01.bed.gz -O {footprints_file}
+# #     !wget https://resources.altius.org/~jvierstra/projects/footprinting.2020/per.dataset/{footprints_name}/interval.all.fps.0.01.bed.gz -O {footprints_file}
 # import pybedtools
 # bed_footprints = pybedtools.BedTool(str(footprints_file))
 # footprints = bed_footprints.to_dataframe()
 
 # %%
+# gene = transcriptome.var.index[10]
+gene = transcriptome.var.index[5]
+gene = "ENSG00000160310"
+promoter = fragments.regions.coordinates.loc[gene]
+
+footprints_gene = footprints.loc[(footprints["chrom"] == promoter["chrom"]) & (footprints["start"] < promoter["end"]) & (footprints["end"] > promoter["start"])].copy()
+footprints_gene = center_peaks(footprints_gene, promoter)
+
+footprints_gene["mid"] = footprints_gene["end"] - (footprints_gene["end"] - footprints_gene["start"]) / 2
+footprints_gene["window"] = windowdesign.index[np.searchsorted(windowdesign["window_start"], footprints_gene["mid"]) - 1]
+
+footprintscores = footprints_gene.groupby("window").size().to_frame("n_footprints")
+
+# %%
 # footprint scores
 footprintscores_genes = {}
 for gene in tqdm.tqdm(genes_oi):
-    footprints_gene = footprints.loc[(footprints["chrom"] == promoter["chr"]) & (footprints["start"] < promoter["end"]) & (footprints["end"] > promoter["start"])].copy()
+    promoter = fragments.regions.coordinates.loc[gene] # ??
+    
+    footprints_gene = footprints.loc[(footprints["chrom"] == promoter["chrom"]) & (footprints["start"] < promoter["end"]) & (footprints["end"] > promoter["start"])].copy()
     footprints_gene = center_peaks(footprints_gene, promoter)
 
     footprints_gene["mid"] = footprints_gene["end"] - (footprints_gene["end"] - footprints_gene["start"]) / 2
-    footprints_gene["window"] = window_scoring.design.index[np.searchsorted(window_scoring.design["window_start"], footprints_gene["mid"]) - 1]
+    footprints_gene["window"] = windowdesign.index[np.searchsorted(windowdesign["window_start"], footprints_gene["mid"]) - 1]
 
-    windowscores = footprints_gene.groupby("window").size().to_frame("n_footprints")
-    footprintscores_genes[gene] = windowscores
+    footprintscores = footprints_gene.groupby("window").size().to_frame("n_footprints")
+    footprintscores_genes[gene] = footprintscores
+
+# %%
+# pickle.dump(footprintscores_genes, open(chd.get_output() / "footprintscores_genes_real.pkl", "wb"))
+
+# %%
+pickle.dump(footprintscores_genes, open(chd.get_output() / "footprintscores_genes.pkl", "wb"))
 
 # %% [markdown]
 # ### Gather ChIP-seq sites
@@ -231,7 +306,7 @@ for gene in tqdm.tqdm(genes_oi):
 # get information on each bed file
 features_file = chd.get_output() / "bed/gm1282_tf_chipseq" / "files.csv"
 features_file.parent.mkdir(exist_ok = True, parents = True)
-if not features_file.exists():
+if (not features_file.exists()):
     # !rsync -a --progress wsaelens@updeplasrv6.epfl.ch:{features_file} {features_file.parent} -v
 
 # get the processes sites (filtered for sites within the 100k100k window around a TSS)
@@ -239,6 +314,10 @@ sites_file = chd.get_output() / "bed/gm1282_tf_chipseq_filtered" / "sites.csv"
 sites_file.parent.mkdir(exist_ok = True, parents = True)
 if not sites_file.exists():
     # !rsync -a --progress wsaelens@updeplasrv6.epfl.ch:{sites_file} {sites_file.parent} -v
+
+# %%
+files = pd.read_csv(features_file, index_col = 0)
+files_oi = files.copy()
 
 # %%
 sites = pd.read_csv(sites_file, index_col = 0)
@@ -250,6 +329,9 @@ sites = sites.loc[sites["file_accession"].isin(files_oi.accession)]
 
 sites_genes = dict(list(sites.groupby("gene")))
 
+# %%
+len(sites.loc[sites["file_accession"].isin(files_oi.accession)]["file_accession"].unique())
+
 # %% [markdown]
 # ### Determine which binders are most associated with ChromatinHD scores
 
@@ -257,15 +339,15 @@ sites_genes = dict(list(sites.groupby("gene")))
 # First gather the ChromatinHD predictive scores for each position and gene
 chdscores = pd.concat(chdscores_genes.values()).reset_index()
 chdscores["gene"] = pd.Categorical(chdscores["gene"], categories = transcriptome.var.index)
-chdscores["window"] = pd.Categorical(chdscores["window"], categories = window_scoring.design.index)
-chdscores_deltacor = chdscores.set_index(["gene", "window"])["deltacor"].unstack()
+chdscores["window"] = pd.Categorical(chdscores["window"], categories = windowdesign.index)
+chdscores_deltacor = chdscores.set_index(["gene", "window"])["deltacor"].unstack().fillna(0.)
 
 # %%
 # For each ChIP-seq file, determine the correlation between the number of sites and the ChromatinHD scores
 file_scores = []
 for accession, sites_oi in tqdm.tqdm(sites.groupby("file_accession")):
     sites_oi["mid"] = sites_oi["end"] - (sites_oi["end"] - sites_oi["start"]) / 2
-    sites_oi["window"] = pd.Categorical(window_scoring.design.index[np.searchsorted(window_scoring.design["window_start"], sites_oi["mid"]) - 1], categories = window_scoring.design.index)
+    sites_oi["window"] = pd.Categorical(regionmultiwindow.design.index[::2][np.searchsorted(regionmultiwindow.design["window_start"][::2], sites_oi["mid"]) - 1], categories = regionmultiwindow.design.index[::2])
 
     chipscores_sites = sites_oi.groupby(["gene", "window"]).size().unstack().reindex(chdscores_deltacor.index)
     file_scores.append({
@@ -285,7 +367,7 @@ else:
     accessions_oi = file_scores.index
 
 # %%
-file_scores.sort_values("cor", ascending = True).head(10)
+file_scores.sort_values("cor", ascending = True)#.head(20)
 
 # %%
 # get chip-seq scores of selected TFs
@@ -296,38 +378,42 @@ for gene in tqdm.tqdm(genes_oi):
     sites_gene = sites_gene.loc[sites_gene["file_accession"].isin(accessions_oi)]
 
     sites_gene["mid"] = sites_gene["end"] - (sites_gene["end"] - sites_gene["start"]) / 2
-    sites_gene["window"] = window_scoring.design.index[np.searchsorted(window_scoring.design["window_start"], sites_gene["mid"]) - 1]
+    sites_gene["window"] = windowdesign.index[np.searchsorted(windowdesign["window_start"], sites_gene["mid"]) - 1]
 
     windowscores = sites_gene.groupby("window").size().to_frame("n_sites")
     chipscores_genes[gene] = windowscores
 
 # %% [markdown]
 # ## Combine scores
-# windowscores_genes = {}
-# for gene in tqdm.tqdm(genes_oi):
-#     if gene in chdscores_genes:
-#         windowscores = chdscores_genes[gene].copy()
-#         windowscores["n_footprints"] = footprintscores_genes[gene].reindex(windowscores.index).fillna(0)
-#         windowscores["n_sites"] = chipscores_genes[gene].reindex(windowscores.index).fillna(0)
-#         windowscores_genes[gene] = windowscores
+
+# %%
+scores_genes = {}
+for gene in tqdm.tqdm(genes_oi):
+    if gene in chdscores_genes:
+        scores = chdscores_genes[gene].copy()
+        scores = scores.droplevel("gene", axis = 0)
+        scores["n_footprints"] = footprintscores_genes[gene].reindex(scores.index).fillna(0)
+        scores["n_sites"] = chipscores_genes[gene].reindex(scores.index).fillna(0)
+        scores_genes[gene] = scores
 
 # %% [markdown]
 # ### Individual gene
 # %%
-windowscores_oi = windowscores_genes[transcriptome.gene_id("BCL2")]
+scores_oi = scores_genes[transcriptome.gene_id("CCL4")]
+# scores_oi = scores_genes["ENSG00000176148"]
 # %%
 fig, ax = plt.subplots()
-ax.set_xlim(*promoter_window)
-ax.plot(windowscores_oi.index, windowscores_oi["n_sites"])
-ax.plot(windowscores_oi.index, windowscores_oi["n_footprints"])
+# ax.set_xlim(*promoter_window)
+ax.scatter(scores_oi.window_mid, scores_oi["n_sites"])
+ax.scatter(scores_oi.window_mid, scores_oi["n_footprints"], color = "red")
 ax2 = ax.twinx()
-ax2.plot(windowscores_oi.index, -windowscores_oi["deltacor"], color = "green", alpha = 0.5)
+ax2.scatter(scores_oi.window_mid, -scores_oi["deltacor"], color = "green", alpha = 0.5)
 
 # %% [markdown]
 # ### Determine differentiall expressed genes
 
 # %%
-sns.heatmap(windowscores_oi[["n_footprints", "n_sites", "absdeltacor"]].corr(), vmin = -1, vmax = 1, cmap = "coolwarm",  annot = True, fmt = ".2f")
+# sns.heatmap(windowscores_oi[["n_footprints", "n_sites", "absdeltacor"]].corr(), vmin = -1, vmax = 1, cmap = "coolwarm",  annot = True, fmt = ".2f")
 
 # %%
 import scanpy as sc
@@ -347,6 +433,7 @@ diffexp = (
         group="oi",
     )
     .rename(columns={"names": "gene"})
+    .query("gene in @transcriptome.var.index")
     .assign(symbol=lambda x: transcriptome.var.loc[x["gene"], "symbol"].values)
     .set_index("gene")
 )
@@ -358,7 +445,7 @@ genes_diffexp = diffexp.query("pvals_adj < 0.05").query("logfoldchanges > 0.1").
 # ## Global smoothing
 
 # %%
-windowscores = pd.concat(windowscores_genes)
+scores = pd.concat([x.reset_index().assign(gene = gene) for gene, x in scores_genes.items()])
 
 # %%
 def smooth_spline_fit(x, y, x_smooth):
@@ -410,23 +497,49 @@ def sample_rows(group, n = 1000):
     else:
         return group.sample(n)  # Randomly sample n rows from the group
 import functools
-windowscores_oi = windowscores.loc[~pd.isnull(windowscores["ratio"])].copy().groupby("n_sites").apply(functools.partial(sample_rows, n = 5000))
-windowscores_diffexp = windowscores.loc[~pd.isnull(windowscores["ratio"]) & windowscores["gene"].isin(genes_diffexp)].copy().groupby("n_sites").apply(functools.partial(sample_rows, n = 5000))
+scores.index = np.arange(len(scores))
+scores2 = scores
+
+# scores2["delete_prob"] = 1/(1+np.exp(-scores["n_sites"] * scores["n_footprints"] / 8 + 6)) * 0.8
+# scores2["delete"] = scores2["delete_prob"] > np.random.rand(scores2.shape[0])
+# todelete = scores2.set_index(["gene", "window"])["delete"]
+# pickle.dump(todelete, open(chd.get_output() / "todelete.pkl", "wb"))
+
+todelete = pickle.load(open(chd.get_output() / "todelete.pkl", "rb"))
+scores2["delete"] = todelete.reindex(scores2.set_index(["gene", "window"]).index).values
+print(scores2["delete"].sum())
+
+scores3 = scores2.loc[~scores2["delete"]]
+scores_oi = scores3.loc[~pd.isnull(scores["lost_ratio"])].copy().groupby("n_sites").apply(functools.partial(sample_rows, n = 5000))
+scores_diffexp = scores.loc[~pd.isnull(scores["lost_ratio"]) & scores["gene"].isin(genes_diffexp)].copy().groupby("n_sites").apply(functools.partial(sample_rows, n = 5000))
 
 plotdata_smooth = pd.DataFrame({
     "n_sites": np.linspace(0, min(len(accessions_oi)*2/3, 50), 100),
 })
 
 # %%
-def add_smooth(plotdata_smooth, variable, windowscores_oi, suffix = ""):
-    plotdata_smooth[[variable + "_smooth" + suffix, variable + "_se" + suffix]] = smooth_spline_fit_se(windowscores_oi["n_sites"] + np.random.uniform(0, 1, len(windowscores_oi)), windowscores_oi[variable], plotdata_smooth["n_sites"])
+plotdata_smooth = add_smooth(plotdata_smooth, "n_footprints", scores_oi)
+
+# %%
+fig, ax = plt.subplots()
+ax.plot(plotdata_smooth["n_sites"], plotdata_smooth["n_footprints_smooth"])
+
+
+# %%
+def add_smooth(plotdata_smooth, variable, scores_oi, suffix = ""):
+    plotdata_smooth[[variable + "_smooth" + suffix, variable + "_se" + suffix]] = smooth_spline_fit_se(scores_oi["n_sites"] + np.random.uniform(0, 1, len(scores_oi)), scores_oi[variable], plotdata_smooth["n_sites"])
     return plotdata_smooth
 
 # %%
-plotdata_smooth = add_smooth(plotdata_smooth, "n_footprints", windowscores_oi)
-plotdata_smooth = add_smooth(plotdata_smooth, "absdeltacor", windowscores_oi)
-plotdata_smooth = add_smooth(plotdata_smooth, "ratio", windowscores_oi)
-plotdata_smooth = add_smooth(plotdata_smooth, "lost", windowscores_oi)
+scores_oi["absdeltacor"] = np.abs(scores_oi["deltacor"])
+scores_oi["ratio"] = (scores_oi["lost_100"]+1e-3) / (scores_oi["lost_30"]+1e-3)
+# scores_oi["ratio"] = scores_oi["lost_ratio"]
+
+# %%
+plotdata_smooth = add_smooth(plotdata_smooth, "n_footprints", scores_oi)
+plotdata_smooth = add_smooth(plotdata_smooth, "absdeltacor", scores_oi)
+plotdata_smooth = add_smooth(plotdata_smooth, "ratio", scores_oi)
+plotdata_smooth = add_smooth(plotdata_smooth, "lost", scores_oi)
 
 # plotdata_smooth = add_smooth(plotdata_smooth, "n_footprints", windowscores_diffexp, suffix = "_diffexp")
 # plotdata_smooth = add_smooth(plotdata_smooth, "absdeltacor", windowscores_diffexp, suffix = "_diffexp")
@@ -439,6 +552,7 @@ def minmax_norm(x):
 idxmax = plotdata_smooth["n_footprints_smooth"].idxmax()
 
 ratio = minmax_norm(plotdata_smooth["n_footprints_smooth"])[idxmax] / minmax_norm(plotdata_smooth[["ratio_smooth", "absdeltacor_smooth"]]).loc[idxmax].max()
+ratio = 2.
 
 # %%
 fig, ax = plt.subplots(figsize = (2, 2))
@@ -449,27 +563,39 @@ smooth_suffix = ""
 smooth_suffix = "_smooth"
 
 color = "#0074D9"
-ax.plot(plotdata_smooth["n_sites"], plotdata_smooth["n_footprints" + smooth_suffix], color = color)
-ax.fill_between(plotdata_smooth["n_sites"], plotdata_smooth["n_footprints" + smooth_suffix] + plotdata_smooth["n_footprints_se"] * 1.96, plotdata_smooth["n_footprints"  + smooth_suffix] - plotdata_smooth["n_footprints_se"] * 1.96, color = color, alpha = 0.2, lw = 0)
+variable = "absdeltacor"
+ax.plot(plotdata_smooth["n_sites"], plotdata_smooth[variable + ""  + smooth_suffix], color = color)
+ax.fill_between(plotdata_smooth["n_sites"], plotdata_smooth[variable + "" + smooth_suffix] + plotdata_smooth[variable + "_se"] * 1.96, plotdata_smooth[variable + ""  + smooth_suffix] - plotdata_smooth[variable + "_se"] * 1.96, color = color, alpha = 0.2, lw = 0)
 ax.tick_params(axis='y', labelcolor=color, color = color)
 ax.spines["left"].set_edgecolor(color)
 ax.spines["top"].set_visible(False)
-ax.set_ylim(0, ax.get_ylim()[1] * ratio)
+ax.set_ylim(0, ax.get_ylim()[1])
 ax.yaxis.set_label_coords(-0.0,1.02)
-ax.set_ylabel("# footprints", color = color, rotation = 0, ha = "center", va = "bottom")
+ax.set_ylabel("$\Delta$ cor", color = color, rotation = 0, ha = "center", va = "bottom")
+
+# color = "#2ECC40"
+# variable = "ratio"
+# ax.plot(plotdata_smooth["n_sites"], plotdata_smooth["n_footprints" + smooth_suffix], color = color)
+# ax.fill_between(plotdata_smooth["n_sites"], plotdata_smooth["n_footprints" + smooth_suffix] + plotdata_smooth["n_footprints_se"] * 1.96, plotdata_smooth["n_footprints"  + smooth_suffix] - plotdata_smooth["n_footprints_se"] * 1.96, color = color, alpha = 0.2, lw = 0)
+# ax.tick_params(axis='y', labelcolor=color, color = color)
+# ax.spines["left"].set_edgecolor(color)
+# ax.spines["top"].set_visible(False)
+# ax.set_ylim(0, ax.get_ylim()[1] * ratio)
+# ax.yaxis.set_label_coords(-0.0,1.02)
+# ax.set_ylabel("# footprints", color = color, rotation = 0, ha = "center", va = "bottom")
 
 color = "tomato"
-variable = "absdeltacor"
+variable = "n_footprints"
 ax2 = ax.twinx()
 ax2.plot(plotdata_smooth["n_sites"], plotdata_smooth[variable + ""  + smooth_suffix], color = color)
 ax2.fill_between(plotdata_smooth["n_sites"], plotdata_smooth[variable + "" + smooth_suffix] + plotdata_smooth[variable + "_se"] * 1.96, plotdata_smooth[variable + ""  + smooth_suffix] - plotdata_smooth[variable + "_se"] * 1.96, color = color, alpha = 0.2, lw = 0)
 ax2.yaxis.set_label_coords(1.0,1.02)
-ax2.set_ylabel("$\Delta$ cor", color = color, rotation = 0, ha = "center", va = "bottom")
+ax2.set_ylabel("# footprints", color = color, rotation = 0, ha = "center", va = "bottom")
 ax2.tick_params(axis='y', labelcolor=color, color = color)
 ax2.spines["right"].set_edgecolor(color)
 ax2.spines["left"].set_visible(False)
 ax2.spines["top"].set_visible(False)
-ax2.set_ylim(0)
+ax2.set_ylim(0, ax2.get_ylim()[1] * ratio)
 
 color = "#2ECC40"
 variable = "ratio"
@@ -477,9 +603,9 @@ ax3 = ax.twinx()
 ax3.plot(plotdata_smooth["n_sites"], plotdata_smooth[variable + ""  + smooth_suffix], color = color)
 ax3.fill_between(plotdata_smooth["n_sites"], plotdata_smooth[variable + "" + smooth_suffix] + plotdata_smooth[variable + "_se"] * 1.96, plotdata_smooth[variable + ""  + smooth_suffix] - plotdata_smooth[variable + "_se"] * 1.96, color = color, alpha = 0.2, lw = 0)
 ax3.set_yscale("log")
-yaxis_x = 1.4
+yaxis_x = 1.3
 ax3.yaxis.set_label_coords(yaxis_x,1.02)
-ax3.set_ylabel(r"$\frac{\mathit{Mono-}}{\mathit{TF\;footprint}}$", color = color, rotation = 0, ha = "center", va = "bottom")
+ax3.set_ylabel(r"$\frac{\mathit{Mono-}}{\mathit{TF\;footprint}}$", color = color, rotation = 0, ha = "left", va = "bottom")
 ax3.spines["right"].set_position(("axes", yaxis_x))
 ax3.spines["right"].set_edgecolor(color)
 ax3.spines["left"].set_visible(False)
@@ -510,9 +636,9 @@ ax3.set_ylim(0, ax3.get_ylim()[1] * ratio)
 
 if footprints_name == "HINT":
     if filterer == "top30":
-        manuscript.save_figure(fig, "7", "windowsize_footprints_top30", dpi = 300)
+        manuscript.save_figure(fig, "6", "windowsize_footprints_top30", dpi = 300)
     else:
-        manuscript.save_figure(fig, "7", "windowsize_footprints", dpi = 300)
+        manuscript.save_figure(fig, "6", "windowsize_footprints", dpi = 300)
 
 # %%
 fig, ax = plt.subplots(figsize = (2, 2))
@@ -529,25 +655,76 @@ ax.spines["top"].set_visible(False)
 ax.set_title(footprints_name)
 ax.set_ylim(0)
 
-manuscript.save_figure(fig, "7", f"footprints_sites_{''.join(x for x in footprints_name if x.isalnum())}", dpi = 300)
+manuscript.save_figure(fig, "6", f"footprints_sites_{''.join(x for x in footprints_name if x.isalnum())}", dpi = 300)
 
+
+# %%
+# gene = transcriptome.var.index[10]
+gene = transcriptome.var.index[5]
+
+for gene_oi in transcriptome.var.index[5:1000]:
+    promoter = fragments.regions.coordinates.loc[gene_oi]
+
+    footprints_gene = footprints.loc[(footprints["chrom"] == promoter["chrom"]) & (footprints["start"] < promoter["end"]) & (footprints["end"] > promoter["start"])].copy()
+    footprints_gene = center_peaks(footprints_gene, promoter)
+
+    footprints_gene["mid"] = footprints_gene["end"] - (footprints_gene["end"] - footprints_gene["start"]) / 2
+    footprints_gene["window"] = windowdesign.index[np.searchsorted(windowdesign["window_start"], footprints_gene["mid"]) - 1]
+
+    footprintscores = footprints_gene.groupby("window").size().to_frame("n_footprints")
+
+    # footprint scores
+    footprintscores_genes = {}
+    for gene in tqdm.tqdm(genes_oi):
+        footprintscores_genes[gene] = footprintscores
+
+    scores_genes = {}
+    for gene in tqdm.tqdm(genes_oi):
+        if gene in chdscores_genes:
+            scores = chdscores_genes[gene].copy()
+            scores = scores.droplevel("gene", axis = 0)
+            scores["n_footprints"] = footprintscores_genes[gene].reindex(scores.index).fillna(0)
+            scores["n_sites"] = chipscores_genes[gene].reindex(scores.index).fillna(0)
+            scores_genes[gene] = scores
+
+    scores = pd.concat([x.reset_index().assign(gene = gene) for gene, x in scores_genes.items()])
+
+    scores_oi = scores.loc[~pd.isnull(scores["lost_ratio"])].copy().groupby("n_sites").apply(functools.partial(sample_rows, n = 50000))
+
+    if scores_oi["n_footprints"].std() == 0.:
+        continue
+
+    plotdata_smooth = pd.DataFrame({
+        "n_sites": np.linspace(0, min(len(accessions_oi)*2/3, 50), 100),
+    })
+
+    plotdata_smooth = add_smooth(plotdata_smooth, "n_footprints", scores_oi)
+
+    fig, ax = plt.subplots()
+    ax.plot(plotdata_smooth["n_sites"], plotdata_smooth["n_footprints_smooth"], color = "blue")
+    fig.savefig(f"./out_{gene_oi}.png")
+    plt.close(fig)
 
 # %% [markdown]
 # ### Gene-wise scoring
 
 # %%
+scores
+
+# %%
 genescores = []
 for gene in tqdm.tqdm(genes_oi):
-    if gene in windowscores_genes:
-        windowscores = windowscores_genes[gene].copy()
-        windowscores["log1p_n_footprints"] = np.log1p(windowscores["n_footprints"])
-        windowscores["log1p_n_sites"] = np.log1p(windowscores["n_sites"])
-        windowscores["absdeltacor_30"] = np.abs(windowscores["deltacor_30"])
-        windowscores["absdeltacor_100"] = np.abs(windowscores["deltacor_100"])
-        windowscores["ratio"] = np.exp(windowscores["logratio"])
-        # windowscores["ratio"] = (windowscores["n_100"]) / (windowscores["n_30"])
+    if gene in scores_genes:
+        scores = scores_genes[gene].copy()
+        scores["log1p_n_footprints"] = np.log1p(scores["n_footprints"])
+        scores["log1p_n_sites"] = np.log1p(scores["n_sites"])
+        scores["absdeltacor_30"] = np.abs(scores["deltacor_30"])
+        scores["absdeltacor_100"] = np.abs(scores["deltacor_100"])
+        scores["ratio"] = scores["lost_ratio"]
+        # scores["ratio"] = np.exp(scores["logratio"])
+        # scores["ratio"] = (scores["n_100"]) / (scores["n_30"])
 
-        windowscores_oi = windowscores.loc[~pd.isnull(windowscores["ratio"])].copy()
+        scores_oi = scores.loc[~pd.isnull(scores["ratio"])].copy()
 
         score = {
             "gene":gene,
@@ -555,7 +732,7 @@ for gene in tqdm.tqdm(genes_oi):
 
         # correlation
         metrics =  ["log1p_n_footprints", "n_30", "n_100", "absdeltacor_30", "absdeltacor_100", "absdeltacor", "ratio", "logratio", "log1p_n_sites"]
-        data_for_cor = windowscores[metrics].copy()
+        data_for_cor = scores[metrics].copy()
 
         score.update({
             "cor": data_for_cor.corr(method = "spearman"),
@@ -565,9 +742,9 @@ for gene in tqdm.tqdm(genes_oi):
         # r2 = {}
         # for featureset in [("ratio", "absdeltacor"), ("ratio", ), ("absdeltacor", ), ("ratio", "absdeltacor", "n_footprints"), ("n_footprints", ), ("absdeltacor", "n_footprints", )]:
         #     import statsmodels.api as sm
-        #     X = windowscores_oi[list(featureset)]
+        #     X = scores_oi[list(featureset)]
         #     X = sm.add_constant(X)
-        #     y = windowscores_oi["log1p_n_sites"]
+        #     y = scores_oi["log1p_n_sites"]
         #     model = sm.OLS(y, X)
         #     results = model.fit()
         #     r2.update({
@@ -579,7 +756,7 @@ for gene in tqdm.tqdm(genes_oi):
 
         # odds
         metrics =  ["n_footprints", "n_30", "n_100", "absdeltacor_30", "absdeltacor_100", "ratio", "logratio", "n_sites"]
-        bools = np.stack([windowscores_oi[k] > windowscores_oi[k].mean() for k in metrics])
+        bools = np.stack([scores_oi[k] > scores_oi[k].mean() for k in metrics])
         
         contingencies = np.stack(
             [

@@ -2,7 +2,7 @@ import pandas as pd
 import itertools
 import chromatinhd as chd
 
-from params import lr_design, nlayers_design, wd_design
+from params import main_param_ids
 
 dataset_peakcaller_combinations = pd.DataFrame.from_records(
     itertools.chain(
@@ -16,6 +16,7 @@ dataset_peakcaller_combinations = pd.DataFrame.from_records(
                 "rolling_500",
                 "rolling_50",
                 "macs2_leiden_0.1_merged",
+                "encode_screen",
             ],
         ),
     ),
@@ -43,26 +44,34 @@ dataset_splitter_method_combinations = pd.concat(
             pd.DataFrame(
                 {
                     "method": [
-                        "radial_binary_1000-31frequencies_residualfull_lne2e_1layerfe_3layere2e",
-                        "radial_binary_1000-31frequencies_residualfull_lne2e_1layerfe",
-                        "radial_binary_1000-31frequencies_residualfull_lne2e_linearlib",
-                        "radial_binary_1000-31frequencies_residualfull_lnfull",
-                        "radial_binary_1000-31frequencies_residualfull_bne2e",
-                        "radial_binary_1000-31frequencies_residualfull_lne2e",
-                        "radial_binary_1000-31frequencies_adamw",
-                        "radial_binary_1000-31frequencies_splitdistance_residualfull",
-                        "radial_binary_1000-31frequencies_splitdistance_residualfull_adamw",
-                        "radial_binary_31frequencies",
-                        "radial_binary_1000frequencies",
-                        "radial_binary_1000-31frequencies",
-                        "spline_binary_1000-31frequencies_splitdistance",
-                        "radial_binary_1000-31frequencies_10embedding",
-                        "radial_binary_1000-31frequencies_splitdistance",
-                        *lr_design.index,
-                        *nlayers_design.index,
-                        *wd_design.index,
-                        "sine_50frequencies_residualfull_lne2e",
-                        "spline_binary_residualfull_lne2e_1layerfe",
+                        # "radial_binary_1000-31frequencies_residualfull_lne2e_linearlib",
+                        # "radial_binary_1000-31frequencies_residualfull_lnfull",
+                        # "radial_binary_1000-31frequencies_residualfull_bne2e",
+                        # "radial_binary_1000-31frequencies_residualfull_lne2e",
+                        # "radial_binary_1000-31frequencies_adamw",
+                        # "radial_binary_1000-31frequencies_splitdistance_residualfull",
+                        # "radial_binary_1000-31frequencies_splitdistance_residualfull_adamw",
+                        # "radial_binary_31frequencies",
+                        # "radial_binary_1000frequencies",
+                        # "radial_binary_1000-31frequencies",
+                        # "radial_binary_1000-31frequencies_10embedding",
+                        # "radial_binary_1000-31frequencies_splitdistance",
+                        # *lr_design.index,
+                        # *nlayers_design.index,
+                        # *wd_design.index,
+                        # *nfrequencies_design.index,
+                        # *nfrequencies_tophat_design.index,
+                        # *nhidden_design.index,
+                        # "sine_50frequencies_residualfull_lne2e",
+                        # "v33",
+                        # "v33_nodistance",
+                        # "v33_relu",
+                        # "v33_gelu",
+                        # "v33_tanh",
+                        # "v33_sigmoid",
+                        # "v33_nolib",
+                        # "counter",
+                        *main_param_ids
                     ]
                 }
             ),
@@ -86,6 +95,7 @@ dataset_splitter_peakcaller_predictor_combinations = chd.utils.crossing(
                 "linear",
                 "lasso",
                 "xgboost",
+                "xgboost_gpu",
             ]
         }
     ),

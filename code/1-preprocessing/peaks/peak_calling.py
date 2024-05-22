@@ -41,22 +41,31 @@ import chromatinhd as chd
 folder_root = chd.get_output()
 folder_data = folder_root / "data"
 
-dataset_name = "pbmc10k"
-genome = "GRCh38.107"
+# dataset_name = "pbmc10k"
+# genome = "GRCh38"
+
+# dataset_name = "pbmc10kx"
+# genome = "GRCh38"
 
 # dataset_name = "pbmc10k_gran"
-# genome = "GRCh38.107"
+# genome = "GRCh38"
 
-dataset_name = "hspc"
-genome = "GRCh38.107"
+# dataset_name = "hspc"
+# genome = "GRCh38"
 
-# dataset_name = "hspc_gmp"
-# genome = "GRCh38.107"
+# dataset_name = "e18brain"
+# genome = "mm10"
 
-# dataset_name = "e18brain"; genome = "mm10"
-# dataset_name = "lymphoma"; genome = "GRCh38.107"
-# dataset_name = "alzheimer"; genome = "mm10"
-# dataset_name = "brain"; genome = "GRCh38.107"
+# dataset_name = "lymphoma"
+# genome = "GRCh38"
+
+# dataset_name = "alzheimer"
+# genome = "mm10"
+
+# dataset_name = "brain"; genome = "GRCh38"
+
+dataset_name = "liver"
+genome = "mm10"
 
 # dataset_name = "FLI1_7"
 # dataset_name = "PAX2_7"
@@ -68,7 +77,7 @@ genome = "GRCh38.107"
 # dataset_name = "KLF5_7"
 # dataset_name = "PTF1A_4"
 
-# dataset_name = "morf_20"; genome = "GRCh38.107"
+# dataset_name = "morf_20"; genome = "GRCh38"
 
 folder_data_preproc = folder_data / dataset_name
 folder_data_preproc.mkdir(exist_ok=True, parents=True)
@@ -188,6 +197,9 @@ peaks_folder.mkdir(exist_ok=True, parents=True)
 # !ls {peaks_folder}
 
 # %%
+# !head {peaks_folder}/NA_peaks.narrowPeak
+
+# %%
 # if BAM is available
 # # !echo 'cd {peaks_folder} && macs2 callpeak -t {folder_data_preproc}/bam/atac_possorted_bam.bam -f BAMPE --nomodel'
 
@@ -208,6 +220,55 @@ peaks_folder.mkdir(exist_ok=True, parents=True)
 # from updeplasrv7
 # !echo 'mkdir -p {peaks_folder}'
 # !echo 'rsync wsaelens@updeplasrv6.epfl.ch:{peaks_folder}/peaks.bed {peaks_folder}/peaks.bed -v'
+
+# %% [markdown]
+# ## MACS2 summit
+
+# %%
+peaks_folder = folder_root / "peaks" / dataset_name / "macs2_summit"
+peaks_folder.mkdir(exist_ok=True, parents=True)
+
+# %%
+# !cp {peaks_folder}/../macs2_improved/NA_peaks.narrowPeak {peaks_folder}/peaks_original.bed
+
+# %%
+peaks = pd.read_csv(peaks_folder / "peaks_original.bed", sep="\t", header=None, names = ["chrom", "start", "end", "name", "score", "strand", "signalValue", "pValue", "qValue", "summit"])
+peaks["end"] = peaks["start"] + peaks["summit"] + 100
+peaks["start"] = peaks["start"] + peaks["summit"] - 100
+
+# %%
+peaks.to_csv(peaks_folder / "peaks.bed", sep="\t", header=None, index=False)
+
+# %% [markdown]
+# ## MACS2 summits
+
+# %%
+peaks_folder = folder_root / "peaks" / dataset_name / "macs2_summits"
+peaks_folder.mkdir(exist_ok=True, parents=True)
+
+# %%
+# !ls {peaks_folder}
+
+# %%
+# if BAM is available
+# !echo 'cd {peaks_folder} && macs2 callpeak -t {folder_data_preproc}/bam/atac_possorted_bam.bam -f BAMPE --nomodel  --call-summits && cp {peaks_folder}/NA_peaks.narrowPeak {peaks_folder}/peaks.bed'
+
+# if BAM is not available
+# !echo 'cd {peaks_folder} && macs2 callpeak -t {folder_data_preproc}/atac_fragments.tsv.gz -f BEDPE --nomodel --call-summits && cp {peaks_folder}/NA_peaks.narrowPeak {peaks_folder}/peaks.bed'
+
+# if BAM is not available
+# alternative for other datasets
+# !echo 'cd {peaks_folder} && macs2 callpeak -t {folder_data_preproc}/fragments.tsv.gz -f BEDPE  --call-summits && cp {peaks_folder}/NA_peaks.narrowPeak {peaks_folder}/peaks.bed'
+
+# %%
+peaks = pd.read_csv(peaks_folder / "NA_summits.bed", sep="\t", header=None, names = ["chrom", "start", "end", "name", "score"])
+peaks["summit"] = peaks["start"]
+
+peaks["end"] = peaks["summit"] + 100
+peaks["start"] = peaks["summit"] - 100
+
+# %%
+peaks.to_csv(peaks_folder / "peaks.bed", sep="\t", header=None, index=False)
 
 # %% [markdown]
 # ## MACS2 paired-end with different q parameters
@@ -237,18 +298,20 @@ peaks_folder.mkdir(exist_ok=True, parents=True)
 assert genome == "GRCh38.107"
 
 # %%
-# !wget https://downloads.wenglab.org/V3/GRCh38-cCREs.bed -O {chd.get_output()}/GRCh38-cCREs.bed
+# # !wget https://downloads.wenglab.org/V3/GRCh38-cCREs.bed -O {chd.get_output()}/GRCh38-cCREs.bed
 # # !wget https://downloads.wenglab.org/Registry-V3/mm10-cCREs.bed -O {chd.get_output()}/mm10-cCREs.bed
-
-# %%
-# !head  {chd.get_output()}/GRCh38-cCREs.bed
 
 # %%
 peaks_folder = folder_root / "peaks" / dataset_name / "encode_screen"
 peaks_folder.mkdir(exist_ok=True, parents=True)
 
 # %%
-# !cp {chd.get_output()}/GRCh38-cCREs.bed {peaks_folder}/peaks.bed
+if genome == "GRCh38":
+    # !cp {chd.get_output()}/GRCh38-cCREs.bed {peaks_folder}/peaks.bed
+elif genome == "mm10":
+    # !cp {chd.get_output()}/mm10-cCREs.bed {peaks_folder}/peaks.bed
+else:
+    raise ValueError("Unknown genome")
 
 # %%
 

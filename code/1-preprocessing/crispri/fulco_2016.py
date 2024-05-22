@@ -47,7 +47,7 @@ chd.set_default_device("cuda:0")
 # ### Download CRISPRi data
 
 # %%
-# doesn't work, science sucks
+# doesn't work, science (the journal) apparently hates reproducibility
 import pathlib
 url = "https://www.science.org/doi/suppl/10.1126/science.aag2445/suppl_file/aag2445_table_s2.xlsx"
 # file = "aag2445_table_s2.xlsx"
@@ -79,6 +79,15 @@ data["Gene"] = data["Set"].str.split(" ").str[0]
 
 # %%
 data["Significant"] = np.abs(data["CRISPRi Score"]) > 0.5
+
+# %% [markdown]
+# ### Store
+
+# %%
+folder = chd.get_output() / "data" / "crispri" / "fulco_2016"
+
+# %%
+data.to_csv(folder / "data.tsv", sep="\t", index=False)
 
 # %% [markdown]
 # ### Load interpretation

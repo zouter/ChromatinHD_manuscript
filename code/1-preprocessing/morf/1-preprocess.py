@@ -172,3 +172,21 @@ n_diffexp.sort_values(ascending=False)
 
 # %%
 sc.get.rank_genes_groups_df(adata3, "MSGN1")
+
+# %% [markdown]
+# ## POU2F2
+
+# %%
+adata3.obs["tf"]
+
+# %%
+adata4 = adata3[adata3.obs["tf"].isin(["POU2F2", "mCherry"])]
+
+# %%
+sc.tl.rank_genes_groups(adata4, "tf", reference = "mCherry")
+
+# %%
+diffexp = sc.get.rank_genes_groups_df(adata4, group = "POU2F2").rename(columns={"names":"tf", "logfoldchanges":"logfc"}).set_index("tf")
+
+# %%
+diffexp.reindex(['PRDM15','ZEB2','TCF4','IRF8','TET3','NFATC1','IRF4','POU2F2','AHR','TOX2','THRB','TP63','RPS6KA3','TBL1XR1','ABL1'])

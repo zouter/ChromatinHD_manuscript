@@ -2,7 +2,13 @@ import pandas as pd
 import itertools
 import chromatinhd as chd
 
-from params import binwidth_titration_ids, w_delta_p_scale_titration_ids, lr_titration_ids
+from params import (
+    binwidth_titration,
+    w_delta_p_scale_titration_ids,
+    lr_titration_ids,
+    w_delta_p_scale_design,
+    binwidth_combinations,
+)
 
 dataset_splitter_combinations = pd.DataFrame.from_records(
     itertools.chain(
@@ -25,23 +31,28 @@ dataset_splitter_method_combinations = pd.concat(
             pd.DataFrame(
                 {
                     "method": [
-                        "binary_1000-50bw",
-                        "binary_50bw",
-                        "binary_1000-50bw_nodiff",
-                        "binary_1000-50bw_wdeltareg-no",
-                        "binary_1000-50bw_earlystop-no",
-                        "binary_1000-25bw",
-                        "binary_25bw",
-                        *binwidth_titration_ids,
+                        "v31",
+                        "v31_wdeltareg-no",
+                        *binwidth_titration["label"],
+                        *binwidth_combinations["label"],
+                        *w_delta_p_scale_design["label"],
                         *w_delta_p_scale_titration_ids,
-                        *lr_titration_ids,
-                        "binary_shared_lowrank_[5k,1k,500,100,50,25]bw",
-                        "binary_shared_[5k,1k,500,100,50,25]bw",
-                        "binary_split_[5k,1k,500,100,50,25]bw",
-                        "binary_shared_[5k,1k,500,100,50,25]bw_5000ncellsstep",
-                        "binary_shared_[5k,1k,500,100,50,25]bw_5000ncellsstep_noearlystop",
-                        "binary_shared_[5k,1k,500,100,50,25]bw_5000ncellsstep_noearlystop_100epochs",
-                        "binary_shared_[5k,1k,500,100,50,25]bw_5000ncellsstep_noearlystop_500epochs",
+                        # "binary_1000-50bw",
+                        # "binary_50bw",
+                        # "binary_1000-50bw_nodiff",
+                        # "binary_1000-50bw_wdeltareg-no",
+                        # "binary_1000-50bw_earlystop-no",
+                        # "binary_1000-25bw",
+                        # "binary_25bw",
+                        # *w_delta_p_scale_titration_ids,
+                        # *lr_titration_ids,
+                        # "binary_shared_lowrank_[5k,1k,500,100,50,25]bw",
+                        # "binary_shared_[5k,1k,500,100,50,25]bw",
+                        # "binary_split_[5k,1k,500,100,50,25]bw",
+                        # "binary_shared_[5k,1k,500,100,50,25]bw_5000ncellsstep",
+                        # "binary_shared_[5k,1k,500,100,50,25]bw_5000ncellsstep_noearlystop",
+                        # "binary_shared_[5k,1k,500,100,50,25]bw_5000ncellsstep_noearlystop_100epochs",
+                        # "binary_shared_[5k,1k,500,100,50,25]bw_5000ncellsstep_noearlystop_500epochs",
                     ]
                 }
             ),

@@ -10,6 +10,7 @@ bcv <- 0.1
 
 tb.poss <- list()
 
+# taken from snap atac
 for (cluster in rownames(x)){
     print(cluster)
     y_cluster <- y[cluster,]

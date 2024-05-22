@@ -66,6 +66,17 @@ dataset_splitter_method_combinations = pd.concat(
                         "v31",
                         "v32",
                         "v33",
+                        "v35",
+                    ]
+                }
+            ),
+        ),
+        chd.utils.crossing(
+            dataset_splitter_combinations.query("dataset == 'pbmc10k' & regions == '100k100k'"),
+            pd.DataFrame(
+                {
+                    "method": [
+                        "v33_additive",
                     ]
                 }
             ),

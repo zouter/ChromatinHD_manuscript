@@ -54,23 +54,6 @@ main_url = "https://cf.10xgenomics.com/samples/cell-arc/2.0.0/pbmc_granulocyte_s
 genome = "GRCh38"
 organism = "hs"
 
-# dataset_name = "pbmc10k_gran"
-# main_url = "https://cf.10xgenomics.com/samples/cell-arc/2.0.0/pbmc_unsorted_10k/pbmc_unsorted_10k"
-# genome = "GRCh38.107"
-# organism = "hs"
-
-# dataset_name = "pbmc3k"
-# main_url = "https://cf.10xgenomics.com/samples/cell-arc/2.0.0/pbmc_granulocyte_sorted_3k/pbmc_granulocyte_sorted_3k"
-# genome = "GRCh38.107"
-# organism = "hs"
-
-# dataset_name = "lymphoma"; main_url = "https://cf.10xgenomics.com/samples/cell-arc/2.0.0/lymph_node_lymphoma_14k/lymph_node_lymphoma_14k"; genome = "GRCh38.107"; organism = "hs"
-
-# dataset_name = "e18brain"; main_url = "https://cf.10xgenomics.com/samples/cell-arc/2.0.0/e18_mouse_brain_fresh_5k/e18_mouse_brain_fresh_5k";  genome = "mm10"; organism = "mm"
-
-# dataset_name = "alzheimer"; main_url = "https://cf.10xgenomics.com/samples/cell-arc/2.0.1/Multiome_RNA_ATAC_Mouse_Brain_Alzheimers_AppNote/Multiome_RNA_ATAC_Mouse_Brain_Alzheimers_AppNote";  genome = "mm10"; organism = "mm"
-# dataset_name = "brain"; main_url = "https://s3-us-west-2.amazonaws.com/10x.files/samples/cell-arc/2.0.0/human_brain_3k/human_brain_3k"; genome = "GRCh38.107"; organism = "hs"
-
 if genome == "GRCh38.107":
     chromosomes = ["chr" + str(i) for i in range(24)] + ["chrX", "chrY"]
 
@@ -117,11 +100,11 @@ print(
 
 # %%
 to_download = [
-    "filtered_feature_bc_matrix.h5",
+    # "filtered_feature_bc_matrix.h5",
     "atac_fragments.tsv.gz",
-    "atac_fragments.tsv.gz.tbi",
-    "atac_peaks.bed",
-    "atac_peak_annotation.tsv",
+    # "atac_fragments.tsv.gz.tbi",
+    # "atac_peaks.bed",
+    # "atac_peak_annotation.tsv",
 ]
 
 for filename in to_download:
@@ -129,15 +112,14 @@ for filename in to_download:
         # !wget {main_url}_{filename} -O {folder_data_preproc}/{filename}
 # !cat {folder_data_preproc}/atac_peaks.bed | sed '/^#/d' > {folder_data_preproc}/peaks.tsv
 
+# %%
+# !wget {main_url}_{filename} -O {folder_data_preproc}/{filename}
+
 # %% [markdown]
 # ## Create transcriptome
 
 # %%
 transcriptome = chd.data.Transcriptome(folder_dataset / "transcriptome")
-
-# %%
-transcriptome = chd.data.Transcriptome(folder_dataset / "transcriptome")
-sc.pl.umap(transcriptome.adata, color = transcriptome.gene_id("GZMH"))
 
 # %% [markdown]
 # ### Read and process
@@ -190,22 +172,12 @@ adata.raw = adata
 
 # %%
 sc.pp.normalize_total(adata, size_factor)
-
-# %%
 sc.pp.log1p(adata)
-
-# %%
 sc.pp.pca(adata)
-
-# %%
 sc.pp.highly_variable_genes(adata)
 
-# %%
 sc.pp.neighbors(adata)
 sc.tl.umap(adata)
-
-# %%
-import pickle
 
 # %%
 adata.layers["normalized"] = adata.X
@@ -219,6 +191,7 @@ X_smoothened = magic_operator.fit_transform(adata.X)
 adata.layers["magic"] = X_smoothened
 
 # %%
+import pickle
 pickle.dump(adata, (folder_data_preproc / 'adata.pkl').open("wb"))
 
 # %% [markdown]
@@ -262,7 +235,7 @@ marker_annotation = pd.read_table(
 marker_annotation["symbols"] = marker_annotation["symbols"].str.split(", ")
 
 # %%
-import chd.utils.scanpy
+import chromatinhd.utils.scanpy
 cluster_celltypes = chd.utils.scanpy.evaluate_partition(
     adata, marker_annotation["symbols"].to_dict(), "symbol", partition_key="leiden"
 ).idxmax()

@@ -54,27 +54,21 @@ folder_data_preproc = folder_data / dataset_name
 
 transcriptome = chd.data.Transcriptome(folder_data_preproc / "transcriptome")
 
-#
-promoter_name, window = "10k10k", np.array([-10000, 10000])
-# promoter_name, window = "100k100k", np.array([-100000, 100000])
+regions_name = "10k10k"
+regions_name = "100k100k"
 
 # fragments
-promoters = pd.read_csv(
-    folder_data_preproc / ("promoters_" + promoter_name + ".csv"), index_col=0
-)
-window_width = window[1] - window[0]
-
-fragments = chd.data.Fragments(folder_data_preproc / "fragments" / promoter_name)
-fragments.obs.index.name = "cell"
+regions = chd.data.Regions(chd.get_output() / "datasets" / dataset_name / "regions" / regions_name)
+fragments = chd.data.Fragments(chd.get_output() / "datasets" / dataset_name / "fragments" / regions_name)
 
 # %%
-counts = torch.bincount(
-    fragments.mapping[:, 0] * fragments.n_genes + fragments.mapping[:, 1],
-    minlength=fragments.n_genes * fragments.n_cells,
+counts = np.bincount(
+    fragments.mapping[:, 0] * fragments.n_regions + fragments.mapping[:, 1],
+    minlength=fragments.n_regions * fragments.n_cells,
 )
 
 # %%
-bincounts = torch.bincount(counts, minlength=10)
+bincounts = np.bincount(counts, minlength=10)
 bindensity = bincounts / bincounts.sum()
 
 
@@ -85,9 +79,9 @@ perc_only_two = bindensity[2].sum()
 perc_more_than_one = bindensity[2:].sum()
 
 # %%
-fig, ax = plt.subplots(figsize=(2, 2))
+fig, ax = plt.subplots(figsize=(2, 1))
 bins = np.arange(0, 10)
-ax.bar(bins, bindensity[: len(bins)])
+ax.bar(bins, bindensity[: len(bins)], width=1, lw=1)
 ax.annotate(
     f"{perc_zero:.0%}",
     (0.0 - 0.4, perc_zero),
@@ -112,14 +106,17 @@ ax.annotate(
     va="bottom",
     ha="left",
 )
-ax.set_xlabel(
-    f"Number of fragments\nper cell and gene in\n{window_width/1000:.0f}kb window around TSS"
-)
+sns.despine(ax=ax)
 ax.set_ylim(0, ax.get_ylim()[1] * 1.1)
-ax.yaxis.set_major_formatter(mpl.ticker.PercentFormatter(1.0))
-ax.set_ylabel("Fraction of cells")
+ax.yaxis.set_major_formatter(mpl.ticker.PercentFormatter(1.0, decimals=0))
 
-manuscript.save_figure(fig, "5", "fragments_per_cell_and_gene_" + promoter_name)
+if regions_name == "100k100k":
+    # ax.set_ylabel("Fraction of cells", ha = "left")
+    ax.set_xlabel(f"Number of fragments\nper cell and region")
+else:
+    ax.set_xticklabels([])
+
+manuscript.save_figure(fig, "5", "fragments_per_cell_and_gene_" + regions_name)
 
 # %%
 import IPython

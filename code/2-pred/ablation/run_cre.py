@@ -13,10 +13,10 @@ from design import (
 # design = design.loc[(design["dataset"].isin(["pbmc10k"]))]
 # design = design.loc[(design["regions"] == "20kpromoter")]
 # design = design.loc[(design["regions"] == "10k10k")]
-# design = design.loc[(design["predictor"] != "xgboost")]
-# design = design.loc[(design["peakcaller"] == "macs2_leiden_0.1_merged")]
+design = design.loc[(design["predictor"] == "xgboost_gpu")]
+# design = design.loc[(design["peakcaller"] == "encode_screen")]
 # design = design.loc[(design["regions"] == "100k100k")]
-# design = design.loc[(design["regions"] == "100k100k")]
+design = design.loc[(design["regions"] == "100k100k")]
 # design = design.loc[(design["splitter"] == "5x1")]
 
 dry_run = False

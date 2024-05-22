@@ -44,12 +44,18 @@ manuscript = Manuscript(chd.get_git_root() / "manuscript")
 # ### Download CRISPRi data
 
 # %%
+folder = chd.get_output() / "data" / "crispri" / "gasperini_2019"
+
+# %%
 file = chd.get_output() / "data" / "crispri" / "gasperini_2019" / "GSE120861_all_deg_results.pilot.txt.gz"
 file.parent.mkdir(parents=True, exist_ok=True)
 
 import requests
+
 if not file.exists():
-    response = requests.get("https://ftp.ncbi.nlm.nih.gov/geo/series/GSE120nnn/GSE120861/suppl/GSE120861_all_deg_results.pilot.txt.gz")
+    response = requests.get(
+        "https://ftp.ncbi.nlm.nih.gov/geo/series/GSE120nnn/GSE120861/suppl/GSE120861_all_deg_results.pilot.txt.gz"
+    )
     with open(file, "wb") as f:
         f.write(response.content)
 
@@ -58,8 +64,11 @@ file = chd.get_output() / "data" / "crispri" / "gasperini_2019" / "GSE120861_all
 file.parent.mkdir(parents=True, exist_ok=True)
 
 import requests
+
 if not file.exists():
-    response = requests.get("https://ftp.ncbi.nlm.nih.gov/geo/series/GSE120nnn/GSE120861/suppl/GSE120861_all_deg_results.at_scale.txt.gz")
+    response = requests.get(
+        "https://ftp.ncbi.nlm.nih.gov/geo/series/GSE120nnn/GSE120861/suppl/GSE120861_all_deg_results.at_scale.txt.gz"
+    )
     with open(file, "wb") as f:
         f.write(response.content)
 
@@ -86,6 +95,7 @@ data["HS_LS_logratio"] = data["beta"]
 
 # %%
 import liftover
+
 converter = liftover.get_lifter("hg19", "hg38")
 data["start_orig"] = data["start"]
 data["end_orig"] = data["end"]
@@ -134,6 +144,12 @@ data_orig = pd.concat(data_orig)
 data = data_orig
 
 # %% [markdown]
+# ### Store
+
+# %%
+data.to_csv(folder / "data.tsv", sep="\t", index=False)
+
+# %% [markdown]
 # ### Load interpretation
 
 # %%
@@ -149,12 +165,19 @@ folds = chd.data.folds.Folds(chd.get_output() / "datasets" / "pbmc10k" / "folds"
 
 symbols_oi = data.loc[data["significant"]]["Gene"].unique()
 genes_oi = transcriptome.gene_id(symbols_oi)
-censorer = chd.models.pred.interpret.MultiWindowCensorer(fragments.regions.window, (100, 500, ), relative_stride = 1)
+censorer = chd.models.pred.interpret.MultiWindowCensorer(
+    fragments.regions.window,
+    (
+        100,
+        500,
+    ),
+    relative_stride=1,
+)
 
 scoring_folder = model_folder / "scoring" / "crispri" / "gasperini_2019"
 
 regionmultiwindow = chd.models.pred.interpret.RegionMultiWindow(scoring_folder / "regionmultiwindow")
-regionmultiwindow.score(fragments, transcriptome, models, folds, censorer, regions = genes_oi)
+regionmultiwindow.score(fragments, transcriptome, models, folds, censorer, regions=genes_oi)
 regionmultiwindow.interpolate()
 
 # %% [markdown]
@@ -166,10 +189,10 @@ data["Significant"] = data["significant"].astype(int)
 # %%
 joined_all = []
 for gene_oi in tqdm.tqdm(genes_oi):
-# for gene_oi in tqdm.tqdm(transcriptome.gene_id(["JUNB"])):
+    # for gene_oi in tqdm.tqdm(transcriptome.gene_id(["JUNB"])):
     region = fragments.regions.coordinates.loc[gene_oi]
     symbol_oi = transcriptome.var.loc[gene_oi, "symbol"]
-    
+
     data_oi = data.loc[data["chrom"] == region["chrom"]].copy()
     data_oi = data_oi.loc[(data_oi["Gene"] == symbol_oi)]
     data_oi["start"] = data_oi["start"].astype(int)
@@ -184,8 +207,10 @@ for gene_oi in tqdm.tqdm(genes_oi):
         data_centered = chd.plot.genome.genes.center(data_oi, region)
         data_centered["mid"] = (data_centered["start"] + data_centered["end"]) / 2
 
-        data_centered["bin"] = regionmultiwindow.design.index[np.digitize(data_centered["mid"], regionmultiwindow.design["window_mid"])-1]
-        data_binned = data_centered.groupby("bin").mean(numeric_only = True)
+        data_centered["bin"] = regionmultiwindow.design.index[
+            np.digitize(data_centered["mid"], regionmultiwindow.design["window_mid"]) - 1
+        ]
+        data_binned = data_centered.groupby("bin").mean(numeric_only=True)
 
         joined = regionmultiwindow.scores[gene_oi].mean("model").to_pandas().join(data_binned, how="left")
         joined["window_mid"] = regionmultiwindow.design.loc[joined.index, "window_mid"]
@@ -199,43 +224,60 @@ joined_all = pd.concat(joined_all)
 cutoff = -0.001
 
 # %%
-fig, ax =plt.subplots(figsize = (5, 2))
-ax.scatter(joined_all["deltacor"], joined_all["HS_LS_logratio"], c = joined_all["Significant"], cmap = "viridis", s = 10, vmin = 0, vmax = 1)
+fig, ax = plt.subplots(figsize=(5, 2))
+ax.scatter(
+    joined_all["deltacor"],
+    joined_all["HS_LS_logratio"],
+    c=joined_all["Significant"],
+    cmap="viridis",
+    s=10,
+    vmin=0,
+    vmax=1,
+)
 ax.axvline(cutoff)
 
-fig, ax =plt.subplots(figsize = (5, 2))
-colors = pd.Series(sns.color_palette("tab20", len(joined_all["gene"].unique())), index = joined_all["gene"].unique())
-ax.scatter(joined_all["deltacor"], joined_all["HS_LS_logratio"], c = colors[joined_all["gene"]])
+fig, ax = plt.subplots(figsize=(5, 2))
+colors = pd.Series(sns.color_palette("tab20", len(joined_all["gene"].unique())), index=joined_all["gene"].unique())
+ax.scatter(joined_all["deltacor"], joined_all["HS_LS_logratio"], c=colors[joined_all["gene"]])
 for gene, color in colors.items():
-    ax.scatter([], [], c = color, label = transcriptome.symbol(gene))
+    ax.scatter([], [], c=color, label=transcriptome.symbol(gene))
 ax.axvline(cutoff)
 
 # %%
-joined_all["significant_expression"] = (joined_all["Significant"] > 0)
+joined_all["significant_expression"] = joined_all["Significant"] > 0
 joined_all["significant_chd"] = joined_all["deltacor"] < -0.005
 
 # %%
-confirmed = (joined_all["significant_expression"] & joined_all["significant_chd"]).sum() / joined_all["significant_chd"].sum()
+confirmed = (joined_all["significant_expression"] & joined_all["significant_chd"]).sum() / joined_all[
+    "significant_chd"
+].sum()
 
 randoms = []
 for i in range(1000):
-    randoms.append((joined_all.iloc[np.random.permutation(np.arange(len(joined_all)))]["significant_expression"].values & joined_all["significant_chd"]).sum() / joined_all["significant_chd"].sum())
+    randoms.append(
+        (
+            joined_all.iloc[np.random.permutation(np.arange(len(joined_all)))]["significant_expression"].values
+            & joined_all["significant_chd"]
+        ).sum()
+        / joined_all["significant_chd"].sum()
+    )
 randoms = np.array(randoms)
 
-fig, ax =plt.subplots(figsize = (5, 2))
-ax.hist(randoms, bins = np.linspace(0, 1, 20), density = True)
-ax.axvline(confirmed, color = "red")
+fig, ax = plt.subplots(figsize=(5, 2))
+ax.hist(randoms, bins=np.linspace(0, 1, 20), density=True)
+ax.axvline(confirmed, color="red")
 (randoms >= confirmed).mean()
 
 # %%
 import fisher
+
 contingency = pd.crosstab(joined_all["significant_expression"], joined_all["significant_chd"])
 fisher.pvalue(*contingency.values.flatten())
 odds = (contingency.iloc[1, 1] * contingency.iloc[0, 0]) / (contingency.iloc[1, 0] * contingency.iloc[0, 1])
 odds
 
 # %%
-data.groupby("Gene")["significant"].sum().sort_values(ascending = False).head(10)
+data.groupby("Gene")["significant"].sum().sort_values(ascending=False).head(10)
 
 # %%
 gene_oi = transcriptome.gene_id("TMSB4X")
@@ -259,42 +301,46 @@ data_oi = data_oi.loc[data_oi["end"] < region["end"]]
 data_centered = chd.plot.genome.genes.center(data_oi, region)
 data_centered["mid"] = (data_centered["start"] + data_centered["end"]) / 2
 
-data_centered["bin"] = regionmultiwindow.design.index[np.digitize(data_centered["mid"], regionmultiwindow.design["window_mid"])-1]
-data_binned = data_centered.groupby("bin").mean(numeric_only = True)
+data_centered["bin"] = regionmultiwindow.design.index[
+    np.digitize(data_centered["mid"], regionmultiwindow.design["window_mid"]) - 1
+]
+data_binned = data_centered.groupby("bin").mean(numeric_only=True)
 
 # %%
 joined = regionmultiwindow.scores[gene_oi].mean("model").to_pandas().join(data_binned, how="left")
 joined["window_mid"] = regionmultiwindow.design.loc[joined.index, "window_mid"]
 
 # %%
-fig = chd.grid.Figure(chd.grid.Grid(padding_height = 0))
+fig = chd.grid.Figure(chd.grid.Grid(padding_height=0))
 
 binwidth = (regionmultiwindow.design["window_end"] - regionmultiwindow.design["window_start"]).iloc[0]
 
 window = fragments.regions.window
 # window = [-10000, 20000]
 # window = [-10000, 10000] # TSS
-window = [40000, 50000] # IL10 Enhancer
+window = [40000, 50000]  # IL10 Enhancer
 
-panel, ax = fig.main.add_under(chd.plot.genome.Genes.from_region(region, width = 10, window = window))
+panel, ax = fig.main.add_under(chd.plot.genome.Genes.from_region(region, width=10, window=window))
 ax.set_xlim(*window)
 
 panel, ax = fig.main.add_under(chd.grid.Panel((10, 1)))
-ax.bar(joined["window_mid"], joined["HS_LS_logratio"], lw = 0, width = binwidth)
+ax.bar(joined["window_mid"], joined["HS_LS_logratio"], lw=0, width=binwidth)
 ax.set_xlim(*window)
-ax.set_ylabel("CRISPRi score", rotation = 0, ha = "right", va = "center")
+ax.set_ylabel("CRISPRi score", rotation=0, ha="right", va="center")
 
 panel, ax = fig.main.add_under(chd.grid.Panel((10, 1)))
-ax.bar(joined["window_mid"], joined["deltacor"], lw = 0, width = binwidth)
+ax.bar(joined["window_mid"], joined["deltacor"], lw=0, width=binwidth)
 ax.set_xlim(*window)
-ax.set_ylabel("$\Delta cor$", rotation = 0, ha = "right", va = "center")
+ax.set_ylabel("$\Delta cor$", rotation=0, ha="right", va="center")
 
 panel, ax = fig.main.add_under(chd.grid.Panel((10, 1)))
-ax.bar(joined["window_mid"], joined["lost"], lw = 0, width = binwidth)
+ax.bar(joined["window_mid"], joined["lost"], lw=0, width=binwidth)
 ax.set_xlim(*window)
-ax.set_ylabel("# fragments", rotation = 0, ha = "right", va = "center")
+ax.set_ylabel("# fragments", rotation=0, ha="right", va="center")
 
-panel, ax = fig.main.add_under(chdm.plotting.Peaks(region, chd.get_output() / "peaks" / dataset_name, window = fragments.regions.window, width = 10))
+panel, ax = fig.main.add_under(
+    chdm.plotting.Peaks(region, chd.get_output() / "peaks" / dataset_name, window=fragments.regions.window, width=10)
+)
 ax.set_xlim(*window)
 
 fig.plot()
@@ -307,10 +353,10 @@ significant_cutoff = np.log(1.2)
 
 joined_genes = {}
 for gene_oi in tqdm.tqdm(genes_oi):
-# for gene_oi in tqdm.tqdm(transcriptome.gene_id(["JUNB"])):
+    # for gene_oi in tqdm.tqdm(transcriptome.gene_id(["JUNB"])):
     region = fragments.regions.coordinates.loc[gene_oi]
     symbol_oi = transcriptome.var.loc[gene_oi, "symbol"]
-    
+
     data_oi = data.loc[data["chrom"] == region["chrom"]].copy()
     data_oi = data_oi.loc[(data_oi["Gene"] == symbol_oi)]
     data_oi["start"] = data_oi["start"].astype(int)
@@ -323,10 +369,12 @@ for gene_oi in tqdm.tqdm(genes_oi):
         data_centered = chd.plot.genome.genes.center(data_oi, region)
         data_centered["mid"] = (data_centered["start"] + data_centered["end"]) / 2
 
-        data_centered["bin"] = regionmultiwindow.design.index[np.digitize(data_centered["mid"], regionmultiwindow.design["window_mid"])-1]
-        data_binned = data_centered.groupby("bin").mean(numeric_only = True)
+        data_centered["bin"] = regionmultiwindow.design.index[
+            np.digitize(data_centered["mid"], regionmultiwindow.design["window_mid"]) - 1
+        ]
+        data_binned = data_centered.groupby("bin").mean(numeric_only=True)
         data_binned["n_guides"] = data_centered.groupby("bin").size()
-        
+
         data_binned = data_binned.reindex(regionmultiwindow.design.index)
 
         joined = regionmultiwindow.scores[gene_oi].mean("model").to_pandas().join(data_binned, how="left")
@@ -360,6 +408,7 @@ for peakcaller in peakcallers:
     )
     X_peaks = peakcounts.counts
     X_transcriptome = transcriptome.layers["normalized"]
+
     def extract_data(gene_oi, peaks_oi):
         x = np.array(X_peaks[:, peaks_oi["ix"]].todense())
         y = np.array(X_transcriptome[:, gene_oi["ix"]])
@@ -386,22 +435,27 @@ for peakcaller in peakcallers:
 
         cors = np.corrcoef(x.T, y[:, None].T)[:-1, -1]
         peakscores = cors
-        
+
         peak_gene_links_oi["cor"] = cors
 
         joined_oi = joined_genes[gene_oi]
 
         cor = np.zeros(len(joined_oi))
-        joined_oi["cor"] = 0.
+        joined_oi["cor"] = 0.0
         for peak_id, peak_gene_link in peak_gene_links_oi.iterrows():
-            cor[np.arange(np.searchsorted(regionmultiwindow.design["window_start"], peak_gene_link.relative_start), np.searchsorted(regionmultiwindow.design["window_start"], peak_gene_link.relative_end))] = peak_gene_link["cor"]
+            cor[
+                np.arange(
+                    np.searchsorted(regionmultiwindow.design["window_start"], peak_gene_link.relative_start),
+                    np.searchsorted(regionmultiwindow.design["window_start"], peak_gene_link.relative_end),
+                )
+            ] = peak_gene_link["cor"]
         joined_oi["cor"] = cor
         joined_oi = joined_oi.loc[~pd.isnull(joined_oi["HS_LS_logratio"])].copy()
 
-        # 
+        #
         joined_oi["score"] = joined_oi["cor"].abs() + 0.0001 * np.random.randn(len(joined_oi))
 
-        allslicescores[method_name].append(joined_oi.assign(method = method_name, gene = gene_oi))
+        allslicescores[method_name].append(joined_oi.assign(method=method_name, gene=gene_oi))
 
         if joined_oi["significant_expression"].sum() > 0:
             aupr = sklearn.metrics.average_precision_score(joined_oi["significant_expression"], joined_oi["score"])
@@ -411,21 +465,27 @@ for peakcaller in peakcallers:
         # subset on significant ones
         joined_cre = joined_oi.loc[(joined_oi["cor"].abs() >= 0.05)]
 
-        genescores[method_name].append({
-            "gene": gene_oi,
-            "method": method_name,
-            "lfc_mean": joined_cre["HS_LS_logratio"].abs().mean(),
-            "n": joined_cre.shape[0],
-            "aupr":aupr,
-        })
+        genescores[method_name].append(
+            {
+                "gene": gene_oi,
+                "method": method_name,
+                "lfc_mean": joined_cre["HS_LS_logratio"].abs().mean(),
+                "n": joined_cre.shape[0],
+                "aupr": aupr,
+            }
+        )
 
-        slicescores[method_name].append(pd.DataFrame({
-            "gene": gene_oi,
-            "method": method_name,
-            "lfc": joined_cre["HS_LS_logratio"].abs(),
-            "slice":joined_cre.index,
-            "score": joined_cre["cor"].abs(),
-        }))
+        slicescores[method_name].append(
+            pd.DataFrame(
+                {
+                    "gene": gene_oi,
+                    "method": method_name,
+                    "lfc": joined_cre["HS_LS_logratio"].abs(),
+                    "slice": joined_cre.index,
+                    "score": joined_cre["cor"].abs(),
+                }
+            )
+        )
 
 # %%
 fig, ax = plt.subplots()
@@ -446,31 +506,37 @@ for deltacor_cutoff in [-0.001]:
         joined_oi = joined_oi.loc[~pd.isnull(joined_oi["HS_LS_logratio"])].copy()
 
         joined_oi["score"] = -joined_oi["deltacor"]
-        
+
         if joined_oi["significant_expression"].sum() > 0:
             aupr = sklearn.metrics.average_precision_score(joined_oi["significant_expression"], joined_oi["score"])
         else:
             aupr = 1
 
-        allslicescores[method_name].append(joined_oi.assign(method = method_name, gene = gene_oi))
+        allslicescores[method_name].append(joined_oi.assign(method=method_name, gene=gene_oi))
 
         joined_chd = joined_oi.loc[joined_oi["significant_chd"]]
 
-        genescores[method_name].append({
-            "gene": gene_oi,
-            "method": method_name,
-            "lfc_mean": joined_chd["HS_LS_logratio"].abs().mean(),
-            "n": joined_chd.shape[0],
-            "aupr":aupr,
-        })
+        genescores[method_name].append(
+            {
+                "gene": gene_oi,
+                "method": method_name,
+                "lfc_mean": joined_chd["HS_LS_logratio"].abs().mean(),
+                "n": joined_chd.shape[0],
+                "aupr": aupr,
+            }
+        )
 
-        slicescores[method_name].append(pd.DataFrame({
-            "gene": gene_oi,
-            "method": method_name,
-            "lfc": joined_chd["HS_LS_logratio"].abs(),
-            "score": -joined_chd["deltacor"],
-            "slice":joined_chd.index,
-        }))
+        slicescores[method_name].append(
+            pd.DataFrame(
+                {
+                    "gene": gene_oi,
+                    "method": method_name,
+                    "lfc": joined_chd["HS_LS_logratio"].abs(),
+                    "score": -joined_chd["deltacor"],
+                    "slice": joined_chd.index,
+                }
+            )
+        )
 
 # %%
 method_name = "all"
@@ -480,28 +546,37 @@ allslicescores[method_name] = []
 for gene_oi in tqdm.tqdm(genes_oi):
     joined_oi = joined_genes[gene_oi]
     joined_oi = joined_oi.loc[~pd.isnull(joined_oi["HS_LS_logratio"])].copy()
-    genescores[method_name].append({
-        "gene": gene_oi,
-        "method": method_name,
-        "lfc_mean": joined_oi["HS_LS_logratio"].abs().mean(),
-        "n": joined_chd.shape[0],
-    })
-    slicescores[method_name].append(pd.DataFrame({
-        "gene": gene_oi,
-        "method": method_name,
-        "lfc": joined_oi["HS_LS_logratio"].abs(),
-        "score":0.,
-        "slice":joined_oi.index,
-    }))
+    genescores[method_name].append(
+        {
+            "gene": gene_oi,
+            "method": method_name,
+            "lfc_mean": joined_oi["HS_LS_logratio"].abs().mean(),
+            "n": joined_chd.shape[0],
+        }
+    )
+    slicescores[method_name].append(
+        pd.DataFrame(
+            {
+                "gene": gene_oi,
+                "method": method_name,
+                "lfc": joined_oi["HS_LS_logratio"].abs(),
+                "score": 0.0,
+                "slice": joined_oi.index,
+            }
+        )
+    )
 
-    
-    allslicescores[method_name].append(joined_oi.assign(method = method_name, gene = gene_oi, score = np.random.rand(joined_oi.shape[0])))
+    allslicescores[method_name].append(
+        joined_oi.assign(method=method_name, gene=gene_oi, score=np.random.rand(joined_oi.shape[0]))
+    )
 
 # %%
-allslicescores_stacked = pd.concat([pd.concat(allslicescores[method_name]) for method_name in allslicescores.keys()], ignore_index=True)
-fig, (ax_aupr, ax_auroc) = plt.subplots(1, 2, figsize = (5, 2))
+allslicescores_stacked = pd.concat(
+    [pd.concat(allslicescores[method_name]) for method_name in allslicescores.keys()], ignore_index=True
+)
+fig, (ax_aupr, ax_auroc) = plt.subplots(1, 2, figsize=(5, 2))
 
-eps = 0.
+eps = 0.0
 eps = 1e-5
 
 methodscores = []
@@ -509,24 +584,35 @@ for method_name, slicescores_oi in allslicescores_stacked.groupby("method"):
     slicescores_oi["significant_expression"] = slicescores_oi["HS_LS_logratio"].abs() > np.log(1.2)
     print(len(slicescores_oi), len(slicescores_oi["score"].unique()))
     print(slicescores_oi["significant_expression"].mean())
-    aupr = sklearn.metrics.average_precision_score(slicescores_oi["significant_expression"], slicescores_oi["score"] + np.random.normal(0, eps, slicescores_oi.shape[0]))
+    aupr = sklearn.metrics.average_precision_score(
+        slicescores_oi["significant_expression"],
+        slicescores_oi["score"] + np.random.normal(0, eps, slicescores_oi.shape[0]),
+    )
     auroc = sklearn.metrics.roc_auc_score(slicescores_oi["significant_expression"], slicescores_oi["score"])
 
-    curve = sklearn.metrics.precision_recall_curve(slicescores_oi["significant_expression"], slicescores_oi["score"] + np.random.normal(0, eps, slicescores_oi.shape[0]))
-    ax_aupr.plot(curve[1], curve[0], label = method_name)
+    curve = sklearn.metrics.precision_recall_curve(
+        slicescores_oi["significant_expression"],
+        slicescores_oi["score"] + np.random.normal(0, eps, slicescores_oi.shape[0]),
+    )
+    ax_aupr.plot(curve[1], curve[0], label=method_name)
 
-    curve = sklearn.metrics.roc_curve(slicescores_oi["significant_expression"], slicescores_oi["score"] + np.random.normal(0, eps, slicescores_oi.shape[0]))
-    ax_auroc.plot(curve[0], curve[1], label = method_name)
-    ax_auroc.plot([0, 1], [0, 1], color = "black", linestyle = "--")
+    curve = sklearn.metrics.roc_curve(
+        slicescores_oi["significant_expression"],
+        slicescores_oi["score"] + np.random.normal(0, eps, slicescores_oi.shape[0]),
+    )
+    ax_auroc.plot(curve[0], curve[1], label=method_name)
+    ax_auroc.plot([0, 1], [0, 1], color="black", linestyle="--")
 
-    methodscores.append({
-        "method": method_name,
-        "aupr": aupr,
-        "auroc": auroc,
-    })
+    methodscores.append(
+        {
+            "method": method_name,
+            "aupr": aupr,
+            "auroc": auroc,
+        }
+    )
 methodscores = pd.DataFrame(methodscores)
 # legend outside
-ax_auroc.legend(bbox_to_anchor=(1.05, 1), loc='upper left', borderaxespad=0.)
+ax_auroc.legend(bbox_to_anchor=(1.05, 1), loc="upper left", borderaxespad=0.0)
 methodscores.style.bar()
 
 # %%
@@ -540,65 +626,71 @@ genescores_stacked.groupby("method")["aupr"].mean()
 cumscores = []
 fig, ax = plt.subplots()
 for method_name, methoddata in slicescores_stacked.groupby("method"):
-    ax.plot(np.arange(len(methoddata)), (methoddata.sort_values("score", ascending = False)["lfc"].cumsum() / (np.arange(len(methoddata))+1)), label = method_name)
+    ax.plot(
+        np.arange(len(methoddata)),
+        (methoddata.sort_values("score", ascending=False)["lfc"].cumsum() / (np.arange(len(methoddata)) + 1)),
+        label=method_name,
+    )
 plt.legend()
 ax.set_xlim(0, 200)
 
 # %%
 fig, ax = plt.subplots()
-methods = pd.DataFrame({
-    "method": list(genescores.keys()),
-    "ix": np.arange(len(genescores)),
-}).set_index("method")
+methods = pd.DataFrame(
+    {
+        "method": list(genescores.keys()),
+        "ix": np.arange(len(genescores)),
+    }
+).set_index("method")
 for method, plotdata in slicescores_stacked.groupby("method"):
-    sns.ecdfplot(x = "lfc", data = plotdata.dropna(), ax = ax, label = f"{method} (n={plotdata.shape[0]})")
+    sns.ecdfplot(x="lfc", data=plotdata.dropna(), ax=ax, label=f"{method} (n={plotdata.shape[0]})")
 plt.legend()
 
 # %%
-slicescores_mean = slicescores_stacked.groupby("method").mean(numeric_only = True)
+slicescores_mean = slicescores_stacked.groupby("method").mean(numeric_only=True)
 slicescores_mean["n"] = slicescores_stacked.groupby("method").size()
 slicescores_mean.style.bar()
 
 plotdata = slicescores_mean
-fig, ax = plt.subplots(figsize = (2, 1.5))
-ax.scatter(np.exp(plotdata["lfc"]), plotdata.index, color = "#333")
+fig, ax = plt.subplots(figsize=(2, 1.5))
+ax.scatter(np.exp(plotdata["lfc"]), plotdata.index, color="#333")
 ax.set_xscale("log")
 ax.xaxis.set_minor_formatter(mpl.ticker.ScalarFormatter())
 # set xtick label rotation
-for tick in ax.get_xticklabels(which = "minor"):
+for tick in ax.get_xticklabels(which="minor"):
     tick.set_rotation(45)
 
 # %%
-plotdata = slicescores_stacked.groupby(["gene", "method"]).mean(numeric_only = True).unstack()["lfc"].T
+plotdata = slicescores_stacked.groupby(["gene", "method"]).mean(numeric_only=True).unstack()["lfc"].T
 
-fig = chd.grid.Figure(chd.grid.Grid(padding_width = 0.1))
+fig = chd.grid.Figure(chd.grid.Grid(padding_width=0.1))
 
-cmap = mpl.colormaps['YlGnBu']
-cmap.set_bad('#EEEEEE')
+cmap = mpl.colormaps["YlGnBu"]
+cmap.set_bad("#EEEEEE")
 
-norm = mpl.colors.Normalize(vmin = 0)
+norm = mpl.colors.Normalize(vmin=0)
 
 panel, ax = fig.main.add_under(chd.grid.Panel(np.array(plotdata.shape)[::-1] * 0.25))
-ax.matshow(plotdata.values, cmap = cmap, aspect = "auto", norm = norm)
-ax.tick_params(top = True, bottom = False, labeltop = True, labelbottom = False)
+ax.matshow(plotdata.values, cmap=cmap, aspect="auto", norm=norm)
+ax.tick_params(top=True, bottom=False, labeltop=True, labelbottom=False)
 ax.set_xticks(np.arange(len(plotdata.columns)))
-ax.set_xticklabels(transcriptome.symbol(plotdata.columns), rotation = 45, ha = "left")
+ax.set_xticklabels(transcriptome.symbol(plotdata.columns), rotation=45, ha="left")
 ax.set_yticks(np.arange(len(plotdata.index)))
 ax.set_yticklabels(plotdata.index)
 
 panel, ax = fig.main.add_right(chd.grid.Panel([0.25, plotdata.shape[0] * 0.25]))
-ax.matshow(slicescores_mean["lfc"].values[:, None], cmap = cmap, aspect = "auto", norm = norm)
-ax.tick_params(top = True, bottom = False, labeltop = True, labelbottom = False)
+ax.matshow(slicescores_mean["lfc"].values[:, None], cmap=cmap, aspect="auto", norm=norm)
+ax.tick_params(top=True, bottom=False, labeltop=True, labelbottom=False)
 ax.set_xticks([0])
-ax.set_xticklabels(["Mean"], rotation = 45, ha = "left")
+ax.set_xticklabels(["Mean"], rotation=45, ha="left")
 ax.set_yticks([])
 
 fig.plot()
 
 # %%
-slicescores_stacked.query("method == 'v20/-1e-03'").sort_values("lfc", ascending = False)
+slicescores_stacked.query("method == 'v20/-1e-03'").sort_values("lfc", ascending=False)
 
 # %%
 # explore the results of one gene, where is the increase in lfc coming from?
 gene_oi = transcriptome.gene_id("CXCL2")
-slicescores_stacked.query("method == 'v20/-1e-03'").query("gene == @gene_oi").sort_values("lfc", ascending = False)
+slicescores_stacked.query("method == 'v20/-1e-03'").query("gene == @gene_oi").sort_values("lfc", ascending=False)

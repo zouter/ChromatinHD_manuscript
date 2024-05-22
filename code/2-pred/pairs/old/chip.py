@@ -66,20 +66,13 @@ promoter_name, window = "100k100k", np.array([-100000, 100000])
 prediction_name = "v20_initdefault"
 
 # fragments
-promoters = pd.read_csv(
-    folder_data_preproc / ("promoters_" + promoter_name + ".csv"), index_col=0
-)
+promoters = pd.read_csv(folder_data_preproc / ("promoters_" + promoter_name + ".csv"), index_col=0)
 window_width = window[1] - window[0]
 
 # %%
 print(prediction_name)
 prediction = chd.flow.Flow(
-    chd.get_output()
-    / "prediction_positional"
-    / dataset_name
-    / promoter_name
-    / splitter
-    / prediction_name
+    chd.get_output() / "prediction_positional" / dataset_name / promoter_name / splitter / prediction_name
 )
 
 # %%
@@ -93,9 +86,7 @@ files = pd.read_csv(bed_folder / "files.csv", index_col=0)
 
 values = {}
 for accession in tqdm.tqdm(files.index):
-    values[accession] = pickle.load(
-        mgzip.open(str(bed_folder / f"values_{accession}.pickle"), "rb")
-    )
+    values[accession] = pickle.load(mgzip.open(str(bed_folder / f"values_{accession}.pickle"), "rb"))
 
 # %% [markdown]
 # # Check spot
@@ -174,9 +165,7 @@ for gene in tqdm.tqdm(genes_oi):
         interaction = pd.read_pickle(interaction_file).assign(gene=gene).reset_index()
         interaction = interaction.rename(columns={0: "cor"})
 
-        interaction["right"] = (
-            interaction["window2"] > interaction["window1"]
-        ) * interaction["cor"] > 0
+        interaction["right"] = (interaction["window2"] > interaction["window1"]) * interaction["cor"] > 0
         interaction["abscor"] = np.clip(interaction["cor"].abs(), 0, 1)
         windowscores = (
             interaction.query("distance > 1000")
@@ -213,7 +202,7 @@ for gene in tqdm.tqdm(genes_oi):
 
             foci.append(foci_gene.assign(gene=gene, accession=accession).reset_index())
 
-            for (a, b) in zip(
+            for a, b in zip(
                 foci_gene["ix"].values,
                 foci_gene["ix"].values + pad * 2,
             ):
@@ -274,11 +263,7 @@ accession_oi = files.index[files["target"] == "SPI1"][0]
 import scanpy as sc
 
 transcriptome.adata.obs["oi"] = pd.Categorical(
-    np.array(["noi", "oi"])[
-        transcriptome.adata.obs["celltype"]
-        .isin(["naive B", "memory B"])
-        .values.astype(int)
-    ]
+    np.array(["noi", "oi"])[transcriptome.adata.obs["celltype"].isin(["naive B", "memory B"]).values.astype(int)]
 )
 sc.tl.rank_genes_groups(transcriptome.adata, groupby="oi")
 diffexp = (
@@ -338,6 +323,7 @@ for accession_oi in tqdm.tqdm(files.index):
 # %%
 len(ratios_accession)
 
+
 # %%
 def smooth_spline_fit(x, y, x_smooth):
     import rpy2.robjects as robjects
@@ -347,9 +333,7 @@ def smooth_spline_fit(x, y, x_smooth):
 
     r_smooth_spline = robjects.r["smooth.spline"]
     spline1 = r_smooth_spline(x=r_x, y=r_y)
-    ySpline = np.array(
-        robjects.r["predict"](spline1, robjects.FloatVector(x_smooth)).rx2("y")
-    )
+    ySpline = np.array(robjects.r["predict"](spline1, robjects.FloatVector(x_smooth)).rx2("y"))
 
     return ySpline
 
@@ -375,9 +359,7 @@ fig, ax = plt.subplots(figsize=(4, 2))
 
 enrichments = {}
 for accession_oi, ratios_accession in ratios.items():
-    enrichments[accession_oi] = np.exp(
-        np.nanmean(np.log(np.stack(ratios_accession)), 0)
-    )
+    enrichments[accession_oi] = np.exp(np.nanmean(np.log(np.stack(ratios_accession)), 0))
 enrichments = pd.DataFrame(enrichments).T
 enrichments.index = files.loc[enrichments.index, "target"]
 norm = mpl.colors.LogNorm(vmin=0.5, vmax=2)

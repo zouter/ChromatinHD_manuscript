@@ -19,14 +19,14 @@ design = design.query("splitter == '5x1'")
 design = design.query("method == 'v31'")
 # design = design.query("dataset == 'alzheimer'")
 design = design.query("regions == '100k100k'")
-# design = design.query("dataset == 'liver'")
+design = design.query("dataset == 'pbmc10k'")
 # design = design.query("dataset == 'hepatocytes'")
 # design = design.query("dataset in ['pbmc10k', 'pbmc10kx']")
 
 design = design.copy()
 dry_run = False
-design["force"] = False
-# design["force"] = True
+# design["force"] = False
+design["force"] = True
 # dry_run = True
 
 

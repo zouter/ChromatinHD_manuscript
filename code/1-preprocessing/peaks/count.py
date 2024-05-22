@@ -28,24 +28,26 @@ design.index = np.arange(len(design))
 # design = design.query("peakcaller in ['macs2_summits', 'macs2_leiden_0.1_merged', 'encode_screen']")
 # design = design.query("peakcaller == 'rolling_500'")
 # design = design.query("peakcaller == 'cellranger'")
-design = design.query("peakcaller == 'macs2_summits'")
-# design = design.query("peakcaller == 'macs2_improved'")
+# design = design.query("peakcaller == 'macs2_summits'")
+design = design.query("peakcaller == 'macs2_improved'")
 # design = design.query("peakcaller == 'macs2_leiden_0.1'")
 # design = design.query("peakcaller == 'macs2_leiden_0.1_merged'")
 # design = design.query("peakcaller == 'encode_screen'")
 # design = design.query("peakcaller == 'macs2_summits'")
 # design = design.query("peakcaller == 'cellranger'")
 # design = design.query("peakcaller == 'encode_screen'")
-design = design.query("regions == '10k10k'")
+# design = design.query("regions == '10k10k'")
 # design = design.query("regions == '100k100k'")
 
 ##
 # design for pbmc10k gene subset (used in ablation)
-# design = chd.utils.crossing(
-#     pd.DataFrame({"dataset": ["pbmc10k/subsets/top250"]}),
-#     pd.DataFrame({"peakcaller": ["macs2_leiden_0.1_merged", "rolling_100", "rolling_500", "rolling_50"]}),
-#     pd.DataFrame({"regions": ["10k10k", "20k20k", "100k100k", "200k200k", "500k500k", "1m1m"]}),
-# )
+design = chd.utils.crossing(
+    pd.DataFrame({"dataset": ["pbmc10k/subsets/top250"]}),
+    pd.DataFrame(
+        {"peakcaller": ["macs2_leiden_0.1_merged", "rolling_100", "rolling_500", "rolling_50", "encode_screen"]}
+    ),
+    pd.DataFrame({"regions": ["10k10k", "20k20k", "100k100k", "200k200k", "500k500k", "1m1m"]}),
+)
 # design = chd.utils.crossing(
 #     pd.DataFrame({"dataset": ["hspc"]}),
 #     # pd.DataFrame({"peakcaller": ["macs2_leiden_0.1_merged", "cellranger", "rolling_500", "rolling_100", "rolling_50", "encode_screen"]}),

@@ -1,9 +1,8 @@
-import os
+from IPython import get_ipython
 
-os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"
-import torch
-
-torch.use_deterministic_algorithms(True)
+if get_ipython():
+    get_ipython().run_line_magic("load_ext", "autoreload")
+    get_ipython().run_line_magic("autoreload", "2")
 
 import numpy as np
 import pandas as pd
@@ -13,131 +12,91 @@ import matplotlib as mpl
 
 import seaborn as sns
 
+sns.set_style("ticks")
+
+import torch
+
 import pickle
 
 import scanpy as sc
 
-import pathlib
-
 import tqdm.auto as tqdm
+import io
 
 import chromatinhd as chd
 
-# dataset_name = "pbmc10k"
-dataset_name = "pbmc10k/subsets/top5"
-dataset_name = "pbmc10k/subsets/top1"
-# dataset_name = "pbmc10k/subsets/top250"
-# dataset_name = "e18brain"
-regions_name = "100k100k"
-# regions_name = "10k10k"
+folder_root = chd.get_output()
+folder_data = folder_root / "data"
+dataset_name = "hspc"
 
-transcriptome = chd.data.Transcriptome(chd.get_output() / "datasets" / dataset_name / "transcriptome")
-fragments = chd.data.Fragments(chd.get_output() / "datasets" / dataset_name / "fragments" / regions_name)
+folder_data_preproc = folder_data / dataset_name / "MV2"
+folder_data_preproc.mkdir(exist_ok=True, parents=True)
+genome = "GRCh38"
 
-folds = chd.data.folds.Folds(chd.get_output() / "datasets" / dataset_name / "folds" / "5x1")
-fold = folds[0]
+folder_dataset = chd.get_output() / "datasets" / "hspc"
 
-torch.manual_seed(1)
+import scanpy as sc
 
-import chromatinhd.models.pred.model.better
+dataset_folder = chd.get_output() / "datasets" / "hspc"
+transcriptome = chd.data.transcriptome.Transcriptome(path=dataset_folder / "transcriptome")
 
-model_params2 = dict(
-    n_embedding_dimensions=100,
-    n_layers_fragment_embedder=5,
-    residual_fragment_embedder=False,
-    n_layers_embedding2expression=5,
-    residual_embedding2expression=False,
-    dropout_rate_fragment_embedder=0.0,
-    dropout_rate_embedding2expression=0.0,
-    encoder="spline_binary",
+adata = pickle.load((folder_data_preproc / "adata.pkl").open("rb"))[transcriptome.adata.obs.index]
+adata.obs = transcriptome.obs
+adata.obsm["X_umap2"] = transcriptome.adata.obsm["X_umap"]
+
+
+def gene_id(symbols):
+    return adata.var.reset_index().set_index("symbol").loc[symbols, "gene"].values
+
+
+plotdata = transcriptome.adata.obs.copy()
+plotdata["expression"] = sc.get.obs_df(adata, gene_id(["SPI1"]), layer="normalized")
+
+plotdata["umap1"] = np.array(adata.obsm["X_umap2"][:, 0])
+plotdata["umap2"] = np.array(adata.obsm["X_umap2"][:, 1])
+plotdata = plotdata.iloc[:1000]
+
+
+import dash
+from dash import dcc, html
+from dash.dependencies import Input, Output
+import plotly.graph_objects as go
+import pandas as pd
+
+# Example data
+# df = pd.DataFrame({
+#     'x': np.random.randint(0, 100, 100),
+#     'y': np.random.randint(0, 100, 100),
+#     'customdata': np.random.choice(['A', 'B', 'C'], 100),
+# })
+
+# Create a scatter plot
+fig = go.Figure(
+    data=go.Scatter(x=plotdata["umap1"], y=plotdata["umap2"], mode="markers", customdata=plotdata["expression"])
 )
-train_params2 = dict(
-    weight_decay=1e-1,
-    lr=1e-4,
+fig.update_layout(margin=dict(l=20, r=20, t=20, b=20), width=800, height=800, plot_bgcolor="white")
+
+# Initialize the Dash app
+app = dash.Dash("test")
+
+# Layout of the app
+app.layout = html.Div(
+    [
+        dcc.Graph(id="scatter-plot", figure=fig),
+        html.Pre(id="selected-data", style={"whiteSpace": "pre-line"}),
+    ]
 )
 
-gene_oi = fragments.var.index[0]
 
-for i in range(10):
-    model2 = chd.models.pred.model.better.Model(
-        fragments=fragments, transcriptome=transcriptome, fold=fold, layer="magic", region_oi=gene_oi, **model_params2
-    )
+# Callback to update the selection
+@app.callback(Output("selected-data", "children"), [Input("scatter-plot", "selectedData")])
+def display_selected_data(selectedData):
+    if selectedData is None:
+        return "No data selected"
+    print(selectedData["lassoPoints"])
+    return "Hi"
+    # return str(selectedData["lassoPoints"])
+    # return str(selectedData)
 
-    model_params = dict(
-        n_embedding_dimensions=100,
-        n_layers_fragment_embedder=5,
-        residual_fragment_embedder=False,
-        n_layers_embedding2expression=5,
-        residual_embedding2expression=False,
-        dropout_rate_fragment_embedder=0.0,
-        dropout_rate_embedding2expression=0.0,
-        encoder="multi_spline_binary",
-        # distance_encoder="split",
-        # library_size_encoder="linear",
-    )
-    train_params = dict(
-        # optimizer = "sgd",
-        optimizer="adam",
-        weight_decay=1e-1,
-        # lr = 1e-2,
-        # lr = 1e-3,
-        lr=1e-4,
-    )
 
-    import chromatinhd.models.pred.model.binary
-
-    model = chd.models.pred.model.binary.Model(
-        fragments=fragments, transcriptome=transcriptome, fold=fold, layer="magic", **model_params
-    )
-
-    model2.fragment_embedder.encoder.w.data = torch.rand_like(input=model2.fragment_embedder.encoder.w.data)
-    model.fragment_embedder.encoder.w[0].data = model2.fragment_embedder.encoder.w.data
-
-    model.fragment_embedder.nn0[0].weight[0].data = model2.fragment_embedder.nn0[0].weight.data.T
-    model.fragment_embedder.nn1[0].weight[0].data = model2.fragment_embedder.nn1[0].weight.data.T
-    model.fragment_embedder.nn2[0].weight[0].data = model2.fragment_embedder.nn2[0].weight.data.T
-    model.fragment_embedder.nn3[0].weight[0].data = model2.fragment_embedder.nn3[0].weight.data.T
-    model.fragment_embedder.nn4[0].weight[0].data = model2.fragment_embedder.nn4[0].weight.data.T
-
-    model.fragment_embedder.nn0[0].bias[0].data = model2.fragment_embedder.nn0[0].bias.data
-    model.fragment_embedder.nn1[0].bias[0].data = model2.fragment_embedder.nn1[0].bias.data
-    model.fragment_embedder.nn2[0].bias[0].data = model2.fragment_embedder.nn2[0].bias.data
-    model.fragment_embedder.nn3[0].bias[0].data = model2.fragment_embedder.nn3[0].bias.data
-    model.fragment_embedder.nn4[0].bias[0].data = model2.fragment_embedder.nn4[0].bias.data
-
-    model.embedding_to_expression.nn0[0].weight[0].data = model2.embedding_to_expression.nn0[0].weight.data.T
-    model.embedding_to_expression.nn1[0].weight[0].data = model2.embedding_to_expression.nn1[0].weight.data.T
-    model.embedding_to_expression.nn2[0].weight[0].data = model2.embedding_to_expression.nn2[0].weight.data.T
-    model.embedding_to_expression.nn3[0].weight[0].data = model2.embedding_to_expression.nn3[0].weight.data.T
-    model.embedding_to_expression.nn4[0].weight[0].data = model2.embedding_to_expression.nn4[0].weight.data.T
-    model.embedding_to_expression.final.weight[0].data = model2.embedding_to_expression.final.weight.data.T
-
-    model.embedding_to_expression.nn0[0].bias[0].data = model2.embedding_to_expression.nn0[0].bias.data
-    model.embedding_to_expression.nn1[0].bias[0].data = model2.embedding_to_expression.nn1[0].bias.data
-    model.embedding_to_expression.nn2[0].bias[0].data = model2.embedding_to_expression.nn2[0].bias.data
-    model.embedding_to_expression.nn3[0].bias[0].data = model2.embedding_to_expression.nn3[0].bias.data
-    model.embedding_to_expression.nn4[0].bias[0].data = model2.embedding_to_expression.nn4[0].bias.data
-
-    # model.embedding_to_expression.final.weight[0].data[:] = 0.1
-    # model2.embedding_to_expression.final.weight.data[:] = 0.1
-
-    model.train_model(
-        **train_params, warmup_epochs=0, n_epochs=500, early_stopping=True, n_regions_step=1, device="cuda"
-    )
-    model2.train_model(**train_params2, n_epochs=500, early_stopping=True, device="cuda")
-
-    prediction1 = model.get_prediction(cell_ixs=fold["cells_test"]).sel(gene=gene_oi)
-    prediction2 = model2.get_prediction(cell_ixs=fold["cells_test"]).sel(gene=gene_oi)
-    print(
-        "test ",
-        np.corrcoef(prediction1["predicted"], prediction1["expected"])[0, 1],
-        np.corrcoef(prediction2["predicted"], prediction2["expected"])[0, 1],
-    )
-
-    prediction1 = model.get_prediction().sel(gene=gene_oi)
-    prediction2 = model2.get_prediction().sel(gene=gene_oi)
-    print(
-        "train",
-        np.corrcoef(prediction1["predicted"], prediction1["expected"])[0, 1],
-        np.corrcoef(prediction2["predicted"], prediction2["expected"])[0, 1],
-    )
+app.run_server(debug=True)

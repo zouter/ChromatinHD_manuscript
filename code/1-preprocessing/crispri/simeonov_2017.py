@@ -47,7 +47,10 @@ chd.set_default_device("cuda:1")
 # ### Download CRISPRa data
 
 # %%
-file = chd.get_output() / "data" / "crispri" / "simeonov_2017" / "41586_2017_BFnature23875_MOESM3_ESM.xlsx"
+folder = chd.get_output() / "data" / "crispri" / "simeonov_2017"
+
+# %%
+file = folder / "41586_2017_BFnature23875_MOESM3_ESM.xlsx"
 file.parent.mkdir(parents=True, exist_ok=True)
 
 import requests
@@ -117,6 +120,12 @@ data["HS_LS_logratio"].plot()
 
 # %%
 data["Significant"] = np.abs(data["HS_LS_logratio"]) > 0.5
+
+# %% [markdown]
+# ### Store
+
+# %%
+data[["start", "end", "HS_LS_logratio", "chrom", "Gene"]].to_csv(folder / "data.tsv", sep = "\t", index=False)
 
 # %% [markdown]
 # ### Load interpretation

@@ -80,9 +80,7 @@ files["experiment_target"].value_counts()
 
 # %%
 files["filename"] = files["file_download_url"].str.split("/").str[-1]
-files["accession"] = (
-    files["file_download_url"].str.split("/").str[-1].str.split(".").str[0]
-)
+files["accession"] = files["file_download_url"].str.split("/").str[-1].str.split(".").str[0]
 
 # %%
 files["target"].value_counts()
@@ -138,11 +136,8 @@ dataset_name = "pbmc10k"
 # dataset_name = "e18brain"
 folder_data_preproc = folder_data / dataset_name
 
-# fragments
-promoter_name = "100k100k"
-promoters = pd.read_csv(
-    folder_data_preproc / ("promoters_" + promoter_name + ".csv"), index_col=0
-)
+regions = chd.data.Regions(chd.get_output() / "datasets" / dataset_name / "regions" / "100k100k")
+promoters = regions.coordinates
 
 # %%
 import pyBigWig
@@ -153,23 +148,21 @@ import pickle
 
 for file_accession, file in files.iterrows():
     print("processing", file_accession)
-    if (
-        bed_folder / f"values_{file_accession}.pickle"
-    ).exists() and file_accession != "ENCFF129YCR":
-        continue
+    # if (bed_folder / f"values_{file_accession}.pickle").exists() and file_accession != "ENCFF129YCR":
+    #     continue
+    # if file_accession != "ENCFF129YCR":
+    #     continue
 
     values = {}
     bw = pyBigWig.open(str(encode_folder / file["filename"]))
     chroms = bw.chroms()
-    for gene, promoter in tqdm.tqdm(
-        promoters.iterrows(), total=len(promoters), desc="Genes"
-    ):
+    for gene, promoter in tqdm.tqdm(promoters.iterrows(), total=len(promoters), desc="Genes"):
         promoter_start = promoter["start"]
         promoter_end = promoter["end"]
-        promoter_chrom = promoter["chr"]
+        promoter_chrom = promoter["chrom"]
 
         minstart = 0
-        maxend = chroms[promoter["chr"]]
+        maxend = chroms[promoter["chrom"]]
 
         if promoter_start < minstart:
             promoter_start = minstart
@@ -188,9 +181,7 @@ for file_accession, file in files.iterrows():
             val = val[::-1]
         values[(file_accession, gene)] = val
 
-    with mgzip.open(
-        str(bed_folder / f"values_{file_accession}.pickle"), "wb"
-    ) as outfile:
+    with mgzip.open(str(bed_folder / f"values_{file_accession}.pickle"), "wb") as outfile:
         pickle.dump(values, outfile)
 
 # %%

@@ -24,6 +24,7 @@ design = design.merge(design_qtl)
 
 design = design.query("splitter == '5x1'")
 design = design.query("method == 'v31'")
+design = design.query("diffexp == 'snap'")
 # design = design.query("dataset == 'pbmc20k'")
 # design = design.query("regions == '100k100k'")
 
@@ -133,6 +134,12 @@ for (dataset_name, regions_name, splitter, latent, method_name), subdesign in de
                     differential_slices_peak.end_position_ixs - fragments.regions.window[0]
                 )  # small fix
                 differential_slices_peak.window = fragments.regions.window  # small fix
+
+                print(
+                    differential_slices_peak.get_slice_scores(regions=fragments.regions)
+                    .set_index(["region_ix", "start", "end", "cluster_ix"])["score"]
+                    .drop_duplicates(keep="first")
+                )
 
                 # select top slices from CRE
                 slicescores_peak = (

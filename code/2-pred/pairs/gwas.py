@@ -48,44 +48,27 @@ manuscript = Manuscript(chd.get_git_root() / "manuscript")
 folder_root = chd.get_output()
 folder_data = folder_root / "data"
 
-# transcriptome
-# dataset_name = "lymphoma"
 dataset_name = "pbmc10k"
-# dataset_name = "e18brain"
 folder_data_preproc = folder_data / dataset_name
 
-transcriptome = chd.data.Transcriptome(folder_data_preproc / "transcriptome")
+transcriptome = chd.data.Transcriptome(chd.get_output() / "datasets" / dataset_name / "transcriptome")
 
-splitter = "random_5fold"
-promoter_name, window = "10k10k", np.array([-10000, 10000])
-prediction_name = "v20_initdefault"
+splitter = "5x5"
+regions_name, window = "100k100k", np.array([-100000, 100000])
+prediction_name = "v33"
+layer = "magic"
 
-splitter = "permutations_5fold5repeat"
-promoter_name, window = "10k10k", np.array([-10000, 10000])
-prediction_name = "v20"
-prediction_name = "v21"
-
-splitter = "permutations_5fold5repeat"
-promoter_name, window = "100k100k", np.array([-100000, 100000])
-prediction_name = "v20_initdefault"
-
-# fragments
-promoters = pd.read_csv(
-    folder_data_preproc / ("promoters_" + promoter_name + ".csv"), index_col=0
-)
-window_width = window[1] - window[0]
-
-fragments = chd.data.Fragments(folder_data_preproc / "fragments" / promoter_name)
-fragments.obs.index.name = "cell"
+fragments = chd.data.Fragments(chd.get_output() / "datasets" / dataset_name / "fragments" / regions_name)
 
 # %%
 print(prediction_name)
 prediction = chd.flow.Flow(
     chd.get_output()
-    / "prediction_positional"
+    / "pred"
     / dataset_name
-    / promoter_name
+    / regions_name
     / splitter
+    / layer
     / prediction_name
 )
 
@@ -93,54 +76,54 @@ prediction = chd.flow.Flow(
 # ### Get SNPs
 
 # %%
+import chromatinhd.data.associations
+
+# %%
 motifscan_name = "gwas_immune"
 
 motifscan_folder = (
-    chd.get_output() / "motifscans" / dataset_name / promoter_name / motifscan_name
+    chd.get_output() / "motifscans" / dataset_name / regions_name / motifscan_name
 )
-motifscan = chd.data.Motifscan(motifscan_folder)
-motifs = pickle.load((motifscan_folder / "motifs.pkl").open("rb"))
-motifscan.n_motifs = len(motifs)
-motifs["ix"] = np.arange(motifs.shape[0])
+motifscan = chd.data.associations.Associations(motifscan_folder)
+association = motifscan.association
+# motifs = pickle.load((motifscan_folder / "motifs.pkl").open("rb"))
+# motifs["ix"] = np.arange(motifs.shape[0])
 
-association = pd.read_pickle(motifscan_folder / "association.pkl")
+# association = pd.read_pickle(motifscan_folder / "association.pkl")
 
 # %%
-import itertools
-
-window_width = 100
-pd.DataFrame(
-    itertools.combinations(np.arange(window[0], window[1] + 1, window_width), 2),
-    columns=["window1", "window2"],
-)
-
+regionpairwindow = chd.models.pred.interpret.RegionPairWindow(prediction.path / "scoring" / "regionpairwindow2")
+regionmultiwindow = chd.models.pred.interpret.RegionMultiWindow(prediction.path / "scoring" / "regionmultiwindow2")
 
 # %%
 # Calculate for each gene and window the amount of overlapping SNPs
 
 genewindowscores = []
 
-genes_oi = transcriptome.var.index[:5000]
+genes_oi = transcriptome.var.index#[-100:]
 for gene in tqdm.tqdm(genes_oi):
     scores_folder = prediction.path / "scoring" / "pairwindow_gene" / gene
     interaction_file = scores_folder / "interaction.pkl"
 
-    promoter = promoters.loc[gene]
-    # if promoter["chr"] == "chr6":
-    #     continue
+    promoter = fragments.regions.coordinates.loc[gene]
+    if promoter["chrom"] == "chr6":
+        continue
 
-    if interaction_file.exists():
-        interaction = pd.read_pickle(interaction_file).assign(gene=gene).reset_index()
-        interaction = interaction.rename(columns={0: "cor"})
+    if gene == "ENSG00000239713":
+            continue
+
+    if gene in regionpairwindow.interaction:
+        # print(gene)
+        interaction = regionpairwindow.interaction[gene].mean("fold").to_dataframe("cor").reset_index()
+
+        interaction["window1_mid"] = regionmultiwindow.design.loc[interaction["window1"], "window_mid"].values
+        interaction["window2_mid"] = regionmultiwindow.design.loc[interaction["window2"], "window_mid"].values
+
+        interaction["distance"] = np.abs(interaction["window1_mid"] - interaction["window2_mid"])
 
         gene_ix = transcriptome.var.index.tolist().index(gene)
 
-        indptr_start = gene_ix * (window[1] - window[0])
-        indptr_end = (gene_ix + 1) * (window[1] - window[0])
-
-        indptr = motifscan.indptr[indptr_start:indptr_end]
-        motif_indices = motifscan.indices[indptr[0] : indptr[-1]]
-        position_indices = chd.utils.indptr_to_indices(indptr - indptr[0]) + window[0]
+        position_indices = (motifscan.coordinates[motifscan.region_indptr[gene_ix]:motifscan.region_indptr[gene_ix+1]] % fragments.regions.region_width) + fragments.regions.window[0]
 
         interaction["abscor"] = np.abs(interaction["cor"])
         windowscores = (
@@ -151,24 +134,82 @@ for gene in tqdm.tqdm(genes_oi):
         )
         windowscores.index.name = "window"
         window_width = 100
-        windowscores["start"] = windowscores.index - window_width / 2
-        windowscores["end"] = windowscores.index + window_width / 2
+        windowscores["start"] = windowscores["window1_mid"] - window_width / 2
+        windowscores["end"] = windowscores["window1_mid"] + window_width / 2
 
         y = (position_indices[None, :] > windowscores["start"].values[:, None]) & (
             position_indices[None, :] < windowscores["end"].values[:, None]
         )
         windowscores["n_snps"] = y.sum(1)
 
+        windowscores = windowscores.join(regionmultiwindow.scores["deltacor"].sel_xr(gene).sel(phase="test").mean("fold").to_dataframe("deltacor"))
+
         genewindowscores.append(windowscores.assign(gene=gene))
+
+        # break
 
 genewindowscores = pd.concat(genewindowscores)
 
 # %%
+np.corrcoef(genewindowscores["cor"], genewindowscores["deltacor"])
+
+# %%
+np.corrcoef(genewindowscores["cor"], genewindowscores["n_snps"])
+
+# %%
+np.corrcoef(genewindowscores["deltacor"], genewindowscores["n_snps"])
+
+# %%
+np.corrcoef(genewindowscores["deltacor"], genewindowscores["n_snps"])
+
+# %%
+q = 0.9
+genewindowscores_oi = genewindowscores
+a1 = genewindowscores_oi["deltacor"].values <= np.quantile(
+    genewindowscores_oi["deltacor"].values, 1 - q
+)
+a2 = genewindowscores_oi["cor"].values >= np.quantile(
+    genewindowscores_oi["cor"].values, q
+)
+
+b = genewindowscores_oi["n_snps"].values > 0
+contingency_prediction = [
+    [np.sum(a1 & b), np.sum(a1 & ~b)],
+    [np.sum(~a1 & b), np.sum(~a1 & ~b)],
+]
+odds_prediction = (
+    contingency_prediction[0][0]
+    * contingency_prediction[1][1]
+    / contingency_prediction[0][1]
+    / contingency_prediction[1][0]
+)
+captured_prediction = np.sum(a1 & b) / np.sum(b)
+
+contingency_interaction = [
+    [np.sum(a2 & b), np.sum(a2 & ~b)],
+    [np.sum(~a2 & b), np.sum(~a2 & ~b)],
+]
+odds_interaction = (
+    contingency_interaction[0][0]
+    * contingency_interaction[1][1]
+    / contingency_interaction[0][1]
+    / contingency_interaction[1][0]
+)
+captured_interaction = np.sum(a2 & b) / np.sum(b)
+
+# %%
+odds_interaction
+
+# %%
+odds_prediction
+
+# %%
 scores = []
-for q in [0.925, 0.95, 0.975, 0.99, 0.999]:
+for q in [0.1, 0.5, 0.9]:
+# for q in [0.925, 0.95, 0.975, 0.99, 0.999]:
     for gene, genewindowscores_oi in genewindowscores.groupby("gene"):
-        a1 = genewindowscores_oi["deltacor1"].values <= np.quantile(
-            genewindowscores_oi["deltacor1"].values, 1 - q
+        a1 = genewindowscores_oi["deltacor"].values <= np.quantile(
+            genewindowscores_oi["deltacor"].values, 1 - q
         )
         a2 = genewindowscores_oi["cor"].values >= np.quantile(
             genewindowscores_oi["cor"].values, q
@@ -200,7 +241,7 @@ for q in [0.925, 0.95, 0.975, 0.99, 0.999]:
         captured_interaction = np.sum(a2 & b) / np.sum(b)
 
         x3 = genewindowscores_oi["cor"].values / (
-            -genewindowscores_oi["deltacor1"].values
+            -genewindowscores_oi["deltacor"].values
         )
         a3 = x3 >= np.quantile(x3, q)
         contingency_both = [

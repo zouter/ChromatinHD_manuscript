@@ -411,3 +411,15 @@ fragments = chd.data.fragments.FragmentsView.from_fragments(
 
 # %%
 fragments.create_regionxcell_indptr()
+
+# %% [markdown]
+# ## Peaks
+
+# %%
+# !ls {chd.get_output()}/peaks
+
+# %%
+original_dataset_name = "pbmc10k"
+
+if not (chd.get_output() / "peaks" / dataset_name).exists():
+    (chd.get_output() / "peaks" / dataset_name).symlink_to(target = chd.get_output() / "peaks" / original_dataset_name)

@@ -46,11 +46,11 @@ peakcaller_predictor_combinations["color"] = peakcallers.reindex(peakcaller_pred
 ].values
 
 peakcaller_predictor_combinations = peakcaller_predictor_combinations.set_index(["peakcaller", "predictor"])
-peakcaller_predictor_combinations["label"] = (
-    peakcaller_predictor_combinations.index.get_level_values("peakcaller")
-    + "/"
+peakcaller_predictor_combinations["label_full"] = (
+    peakcallers.reindex(peakcaller_predictor_combinations.index.get_level_values("peakcaller"))["label"].values
+    + " "
     + peakcaller_predictor_combinations.index.get_level_values("predictor")
-)
+).str.replace("xgboost", "XGBoost")
 peakcaller_predictor_combinations["label"] = peakcallers.reindex(
     peakcaller_predictor_combinations.index.get_level_values("peakcaller")
 )["label"].values
@@ -125,3 +125,7 @@ prediction_methods.loc["v32", "type"] = "ours"
 prediction_methods.loc["v33", "label"] = "ChromatinHD"
 prediction_methods.loc["v33", "color"] = chromatinhd_color
 prediction_methods.loc["v33", "type"] = "ours"
+
+prediction_methods.loc["v33_additive", "label"] = "ChromatinHD\nadditive"
+prediction_methods.loc["v33_additive", "color"] = chromatinhd_color
+prediction_methods.loc["v33_additive", "type"] = "ours"

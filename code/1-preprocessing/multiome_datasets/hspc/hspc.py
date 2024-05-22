@@ -155,24 +155,15 @@ pickle.dump(adata, (folder_data_preproc / 'adata.pkl').open("wb"))
 # %%
 adata = pickle.load((folder_data_preproc / 'adata.pkl').open("rb"))
 
+# %%
+sc.tl.leiden(adata, resolution=2.0)
+sc.pl.umap(adata, color="leiden")
+
 
 # %%
 def get_gene_id(symbols):
     return adata.var.reset_index().set_index("symbol").loc[symbols, "gene"].values
 
-
-# %%
-sc.tl.leiden(adata, resolution=2.0)
-sc.pl.umap(adata, color="leiden")
-
-# %%
-sc.pl.umap(adata, color = "n_counts")
-
-# %%
-adata.var.loc[adata.var.symbol.str.startswith("MT")].sort_values("dispersions_norm")
-
-# %%
-adata.var.sort_values("dispersions_norm", ascending = False).query("means > 0.1").head(20)
 
 # %%
 # !wget https://raw.githubusercontent.com/scverse/scanpy_usage/master/180209_cell_cycle/data/regev_lab_cell_cycle_genes.txt
@@ -192,28 +183,50 @@ phase_colors = pd.Series({'G1':'tab:blue', 'G2M':'tab:orange', 'S':'tab:green'})
 ax.scatter(adata.obs["S_score"], adata.obs["G2M_score"], s=1, c = phase_colors[adata.obs["phase"]])
 
 # %%
-sc.tl.rank_genes_groups(adata, "leiden", use_raw = False)
+transcriptome.var.sort_values("dispersions_norm").iloc[:500]
 
 # %%
-sc.pl.umap(adata, color = ["leiden", "phase"], legend_loc = "on data", title = "leiden")
+sc.pl.umap(adata, color=[*transcriptome.gene_id(["NOSIP", "IKZF1"])], use_raw = False, layer = "normalized")
 
 # %%
-diffexp = sc.get.rank_genes_groups_df(adata, group='3')
-diffexp["symbol"] = adata.var.loc[diffexp["names"], "symbol"].values
+sc.pl.umap(adata, color=["phase", "S_score", "G2M_score", *transcriptome.gene_id(["GATA1", "FUT1", "CDK1", "MKI67", "PCNA"])], use_raw = False, layer = "magic")
+
+# %%
+adata2 = adata[adata.obs["phase"] == "G1"]
+sc.pp.pca(adata2)
+sc.pp.neighbors(adata2)
+sc.tl.umap(adata2)
+sc.tl.leiden(adata2, resolution=2.0)
+sc.pl.umap(adata2, color="leiden")
+
+# %%
+sc.tl.rank_genes_groups(adata2, "leiden", use_raw = False)
+
+# %%
+sc.pl.umap(adata2, color = ["leiden", "phase"], legend_loc = "on data", title = "leiden")
+
+# %%
+diffexp = sc.get.rank_genes_groups_df(adata2, group='21')
+diffexp["symbol"] = adata2.var.loc[diffexp["names"], "symbol"].values
 diffexp.sort_values("logfoldchanges", ascending = False).head(20)
+# print("\n".join(diffexp.sort_values("logfoldchanges", ascending = False).head(60)["symbol"].str.capitalize().tolist()))7
 
 # %%
-topscores
+symbols_oi = ["CD274"]
+sc.pl.umap(adata2, color = get_gene_id(symbols_oi), vmin = 0, title = symbols_oi)
+
+# %%
+diffexp = sc.get.rank_genes_groups_df(adata2, group = None)
+diffexp["symbol"] = adata.var.loc[diffexp["names"], "symbol"].values
+diffexp.query("symbol == 'TUBG2'").sort_values("scores", ascending = False)
+
+# %%
+topscores[["19", "3", "5"]].mean(1).sort_values()
 
 # %%
 topscores = diffexp.set_index(["symbol", "group"])["logfoldchanges"].unstack()
 top = topscores.idxmax(1)
-topscores.loc[top == "1"]["1"].sort_values(ascending = False).head(20)
-
-# %%
-diffexp = sc.get.rank_genes_groups_df(adata, group = None)
-diffexp["symbol"] = adata.var.loc[diffexp["names"], "symbol"].values
-diffexp.query("symbol == 'AZU1'").sort_values("scores", ascending = False)
+topscores.loc[top == "3"]["3"].sort_values(ascending = False).head(20)
 
 # %%
 sc.pl.umap(adata, color = ["S_score", "G2M_score", "phase"], vmin = 0)
@@ -224,6 +237,69 @@ sc.pl.umap(adata, color = get_gene_id(symbols), vmin = 0, title = symbols)
 cycleclusters = adata.obs.groupby(["phase", "leiden"]).size().unstack()
 cycleclusters = cycleclusters.divide(cycleclusters.sum(1), 0)
 cycleclusters.loc["G1"].sort_values(ascending = False).head(20)
+
+# %%
+symbols_oi = ["GATA1"]
+sc.pl.umap(adata2, color = get_gene_id(symbols_oi), vmin = 0, title = symbols_oi)
+
+# %%
+import io
+marker_annotation = pd.DataFrame([
+    ["gmp",             ["MPO", "STOX2", "AZU1", "LMO4", "ELANE"]],
+    ["granulocyte",     ["DIP2C", "ITK"]],
+    ["hspc",            ["HLF"]],
+    ["mpp",            ["STAB1", "CD52", "SPINK2", "SERPINI2", "UMODL1"]],
+    ["lmpp",            ["ILDR2", "MPO"]],
+    ["erythro",             ["HBB", "KLF1"]],
+    ["prog DC",         ["LYZ"]],
+    ["megakaryocyte",        ["PF4", "GP5", "COL6A3"]],
+    ["megakaryocyte progenitors",      ["IGSF3"]],
+    # ["neutrophil???",      ["NPPA", "RIBC1", "EXD2", "LGR6", "TEX15"]],
+    ["unknown 1",      ["HIST2H3D"]],
+    ["mep",      ["IKZF2", "PURG"]],
+    ["macrophage precursor",      ["CSF1R"]],
+    ["lymphoid/ilc?",      ["IL5RA"]],
+    ["pro-b",      ["JCHAIN", "SPIB"]],
+    ["unknown",      ["GPR3", "WNT11"]],
+    # ["mep",      ["AGTR1", "ST8SIA1", "MTUS1", "AQP3"]],
+], columns = ["celltype", "symbols"]).set_index("celltype")
+
+# %%
+import chromatinhd.utils.scanpy
+cluster_celltypes = chd.utils.scanpy.evaluate_partition(
+    adata, marker_annotation["symbols"].to_dict(), "symbol", partition_key="leiden"
+).idxmax()
+
+adata.obs["celltype"] = adata.obs["celltype"] = cluster_celltypes[
+    adata.obs["leiden"]
+].values
+adata.obs["celltype"] = adata.obs["celltype"] = adata.obs[
+    "celltype"
+].astype(str)
+
+
+
+import chromatinhd.utils.scanpy
+cluster_celltypes = chd.utils.scanpy.evaluate_partition(
+    adata2, marker_annotation["symbols"].to_dict(), "symbol", partition_key="leiden"
+).idxmax()
+
+adata2.obs["celltype"] = adata2.obs["celltype"] = cluster_celltypes[
+    adata2.obs["leiden"]
+].values
+adata2.obs["celltype"] = adata2.obs["celltype"] = adata2.obs[
+    "celltype"
+].astype(str)
+
+# %%
+sc.pl.umap(adata2, color = ["celltype", "leiden", "phase"], legend_loc = "on data")
+
+# %%
+sc.pl.umap(adata, color = ["celltype", "leiden", "phase"], legend_loc = "on data")
+
+# %%
+symbols_oi = ["KLF1"]
+sc.pl.umap(adata, color = get_gene_id(symbols_oi), vmin = 0, title = symbols_oi)
 
 # %%
 with plt.rc_context({"figure.figsize": (1.5, 1.5)}):
@@ -308,6 +384,89 @@ sc.pl.umap(adatanocc, color = ["leiden_nocc", "leiden"], legend_loc = "on data")
 pickle.dump(adata, (folder_data_preproc / 'adata_annotated.pkl').open("wb"))
 
 # %% [markdown]
+# ## CC regress
+
+# %%
+adata3 = sc.pp.regress_out(adata, ["S_score", "G2M_score"], copy=True)
+sc.pp.pca(adata3)
+sc.pp.neighbors(adata3)
+sc.tl.umap(adata3)
+sc.tl.leiden(adata3, resolution=2.0)
+sc.pl.umap(adata3, color=["leiden", "phase"])
+
+# %%
+import io
+marker_annotation = pd.DataFrame([
+    ["GMP",             ["MPO", "STOX2", "AZU1", "LMO4", "ELANE"]],
+    ["Granulocyte 1",     ["DIP2C", "ITK"]],
+    ["HSPC",            ["HLF"]],
+    ["MPP",            ["STAB1", "CD52", "SPINK2", "SERPINI2", "UMODL1"]],
+    ["LMPP",            ["ILDR2", "MPO"]],
+    ["Erythroblast",             ["HBB", "KLF1"]],
+    ["Myeloid",         ["LYZ"]],
+    ["Megakaryocyte",        ["PF4", "GP5", "COL6A3"]],
+    ["Megakaryocyte progenitors",      ["IGSF3"]],
+    ["Unknown 1",      ["HIST2H3D"]],
+    ["MEP",      ["IKZF2", "PURG"]],
+    ["Granulocyte 2",      ["IL5RA"]],
+    ["Myeloblast",      ["JCHAIN", "SPIB"]],
+    ["unknown",      ["GPR3", "WNT11"]],
+], columns = ["celltype", "symbols"]).set_index("celltype")
+
+# %%
+import chromatinhd.utils.scanpy
+cluster_celltypes = chd.utils.scanpy.evaluate_partition(
+    adata3, marker_annotation["symbols"].to_dict(), "symbol", partition_key="leiden"
+).idxmax()
+
+adata3.obs["celltype"] = adata3.obs["celltype"] = cluster_celltypes[
+    adata3.obs["leiden"]
+].values
+adata3.obs["celltype"] = adata3.obs["celltype"] = adata3.obs[
+    "celltype"
+].astype(str)
+
+# %%
+sc.pl.umap(adata3, color = ["celltype", "leiden", "phase"], legend_loc = "on data")
+
+# %%
+fixes = {
+    "19":"Megakaryocyte progenitors",
+    "12":"Megakaryocyte progenitors",
+    "22":"Erythrocyte precursors",
+    "6":"Erythrocyte precursors",
+    "4":"Megakaryocyte-erythrocyte gradient",
+    "3":"MEP",
+    "23":"B-cell precursors",
+    "16":"Granulocyte precursor",
+    "14":"Unknown 2",
+}
+adata3.obs["celltype"] = adata3.obs["celltype"].astype(str)
+for k, v in fixes.items():
+    adata3.obs.loc[adata3.obs["leiden"] == k, "celltype"] = v
+
+# %%
+sc.pl.umap(adata3, color = ["celltype", "leiden", "phase", "n_counts"], legend_loc = "on data")
+
+# %%
+symbols_oi = ["CD74", "JCHAIN", "SPIB", "CD63", "IGLL1", "IL5RA", "WNT11"]
+sc.pl.umap(adata3, color = get_gene_id(symbols_oi), vmin = 0, title = symbols_oi)
+
+# %% [markdown]
+# ##### Look at diffexp
+
+# %%
+sc.tl.rank_genes_groups(adata3, "leiden")
+
+# %%
+diffexp = sc.get.rank_genes_groups_df(adata3, group='23')
+diffexp["symbol"] = adata3.var.loc[diffexp["names"], "symbol"].values
+diffexp.sort_values("logfoldchanges", ascending = False).head(20)
+
+# %%
+pickle.dump(adata3, (folder_data_preproc / 'adata_annotated.pkl').open("wb"))
+
+# %% [markdown]
 # ## GMP
 
 # %%
@@ -319,6 +478,9 @@ sc.pl.umap(adata_gmp)
 
 # %% [markdown]
 # ## TSS
+
+# %%
+folder_data_preproc
 
 # %%
 adata = pickle.load((folder_data_preproc / 'adata_annotated.pkl').open("rb"))
@@ -371,7 +533,7 @@ genes_oi_1 = adata.var.sort_values("dispersions_norm").tail(5000).index
 genes_oi_2 = adata.var.reset_index().set_index("symbol").loc[desired_genes, "gene"].values
 
 genes_oi = np.concatenate([genes_oi_1, genes_oi_2[~np.isin(genes_oi_2, genes_oi_1)]])
-transcriptome = chd.data.transcriptome.Transcriptome.from_adata(adata[:, genes_oi], path=dataset_folder / "transcriptome")
+transcriptome = chd.data.transcriptome.Transcriptome.from_adata(adata[:, genes_oi], path=dataset_folder / "transcriptome", overwrite=True)
 
 # %%
 sc.pl.umap(adata, color = adata.var.index[(adata.var["symbol"] == "ITGA5")][0], layer = "magic")
@@ -468,4 +630,173 @@ fragments = chd.data.Fragments.from_fragments_tsv(
 # %%
 fragments.create_regionxcell_indptr(overwrite = True)
 
+# %% [markdown]
+# ## Explore
+
 # %%
+dataset_folder = chd.get_output() / "datasets" / "hspc"
+transcriptome = chd.data.transcriptome.Transcriptome(path=dataset_folder / "transcriptome")
+
+# %%
+import scanpy as sc
+
+# %%
+adata = pickle.load((folder_data_preproc / 'adata.pkl').open("rb"))[transcriptome.adata.obs.index]
+adata.obs = transcriptome.obs
+adata.obsm["X_umap2"] = transcriptome.adata.obsm["X_umap"]
+
+# %%
+sc.pl.embedding(adata, color = ["celltype", "phase"], basis = "umap2", legend_loc = "on data")
+
+# %%
+# inside = adata.obs["celltype"].isin(["HSPC", "LMPP", "MPP", "GMP"])
+inside = adata.obs["celltype"].isin(["HSPC"])
+
+
+# %% [markdown]
+# ### Find path
+
+# %%
+def gene_id(symbols):
+    return adata.var.reset_index().set_index("symbol").loc[symbols, "gene"].values
+
+
+# %%
+plotdata = transcriptome.adata.obs.copy()
+plotdata["expression"] = sc.get.obs_df(adata, gene_id(["SPI1"]), layer = "normalized")
+
+# %%
+# fig, ax = plt.subplots()
+# ax.scatter(plotdata["S_score"], plotdata["G2M_score"], c = plotdata["expression"], s= 1)
+
+# %%
+# sc.pl.embedding(adata, color = gene_id(["PCNA", "CDK1", "BIRC5", "HBB", "SPI1", "PTPRC"]), use_raw = False, layer = "normalized", basis = "umap2") 
+
+# %%
+plotdata["umap1"] = np.array(adata.obsm["X_umap2"][:, 0])
+plotdata["umap2"] = np.array(adata.obsm["X_umap2"][:, 1])
+
+# %%
+plotdata = plotdata.iloc[:4999]
+
+# %%
+import dash
+from dash import dcc, html
+from dash.dependencies import Input, Output
+import plotly.graph_objects as go
+import pandas as pd
+
+# Example data
+# df = pd.DataFrame({
+#     'x': np.random.randint(0, 100, 100),
+#     'y': np.random.randint(0, 100, 100),
+#     'customdata': np.random.choice(['A', 'B', 'C'], 100),
+# })
+
+# Create a scatter plot
+fig = go.Figure(data=go.Scatter(x=plotdata['umap1'], y=plotdata['umap2'], mode='markers', customdata=plotdata['expression']))
+fig.update_layout(
+    margin=dict(l=20, r=20, t=20, b=20), width = 500, height = 500, plot_bgcolor = "white")
+
+# Initialize the Dash app
+app = dash.Dash("test")
+
+# Layout of the app
+app.layout = html.Div([
+    dcc.Graph(id='scatter-plot', figure=fig),
+    html.Pre(id='selected-data', style={"whiteSpace": "pre-line"}),
+])
+
+# Callback to update the selection
+@app.callback(
+    Output('selected-data', 'children'),
+    [Input('scatter-plot', 'selectedData')]
+)
+def display_selected_data(selectedData):
+    print(selectedData)
+    if selectedData is None:
+        return "No data selected"
+    return str(selectedData["lassoPoints"]) 
+    # return str(selectedData)
+
+app.run_server(debug = True, port = 8049)
+
+# %%
+# early myeloid
+paths = {'x': [-3.141114001152576, -3.509996976452074, -3.632957968218573, -3.5509839737075737, -2.649270034086579, -2.157426067020582, -1.1737381328885879, -0.7638681603335904, -0.6818941658225909, -1.0507771411220888, -1.501634110932586], 'y': [0.337713352427159, -0.42216330326322976, -0.42216330326322976, -0.7116401244786159, -1.507701382820928, -2.1590242305555467, -2.30376264116324, -2.2313934358593936, -2.0866550252517, -1.1096707536497719, -0.27742489265553666]}
+
+# all myeloid
+# paths = {'x': [-3.309110435588785, -4.410358976924616, -4.451145959937054, -4.53271992596193, -4.043276129812672, -2.6565187073897745, -1.7592050811161346, -1.0250393868922474, -0.8211044718300565, -0.6579565397803039, -0.8618914548424947, -1.3105482679793146, -1.7999920641285727, -1.9223530131658872], 'y': [0.49249244532192643, -0.7042969389253823, -1.5746892183779704, -1.8648199781954997, -2.517614187784941, -2.6264132227165145, -2.4450814978305586, -2.118684393035838, -1.9010863231726909, -0.9218950087885293, -0.2691007991990882, 0.20236168550439704, 0.41995975536754404, 0.5650251352763087]}
+
+# paths = {'x': [8.029670841869027, 7.907309892831712, 5.827173759197366, 6.194256606309309, 6.561339453421253, 6.642913419446129, 7.29550514764514, 8.355966705968532, 10.069019992490936, 11.53735138093871, 12.597812939262102, 13.128043718423799, 13.291191650473552, 13.413552599510867, 13.495126565535742], 'y': [2.617343319498325, 2.617343319498325, 1.387066829332934, 0.8804823922060081, 0.337713352427159, -0.13268648204784356, -0.7478247271305393, -1.1820399589536186, -1.4353321775170815, -1.3629629722132348, -0.7116401244786159, -0.27742489265553666, 0.08442113386369608, 2.2554972929790926, 2.5087895115425556]}
+# paths = {'x': [-1.7737580021613741, -2.275711448823683, -2.538639444694416, -2.6581521700902035, -2.6581521700902035, -2.2996139939028404, -1.8693681824780044, -1.415219825974011, -0.12448239169950294, 0.01893287877544239, 0.18625069432954527, 0.9033270467042719, 1.333572858129108, 2.074551755582992, 2.337479751453725, 2.839433198116034, 3.2218739193825545, 3.795535001282336, 5.3252978863484195, 5.468713156823365, 5.588225882219152, 5.731641152694098, 5.731641152694098, 4.966759710161056, 3.9628528168364388, 3.150166284145082, 2.624310292403616, 1.9311364851080468, 1.4052804933665806, 1.21406013273332, 1.0945474073375323], 'y': [8.410500041529634, 7.8827167317083955, 7.291599424708609, 6.721593450101673, 6.130476143101887, 5.138243520637959, 4.462680884066774, 3.871563577066988, 1.5915396786392406, 1.2326470279607988, 0.5570843913896144, -1.3640468563596913, -2.0607208253237252, -2.6096154675378127, -2.7573947942877592, -2.9262854534305553, -2.9685081182162545, -2.905174121037706, -2.4829474731807157, -2.377390811216468, -2.166277487287973, -0.815152214145604, -0.49848222825286126, 1.4648716842821436, 3.449336929209998, 4.948241529102313, 6.130476143101887, 7.24937675992291, 8.55827936827958, 9.212730672457916, 9.466066661172109]}
+
+# gmp
+# paths = {'x': [-2.20400381358621, -2.8971776208817794, -3.7576692437314514, -3.8054743338897663, -3.446936157702403, -2.9927878011984097, -1.463024916132326, -1.080584194865805, 1.11844995241669, 1.9550390301872043, 2.3852848416120405, 3.0067510136701365, 3.197971374303397, 3.197971374303397, 2.1701619358996225, 1.6204033990789986, 1.1423524974958474, 1.0945474073375323], 'y': [8.051607390851192, 6.679370785315974, 5.264911514995056, 4.65268287560242, 4.188233562959731, 3.744895582709891, 2.9426649517816097, 2.8159969574245123, 2.879330954603061, 3.111555610924406, 3.3648915996385997, 4.20934489535258, 4.779350869959517, 5.602692833280648, 7.7138260725656, 8.642724697850978, 9.276064669636463, 9.276064669636463]}
+
+polygon = np.array([paths["x"], paths["y"]]).T
+
+import matplotlib.path as mpath
+path = mpath.Path(polygon)
+inside = path.contains_points(np.array([adata.obsm["X_umap2"][:, 0], adata.obsm["X_umap2"][:, 1]]).T)
+
+# %%
+adata.obs["inside"] = pd.Series(inside, index = adata.obs.index).astype(int)
+sc.pl.embedding(adata, color = "inside", basis = "umap2")
+
+# %% [markdown]
+# ### Filter on inside
+
+# %%
+adata2 = adata[inside]
+inside.sum()
+
+# %%
+sc.pl.embedding(adata2, color = gene_id(["SPI1", "CDK1", "PCNA", "HBB", "PTPRC"]), use_raw = False, layer = "normalized", basis = "umap2")
+
+# %%
+adata.obs["inside"] = pd.Categorical(inside)
+sc.tl.rank_genes_groups(adata, groupby = "inside")
+diffexp = sc.get.rank_genes_groups_df(adata, group = "True")
+diffexp["symbol"] = adata.var.loc[diffexp["names"], "symbol"].values
+
+# %%
+plotdata2 = adata2.obs.copy()
+plotdata2["umap1"] = adata2.obsm["X_umap2"][:, 0]
+plotdata2["umap2"] = adata2.obsm["X_umap2"][:, 1]
+
+# symbol = "BIRC5"
+# symbol = "PCNA"
+# symbol = "PTPRC"
+# symbol = "SPI1"
+# symbol = "GATA2"
+# symbol = "GATA1"
+# symbol = "FOS"
+# symbol = "SPI1"
+# symbol = "CCR2"
+# symbol = "AFF3"
+# symbol = "MPO"
+# symbol = "ACTB"
+# symbol = "E2F2"
+# symbol = "MKI67"
+symbol = "ERG"
+
+plotdata2["expression"] = sc.get.obs_df(adata2, gene_id([symbol]), layer = "normalized")
+
+# %%
+plotdata2.groupby("phase")["expression"].mean()
+
+# %%
+sns.boxplot(x = "phase", y = "expression", data = plotdata2)
+
+# %%
+fig, ax = plt.subplots()
+ax.scatter(plotdata2["G2M_score"], plotdata2["expression"])
+sns.regplot(x = plotdata2["G2M_score"], y = plotdata2["expression"], ax = ax)
+
+import scipy.stats
+# (scipy.stats.linregress(plotdata2["G2M_score"], plotdata2["expression"]).slope)
+np.exp(scipy.stats.linregress(plotdata2["G2M_score"], plotdata2["expression"]).slope)
+
+# %%
+sc.pl.umap(transcriptome.adata, color = [transcriptome.gene_id("CCR2"), transcriptome.gene_id("AFF3")], use_raw = False, layer = "normalized") 

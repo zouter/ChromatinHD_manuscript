@@ -47,7 +47,10 @@ manuscript = Manuscript(chd.get_git_root() / "manuscript")
 # ### Download CRISPRi data
 
 # %%
-file = chd.get_output() / "data" / "crispri" / "nasser_2021" / "41586_2021_3446_MOESM5_ESM.txt"
+folder = chd.get_output() / "data" / "crispri" / "nasser_2021"
+
+# %%
+file = folder / "41586_2021_3446_MOESM5_ESM.txt"
 file.parent.mkdir(parents=True, exist_ok=True)
 
 import requests
@@ -101,6 +104,12 @@ data_orig["Gene"].value_counts()
 plotdata = data_orig.query("Gene == 'CD40'")
 fig, ax = plt.subplots(figsize = (30, 2))
 ax.plot(plotdata["start"], plotdata["HS_LS_logratio"], ".")
+
+# %% [markdown]
+# ### Store
+
+# %%
+data.to_csv(folder / "data.tsv", sep = "\t", index = False)
 
 # %% [markdown]
 # ### Load interpretation

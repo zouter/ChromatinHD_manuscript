@@ -44,41 +44,27 @@ manuscript = Manuscript(chd.get_git_root() / "manuscript")
 folder_root = chd.get_output()
 folder_data = folder_root / "data"
 
-# transcriptome
-# dataset_name = "lymphoma"
 dataset_name = "pbmc10k"
-# dataset_name = "pbmc10k_gran"
-# dataset_name = "e18brain"
 folder_data_preproc = folder_data / dataset_name
 
-transcriptome = chd.data.Transcriptome(folder_data_preproc / "transcriptome")
+transcriptome = chd.data.Transcriptome(chd.get_output() / "datasets" / dataset_name / "transcriptome")
 
-splitter = "random_5fold"
-promoter_name, window = "10k10k", np.array([-10000, 10000])
-prediction_name = "v20_initdefault"
+splitter = "5x5"
+regions_name, window = "100k100k", np.array([-100000, 100000])
+prediction_name = "v33"
+layer = "magic"
 
-splitter = "permutations_5fold5repeat"
-promoter_name, window = "10k10k", np.array([-10000, 10000])
-prediction_name = "v20"
-
-splitter = "permutations_5fold5repeat"
-promoter_name, window = "100k100k", np.array([-100000, 100000])
-prediction_name = "v20_initdefault"
-
-# fragments
-promoters = pd.read_csv(
-    folder_data_preproc / ("promoters_" + promoter_name + ".csv"), index_col=0
-)
-window_width = window[1] - window[0]
+fragments = chd.data.Fragments(chd.get_output() / "datasets" / dataset_name / "fragments" / regions_name)
 
 # %%
 print(prediction_name)
 prediction = chd.flow.Flow(
     chd.get_output()
-    / "prediction_positional"
+    / "pred"
     / dataset_name
-    / promoter_name
+    / regions_name
     / splitter
+    / layer
     / prediction_name
 )
 
@@ -104,14 +90,15 @@ genes_oi = transcriptome.gene_id(
 genes_oi = sorted(list(set([*genes_oi, *transcriptome.var.index])))
 
 # %%
-outputs_dir = chd.get_git_root() / "tmp" / "pooling"
+outputs_dir = chd.get_git_root() / "tmp" / "pooling3"
 outputs_dir.mkdir(exist_ok=True)
+# # !rm -rf {outputs_dir}/*
 
 # %% [markdown]
 # ## HiC distance correspondence
 
 # %%
-hic_file = folder_data_preproc / "hic" / promoter_name / f"{cool_name}.pkl"
+hic_file = folder_data_preproc / "hic" / regions_name / f"{cool_name}.pkl"
 gene_hics = pd.read_pickle(hic_file)
 
 # %%
@@ -153,6 +140,10 @@ distslices = pd.DataFrame(
 
 
 # %%
+regionpairwindow = chd.models.pred.interpret.RegionPairWindow(prediction.path / "scoring" / "regionpairwindow2")
+regionmultiwindow = chd.models.pred.interpret.RegionMultiWindow(prediction.path / "scoring" / "regionmultiwindow2")
+
+# %%
 for gene in tqdm.tqdm(genes_oi):
     if cool_name == "rao_2014_1kb":
         pooling_file = outputs_dir / (gene + ".pkl")
@@ -161,37 +152,44 @@ for gene in tqdm.tqdm(genes_oi):
     if (pooling_file).exists():
         pooling_scores = pd.read_pickle(pooling_file)
     else:
-        # load scores
-        scores_folder = prediction.path / "scoring" / "pairwindow_gene" / gene
-        interaction_file = scores_folder / "interaction.pkl"
-
-        if interaction_file.exists():
-            scores_oi = pd.read_pickle(interaction_file).assign(gene=gene).reset_index()
-        else:
-            # print("No scores found")
+        if gene not in regionpairwindow.interaction:
             continue
 
+        scores_oi = regionpairwindow.interaction[gene].mean("fold").to_dataframe("cor").reset_index()
+
         if len(scores_oi) == 0:
-            # print("No significant windows")
             continue
 
         # load hic
-        promoter = promoters.loc[gene]
+        promoter = fragments.regions.coordinates.loc[gene]
         if gene not in gene_hics:
             continue
+        print(gene)
         hic, bins_hic = gene_hics[gene]
         # hic, bins_hic = chdm.hic.extract_hic(promoter)
         hic, bins_hic = chdm.hic.clean_hic(hic, bins_hic)
 
         # match
+        scores_oi["window1_mid"] = regionmultiwindow.design.loc[scores_oi["window1"], "window_mid"].values
+        scores_oi["window2_mid"] = regionmultiwindow.design.loc[scores_oi["window2"], "window_mid"].values
         scores_oi["hicwindow1"] = chdm.hic.match_windows(
-            scores_oi["window1"].values, bins_hic
+            scores_oi["window1_mid"].values, bins_hic
         )
         scores_oi["hicwindow2"] = chdm.hic.match_windows(
-            scores_oi["window2"].values, bins_hic
+            scores_oi["window2_mid"].values, bins_hic
         )
 
         scores_oi["cor"] = np.clip(scores_oi["cor"], 0, np.inf)
+
+        # optionally filter on score
+        deltacor = regionmultiwindow.scores["deltacor"].sel_xr(gene).sel(phase = "test").mean("fold").to_pandas()
+        deltacor = deltacor.loc[np.unique(scores_oi[["window1", "window2"]].values.flatten())]
+        windows_oi = deltacor.index[deltacor < -0.0001]
+        len(windows_oi)
+
+        scores_oi = scores_oi.loc[
+            (scores_oi["window1"].isin(windows_oi)) & (scores_oi["window2"].isin(windows_oi))
+        ]
 
         import scipy.stats
 
@@ -311,6 +309,7 @@ diffexp = (
         group="oi",
     )
     .rename(columns={"names": "gene"})
+    .query("gene in @transcriptome.var.index")
     .assign(symbol=lambda x: transcriptome.var.loc[x["gene"], "symbol"].values)
     .set_index("gene")
 )
@@ -321,7 +320,6 @@ genes_diffexp = diffexp.query("pvals_adj < 0.05").query("logfoldchanges > 0.1").
 # %%
 gene_scores_diffexp = gene_scores.query("gene in @genes_diffexp")
 gene_scores_nondiffexp = gene_scores.query("gene not in @genes_diffexp")
-# %%
 # %%
 gene_scores.query("k == 0")["logodds"].hist()
 gene_scores_diffexp.query("k == 0")["logodds"].hist()
@@ -411,7 +409,7 @@ print(f"odds = {odds_diffexp:.2f}, q90 = {q90_diffexp:.2f}, q10 = {q10_diffexp:.
 import IPython.display
 
 IPython.display.Markdown(
-    f"""Furthermore, when we compared the local co-predictivity with increasingly max-pooled DNA proximity signals, the concordance between the two measurements increased up to 2-fold at about 5kb of max-pooling (FIG:maxpool_hic_copredictivity#, odds = {odds:.2f}, q10-q90 across genes = {q10_diffexp:.2f}-{q90_diffexp:.2f}), bringing it in line with that observed in co-accessibility analyses [@plinerCiceroPredictsCisRegulatory2018]."""
+    f"""Furthermore, when we compared the local co-predictivity with increasingly max-pooled DNA proximity signals, the concordance between the two measurements increased up to 2-fold at about 5kb of max-pooling (FIG:maxpool_hic_copredictivity#, odds = {odds_diffexp:.2f}, q10-q90 across genes = {q10_diffexp:.2f}-{q90_diffexp:.2f}), bringing it in line with that observed in co-accessibility analyses [@plinerCiceroPredictsCisRegulatory2018]."""
 )
 
 # %%

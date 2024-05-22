@@ -41,9 +41,9 @@ import io
 import chromatinhd as chd
 
 # %%
-for dataset_name in ["pbmc10k", "hspc", "e18brain", "lymphoma", "pbmc10k_gran"]:
+for dataset_name in ["pbmc10k", "hspc", "e18brain", "lymphoma", "pbmc10k_gran", "pbmc10kx", "liver", "hepatocytes", "pbmc3k-pbmc10k", "lymphoma-pbmc10k", "pbmc10k_gran-pbmc10k", "pbmc10kx-pbmc10k", "hspc_cycling", "hspc_meg_cycling", "hspc_gmp_cycling"]:
     dataset_folder = chd.get_output() / "datasets" / dataset_name
-    fragments = chd.data.Fragments(dataset_folder / "fragments" / promoter_name)
+    fragments = chd.data.Fragments(dataset_folder / "fragments" / "100k100k")
     folds = chd.data.folds.Folds(dataset_folder / "folds" / "5x1", reset = True)
     folds.sample_cells(fragments, 5)
 

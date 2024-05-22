@@ -69,19 +69,22 @@ import requests
 
 # %%
 # # !pip install owlready2
-# # !wget http://www.ebi.ac.uk/efo/efo.owl
+if not (folder_qtl / "efo.owl").exists():
+    # !wget http://www.ebi.ac.uk/efo/efo.owl -O {folder_qtl}/efo.owl
 
 # %%
 import owlready2
 
 # %%
-onto = owlready2.get_ontology("efo.owl").load()
+onto = owlready2.get_ontology(str(folder_qtl / "efo.owl")).load()
 
 # %%
-immune_system_disease = onto.search(iri="http://www.ebi.ac.uk/efo/EFO_0000540")[0]
+parent = onto.search(iri="http://www.ebi.ac.uk/efo/EFO_0000540")[0] # immune system disease
+parent = onto.search(iri="http://www.ebi.ac.uk/efo/EFO_0000589")[0] # metabolic disease
+parent = onto.search(iri="http://www.ebi.ac.uk/efo/EFO_0001421")[0] # liver disease
 
 # %%
-children = onto.search(subclass_of=immune_system_disease)
+children = onto.search(subclass_of=parent)
 
 # %%
 rdf = onto.get_namespace("http://www.w3.org/2000/01/rdf-schema#")
@@ -111,16 +114,35 @@ diseases = qtl.groupby("disease/trait").size().sort_values(ascending=False)
 trait_counts = qtl["disease/trait"].value_counts()
 
 # %%
-trait_counts.loc[trait_counts.index.str.contains("lymph")]
+import re
+traits_oi = pd.DataFrame([
+    *trait_counts.loc[trait_counts.index.str.contains("brain", flags = re.IGNORECASE)][:20].index,
+    *trait_counts.loc[trait_counts.index.str.contains("neuroblastoma", flags = re.IGNORECASE)][:10].index,
+    *trait_counts.loc[trait_counts.index.str.contains("alzheimer", flags = re.IGNORECASE)][:10].index,
+    *trait_counts.loc[trait_counts.index.str.contains("microglia", flags = re.IGNORECASE)][:10].index,
+    *trait_counts.loc[trait_counts.index.str.contains("parkinson", flags = re.IGNORECASE)][:10].index,
+    *trait_counts.loc[trait_counts.index.str.contains("schizophrenia", flags = re.IGNORECASE)][:10].index,
+    *trait_counts.loc[trait_counts.index.str.contains("bipolar", flags = re.IGNORECASE)][:10].index,
+    *trait_counts.loc[trait_counts.index.str.contains("autism", flags = re.IGNORECASE)][:10].index,
+    *trait_counts.loc[trait_counts.index.str.contains("attention-deficit")][:10].index,
+    *trait_counts.loc[trait_counts.index.str.contains("sclerosis", flags = re.IGNORECASE)][:10].index,
+    *trait_counts.loc[trait_counts.index.str.contains("epilepsy", flags = re.IGNORECASE)][:10].index,
+    *trait_counts.loc[trait_counts.index.str.contains("migraine", flags = re.IGNORECASE)][:10].index,
+], columns = ["disease/trait"]).set_index("disease/trait"); motifscan_name = "gwas_cns"
 
-# %%
-trait_counts.head(250).iloc[200:250]
+# traits_oi = pd.DataFrame([[x] for x in [
+#     "Cholangiocarcinoma in primary sclerosing cholangitis",
+#     "Cholangiocarcinoma in primary sclerosing cholangitis (time to event)",
+#     *trait_counts.loc[trait_counts.index.str.contains("Liver")][:10].index,
+#     *trait_counts.loc[trait_counts.index.str.contains("liver")][:10].index,
+#     *trait_counts.loc[trait_counts.index.str.contains("Cholesterol")][:10].index,
+#     *trait_counts.loc[trait_counts.index.str.contains("glucose")][:5].index,
+#     *trait_counts.loc[trait_counts.index.str.contains("Hepat")][:5].index,
+#     *trait_counts.loc[trait_counts.index.str.contains("hepat")][:5].index,
+#     "Lipid metabolism phenotypes",
+# ]], columns = ["disease/trait"]).set_index("disease/trait")
+# motifscan_name = "gwas_liver"
 
-# %%
-# traits_oi = pd.DataFrame([
-#     ["Attention deficit hyperactivity disorder or autism spectrum disorder or intelligence (pleiotropy)"],
-#     ["Alzheimer’s disease polygenic risk score (upper quantile vs lower quantile)"],
-# ], columns = ["disease/trait"]).set_index("disease/trait"); motifscan_name = "gwas_cns"
 
 # traits_oi = pd.DataFrame([
 #     ["Chronic lymphocytic leukemia"],
@@ -129,65 +151,77 @@ trait_counts.head(250).iloc[200:250]
 #     ["Childhood ALL/LBL (acute lymphoblastic leukemia/lymphoblastic lymphoma) treatment-related venous thromboembolism"],
 #     ["B-cell malignancies (chronic lymphocytic leukemia, Hodgkin lymphoma or multiple myeloma) (pleiotropy)"],
 #     ["Non-Hodgkin's lymphoma"],
-# ], columns = ["disease/trait"]).set_index("disease/trait"); motifscan_name = "gwas_lymphoma"
+# ], columns = ["disease/trait"]).set_index("disease/trait")
+# motifscan_name = "gwas_lymphoma"
 
-traits_oi = pd.DataFrame(
-    [
-        ["Multiple sclerosis"],
-        ["Type 1 diabetes"],
-        ["Inflammatory bowel disease"],
-        ["Crohn's disease"],
-        ["Systemic lupus erythematosus"],
-        ["Rheumatoid arthritis"],
-        ["Ankylosing spondylitis"],
-        ["Hodgkin's lymphoma"],
-        ["Psoriasis"],
-        ["Post bronchodilator FEV1/FVC ratio in COPD"],
-        ["Non-Hodgkin's lymphoma"],
-        ["Core binding factor acute myeloid leukemia"],
-        ["Chronic lymphocytic leukemia"],
-        ["Interleukin-6 levels"],
-        ["Interleukin-18 levels"],
-        [
-            "6-month creatinine clearance change response to tenofovir treatment in HIV infection (treatment arm interaction)"
-        ],
-        [
-            "Time-dependent creatinine clearance change response to tenofovir treatment in HIV infection (time and treatment arm interaction)"
-        ],
-        ["Autoimmune thyroid disease"],
-        ["IgG glycosylation"],
-        ["Asthma"],
-        ["Allergic disease (asthma, hay fever or eczema)"],
-        ["High IL-1beta levels in gingival crevicular fluid"],
-        ["C-reactive protein levels (MTAG)"],
-        ["Behcet's disease"],
-        ["Neutrophil count"],
-        ["Eosinophil counts"],
-        ["Monocyte count"],
-        ["Lymphocyte count"],
-        ["Endometriosis"],
-        ["Medication use (thyroid preparations)"],
-        ["Basophil count"],
-        [
-            "Acute graft versus host disease in bone marrow transplantation (recipient effect)"
-        ],
-        ["Selective IgA deficiency"],
-        ["Lymphocyte-to-monocyte ratio"],
-        ["COVID-19"],
-        ["C-reactive protein"],
-    ],
-    columns=["disease/trait"],
-).set_index("disease/trait")
-motifscan_name = "gwas_immune"
-# traits_oi
+# traits_oi = pd.DataFrame(
+#     [
+#         ["Multiple sclerosis"],
+#         ["Type 1 diabetes"],
+#         ["Inflammatory bowel disease"],
+#         ["Crohn's disease"],
+#         ["Systemic lupus erythematosus"],
+#         ["Rheumatoid arthritis"],
+#         ["Ankylosing spondylitis"],
+#         ["Hodgkin's lymphoma"],
+#         ["Psoriasis"],
+#         ["Post bronchodilator FEV1/FVC ratio in COPD"],
+#         ["Non-Hodgkin's lymphoma"],
+#         ["Core binding factor acute myeloid leukemia"],
+#         ["Chronic lymphocytic leukemia"],
+#         ["Interleukin-6 levels"],
+#         ["Interleukin-18 levels"],
+#         [
+#             "6-month creatinine clearance change response to tenofovir treatment in HIV infection (treatment arm interaction)"
+#         ],
+#         [
+#             "Time-dependent creatinine clearance change response to tenofovir treatment in HIV infection (time and treatment arm interaction)"
+#         ],
+#         ["Autoimmune thyroid disease"],
+#         ["IgG glycosylation"],
+#         ["Asthma"],
+#         ["Allergic disease (asthma, hay fever or eczema)"],
+#         ["High IL-1beta levels in gingival crevicular fluid"],
+#         ["C-reactive protein levels (MTAG)"],
+#         ["Behcet's disease"],
+#         ["Neutrophil count"],
+#         ["Eosinophil counts"],
+#         ["Monocyte count"],
+#         ["Lymphocyte count"],
+#         ["Endometriosis"],
+#         ["Medication use (thyroid preparations)"],
+#         ["Basophil count"],
+#         [
+#             "Acute graft versus host disease in bone marrow transplantation (recipient effect)"
+#         ],
+#         ["Selective IgA deficiency"],
+#         ["Lymphocyte-to-monocyte ratio"],
+#         ["COVID-19"],
+#         ["C-reactive protein"],
+#     ],
+#     columns=["disease/trait"],
+# ).set_index("disease/trait")
+# motifscan_name = "gwas_immune"
+
+# traits_oi = pd.DataFrame([
+#     *trait_counts.loc[trait_counts.index.str.contains("erythro", flags = re.IGNORECASE)][:20].index,
+#     *trait_counts.loc[trait_counts.index.str.contains("red blood", flags = re.IGNORECASE)][:20].index,
+#     *trait_counts.loc[trait_counts.index.str.contains("hematocrit", flags = re.IGNORECASE)][:20].index,
+#     *trait_counts.loc[trait_counts.index.str.contains("hemoglobin", flags = re.IGNORECASE)][:20].index,
+#     *trait_counts.loc[trait_counts.index.str.contains("red cell", flags = re.IGNORECASE)][:20].index,
+# ], columns = ["disease/trait"]).set_index("disease/trait"); motifscan_name = "gwas_hema"
 
 # %%
-traits_oi = traits_oi.loc[~traits_oi.index.duplicated()].reset_index()
-manuscript.store_supplementary_table(traits_oi, f"traits_{motifscan_name}")
+traits_oi.to_csv(folder_qtl / f"traits_{motifscan_name}.tsv", sep="\t", index=True) # store for other databases where we want to reuse the same traits, e.g. causaldb
+traits_oi = traits_oi.loc[~traits_oi.index.duplicated()]
+manuscript.store_supplementary_table(traits_oi.reset_index(), f"traits_{motifscan_name}")
 
 # %%
 qtl = qtl.loc[qtl["disease/trait"].isin(traits_oi.index)]
-qtl
+qtl.shape
+
+# %%
+qtl["disease/trait"].value_counts()
 
 # %%
 qtl["snps_split"] = qtl["snps"].str.split("; ")
@@ -228,6 +262,7 @@ len(lddb)
 np.sum([len(ld) + 1 for ld in lddb.values()])
 
 # %%
+# number of non-ld snps
 np.mean([len(ld) == 0 for ld in lddb.values()])
 
 # %%
@@ -366,254 +401,6 @@ for snps in tqdm.tqdm(chunks):
 # %%
 snp_info.to_pickle(folder_qtl / ("snp_info_" + motifscan_name + ".pkl"))
 
-# %% [markdown]
-# ## Create
-
 # %%
-folder_root = chd.get_output()
-folder_data = folder_root / "data"
-
-# dataset_name = "lymphoma"
-dataset_name = "pbmc10k"
-# dataset_name = "e18brain"
-# dataset_name = "alzheimer"
-# dataset_name = "brain"
-
-# dataset_name = "FLI1_7"
-# dataset_name = "PAX2_7"
-# dataset_name = "NHLH1_7"
-# dataset_name = "CDX2_7"
-# dataset_name = "CDX1_7"
-# dataset_name = "MSGN1_7"
-# dataset_name = "KLF4_7"
-# dataset_name = "KLF5_7"
-# dataset_name = "PTF1A_4"
-
-folder_data_preproc = folder_data / dataset_name
-
-transcriptome = chd.data.Transcriptome(folder_data_preproc / "transcriptome")
-
-# %%
-promoter_name, window = "10k10k", np.array([-10000, 10000])
-promoter_name, window = "100k100k", np.array([-100000, 100000])
-# promoter_name, window = "1k1k", np.array([-1000, 1000])
-promoters = pd.read_csv(
-    folder_data_preproc / ("promoters_" + promoter_name + ".csv"), index_col=0
-)
-
-# %% [markdown]
-# ### Link QTLs to SNP location
-
-# %%
-chromosomes = promoters["chr"].unique()
-
-# %%
-motifscan_name = "gwas_immune"
-
-# %%
-snp_info = pickle.load((chd.get_output() / "snp_info.pkl").open("rb"))
-qtl_mapped = pd.read_pickle(folder_qtl / ("qtl_mapped_" + motifscan_name + ".pkl"))
-qtl_mapped.index = np.arange(len(qtl_mapped))
-association = qtl_mapped.join(snp_info, on="snp")
-association = association.loc[~pd.isnull(association["start"])]
-association["pos"] = association["start"].astype(int)
-
-# %%
-import pybedtools
-
-# %%
-promoters["start"] = np.clip(promoters["start"], 0, np.inf)
-
-# %%
-association_bed = pybedtools.BedTool.from_dataframe(
-    association.reset_index()[["chr", "pos", "pos", "index"]]
-)
-promoters_bed = pybedtools.BedTool.from_dataframe(promoters[["chr", "start", "end"]])
-intersection = association_bed.intersect(promoters_bed)
-association = association.loc[intersection.to_dataframe()["name"].unique()]
-
-# %%
-chromosome_mapping = pd.Series(np.arange(len(chromosomes)), chromosomes)
-promoters["chr_int"] = chromosome_mapping[promoters["chr"]].values
-
-# %%
-association = association.loc[association.chr.isin(chromosomes)].copy()
-
-# %%
-association["chr_int"] = chromosome_mapping[association["chr"]].values
-
-# %%
-association = association.sort_values(["chr_int", "pos"])
-
-# %%
-assert np.all(
-    np.diff(association["chr_int"].to_numpy()) >= 0
-), "Should be sorted by chr"
-
-# %%
-motif_col = "disease/trait"
-
-# %%
-association[motif_col] = association[motif_col].astype("category")
-
-# %%
-len(association["snp"].unique())
-
-# %%
-assert association[motif_col].dtype.name == "category"
-
-# %%
-n = []
-
-position_ixs = []
-motif_ixs = []
-scores = []
-
-for gene_ix, promoter_info in enumerate(promoters.itertuples()):
-    chr_int = promoter_info.chr_int
-    chr_start = np.searchsorted(association["chr_int"].to_numpy(), chr_int)
-    chr_end = np.searchsorted(association["chr_int"].to_numpy(), chr_int + 1)
-
-    pos_start = chr_start + np.searchsorted(
-        association["pos"].iloc[chr_start:chr_end].to_numpy(), promoter_info.start
-    )
-    pos_end = chr_start + np.searchsorted(
-        association["pos"].iloc[chr_start:chr_end].to_numpy(), promoter_info.end
-    )
-
-    qtls_promoter = association.iloc[pos_start:pos_end].copy()
-    qtls_promoter["relpos"] = qtls_promoter["pos"] - promoter_info.start
-
-    if promoter_info.strand == -1:
-        qtls_promoter = qtls_promoter.iloc[::-1].copy()
-        qtls_promoter["relpos"] = -qtls_promoter["relpos"] + (window[1] - window[0]) + 1
-
-    # if promoter_info.chr == 'chr6':
-    #     qtls_promoter = qtls_promoter.loc[[]]
-
-    n.append(len(qtls_promoter))
-
-    position_ixs += (
-        (qtls_promoter["relpos"] + (gene_ix * (window[1] - window[0])))
-        .astype(int)
-        .tolist()
-    )
-    motif_ixs += (qtls_promoter[motif_col].cat.codes.values).astype(int).tolist()
-    scores += [1] * len(qtls_promoter)
-
-# %% [markdown]
-# Control with sequence
-
-# %%
-# onehot_promoters = pickle.load((folder_data_preproc / ("onehot_promoters_" + promoter_name + ".pkl")).open("rb"))
-# qtls_promoter.groupby("snp").first().head(20)
-# onehot_promoters[gene_ix, 11000]
-
-# %%
-promoters["n"] = n
-
-# %%
-(promoters["n"] == 0).mean()
-
-# %%
-promoters.sort_values("n", ascending=False).head(30).assign(
-    symbol=lambda x: transcriptome.symbol(x.index).values
-)
-
-# %%
-promoters.sort_values("n", ascending=False).assign(
-    symbol=lambda x: transcriptome.symbol(x.index).values
-).set_index("symbol").loc["POU2AF1"]
-
-# %%
-motifs_oi = association[[motif_col]].groupby([motif_col]).first()
-motifs_oi["n"] = association.groupby(motif_col).size()
-
-# %%
-motifs_oi.sort_values("n", ascending=False)
-
-# %%
-import scipy.sparse
-
-# convert to csr, but using coo as input
-motifscores = scipy.sparse.csr_matrix(
-    (scores, (position_ixs, motif_ixs)),
-    shape=(len(promoters) * (window[1] - window[0]), motifs_oi.shape[0]),
-)
-
-# %% [markdown]
-# ### Save
-
-# %%
-import chromatinhd as chd
-
-# %%
-motifscan = chd.data.Motifscan(
-    chd.get_output() / "motifscans" / dataset_name / promoter_name / motifscan_name
-)
-
-# %%
-association.to_pickle(motifscan.path / "association.pkl")
-
-# %%
-motifscan.indices = motifscores.indices
-motifscan.indptr = motifscores.indptr
-motifscan.data = motifscores.data
-motifscan.shape = motifscores.shape
-
-# %%
-motifscan
-
-# %%
-pickle.dump(motifs_oi, open(motifscan.path / "motifs.pkl", "wb"))
-
-# %%
-motifscan.n_motifs = len(motifs_oi)
-
-# %% [markdown]
-# ### Plot qtls in promoter
-
-# %%
-promoter = pd.Series(
-    {
-        "tss": 102777449,
-        "strand": 1,
-        "chr": "chr14",
-        "start": 102767449,
-        "end": 102787449,
-        "n": 33,
-    }
-)
-
-# %%
-association_oi = (
-    association.query("chr == @promoter.chr")
-    .query("start > @promoter.start")
-    .query("end < @promoter.end")
-)
-association_oi = association_oi.query(
-    "`disease/trait` == 'Systemic lupus erythematosus'"
-).copy()
-association_oi["relpos"] = (association_oi["pos"] - promoter["tss"]) * (
-    promoter["strand"]
-)
-
-# %%
-fig, ax = plt.subplots()
-for _, q in association_oi.iterrows():
-    ax.axvline(q["relpos"])
-ax.set_xlim(association_oi["relpos"].min(), association_oi["relpos"].max())
-
-# %%
-pos_oi = -10000
-association_oi.assign(dist=lambda x: abs(x.relpos - pos_oi)).sort_values("dist").head(
-    10
-)
-
-# %%
-# !ls -lh {motifscan.path}
-
-# %%
-snp_info_oi = snp_info.loc[qtl_mapped["snp"].unique()]
 
 # %%

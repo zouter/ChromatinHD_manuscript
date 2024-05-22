@@ -9,26 +9,31 @@ import matplotlib.pyplot as plt
 import pickle
 import copy
 import tqdm.auto as tqdm
+import time
 
 from design import (
     dataset_splitter_method_combinations as design,
 )
-from params import params
+from params import params, binwidth_titration, w_delta_p_scale_design, binwidth_combinations
 
 device = "cuda:0"
 
 
 design = design.query("dataset == 'pbmc10k/subsets/top250'")
 design = design.query("clustering == 'leiden_0.1'")
-# design = design.query("regions == '10k10k'")
+design = design.query("regions == '100k100k'")
 # design = design.query("method == 'binary_shared_lowrank_[5k,1k,500,100,50,25]bw'")
 # design = design.query("method == 'binary_shared_[5k,1k,500,100,50,25]bw'")
 # design = design.query("method == 'binary_split_[5k,1k,500,100,50,25]bw'")
+# design = design.loc[design["method"].isin(["v31"])]
+# design = design.loc[design["method"].isin(["v31", "v31_wdeltareg-no"])]
+design = design.loc[design["method"].isin(w_delta_p_scale_design["label"])]
+# design = design.loc[design["method"].isin(binwidth_combinations["label"])]
 
 design = design.copy()
 design["force"] = False
 dry_run = False
-# design["force"] = True
+design["force"] = True
 # dry_run = True
 
 print(design)
@@ -64,6 +69,8 @@ for (dataset_name, regions_name), subdesign in design.groupby(["dataset", "regio
             if performance.scores["scored"].sel_xr().all() and not force:
                 continue
 
+            start = time.time()
+
             if method_info["model_params"]["encoder"] == "shared_lowrank":
                 method_info["model_params"]["encoder_params"]["transcriptome"] = transcriptome
 
@@ -82,3 +89,8 @@ for (dataset_name, regions_name), subdesign in design.groupby(["dataset", "regio
             models.train_models()
 
             performance.score(models)
+
+            end = time.time()
+            print(f"{end - start:.2f} seconds")
+
+            pickle.dump({"time": end - start}, (prediction.path / "scoring" / "time.pkl").open("wb"))

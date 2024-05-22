@@ -64,7 +64,7 @@ dataset_latent_peakcaller_diffexp_combinations = pd.concat(
         ),
         chd.utils.crossing(
             dataset_latent_peakcaller_combinations.query(
-                "peakcaller in ['cellranger', 'macs2_improved', 'macs2_leiden_0.1_merged']"
+                "peakcaller in ['cellranger', 'macs2_improved', 'macs2_leiden_0.1_merged', 'macs2_summits']"
             ),
             pd.DataFrame(
                 {

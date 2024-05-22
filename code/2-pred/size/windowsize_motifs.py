@@ -46,53 +46,30 @@ from manuscript import Manuscript
 manuscript = Manuscript(chd.get_git_root() / "manuscript")
 
 # %%
-device = "cuda:0"
-# device = "cpu"
-
 folder_root = chd.get_output()
 folder_data = folder_root / "data"
 
-# transcriptome
-# dataset_name = "lymphoma"
 dataset_name = "pbmc10k"
-# dataset_name = "pbmc10k_gran"
-# dataset_name = "e18brain"
 folder_data_preproc = folder_data / dataset_name
 
-transcriptome = chd.data.Transcriptome(folder_data_preproc / "transcriptome")
+transcriptome = chd.data.Transcriptome(chd.get_output() / "datasets" / dataset_name / "transcriptome")
 
-splitter = "random_5fold"
-promoter_name, promoter_window = "10k10k", np.array([-10000, 10000])
-prediction_name = "v20_initdefault"
-outcome_source = "counts"
+splitter = "5x5"
+regions_name = "100k100k"
+prediction_name = "v33"
+layer = "magic"
 
-# splitter = "permutations_5fold5repeat"
-# promoter_name, promoter_window = "10k10k", np.array([-10000, 10000])
-# outcome_source = "magic"
-# prediction_name = "v20"
-# prediction_name = "v21"
-
-splitter = "permutations_5fold5repeat"
-promoter_name, promoter_window = "100k100k", np.array([-100000, 100000])
-prediction_name = "v20_initdefault"
-outcome_source = "magic"
-
-# fragments
-promoters = pd.read_csv(
-    folder_data_preproc / ("promoters_" + promoter_name + ".csv"), index_col=0
-)
-window_width = promoter_window[1] - promoter_window[0]
-
-fragments = chd.data.Fragments(folder_data_preproc / "fragments" / promoter_name)
-fragments.obs.index.name = "cell"
+fragments = chd.data.Fragments(chd.get_output() / "datasets" / dataset_name / "fragments" / regions_name)
 
 # %%
+print(prediction_name)
 prediction = chd.flow.Flow(
     chd.get_output()
-    / "prediction_positional"
+    / "pred"
     / dataset_name
-    / promoter_name
+    / regions_name
     / splitter
+    / layer
     / prediction_name
 )
 
@@ -101,51 +78,105 @@ genes_oi = transcriptome.var.index
 # genes_oi = transcriptome.gene_id(["CD74"])
 
 # %%
-scores = pd.read_pickle(prediction.path / "scoring" / "windowsize_gene" / "scores.pkl")
-window_scores = pd.read_pickle(prediction.path / "scoring" / "windowsize_gene" / "window_scores.pkl")
-window_scores = window_scores.reset_index().set_index(["gene", "window"])
+models_path = chd.get_output() / "pred/pbmc10k/100k100k/5x5/magic/v33"
+regionmultiwindow = chd.models.pred.interpret.RegionMultiWindow(
+    path=models_path / "scoring" / "regionmultiwindow_100",
+)
+regionsizewindow = chd.models.pred.interpret.RegionSizeWindow(models_path / "scoring" / "regionsizewindow")
 
 # %%
-scores_folder = prediction.path / "scoring" / "window_gene" / genes_oi[0]
-window_scoring = chd.scoring.prediction.Scoring.load(scores_folder)
+len(regionsizewindow.scores.keys())
+
+    # %%
+    # score = pd.DataFrame({
+    #     "deltacor":regionmultiwindow.scores["deltacor"].sel_xr(gene).sel(phase = "test").mean("fold").sel(window = score.index.get_level_values("window").unique()),
+    #     "effect":regionmultiwindow.scores["effect"].sel_xr(gene).sel(phase = "test").mean("fold").sel(window = score.index.get_level_values("window").unique()),
+    #     "lost":regionmultiwindow.scores["lost"].sel_xr(gene).sel(phase = "test").mean("fold").sel(window = score.index.get_level_values("window").unique()),
+    # })
+
+# %%
+scores = []
+windowscores = []
+for gene in tqdm.tqdm(regionsizewindow.scores.keys()):
+    regionsizewindow.scores[gene]
+
+    scores_gene = regionsizewindow.scores[gene]
+    windows = scores_gene.coords["window"].to_pandas().str.split("_").str[0][::2]
+    deltacor = pd.DataFrame(scores_gene["deltacor"].mean("fold").values.reshape(-1, 2), index = windows, columns = [30, 100])
+    lost = pd.DataFrame(scores_gene["lost"].mean("fold").values.reshape(-1, 2), index = windows, columns = [30, 100])
+    effect = pd.DataFrame(scores_gene["effect"].mean("fold").values.reshape(-1, 2), index = windows, columns = [30, 100])
+
+    score = pd.concat([deltacor.unstack(), lost.unstack(), effect.unstack()], axis=1, keys=["deltacor", "lost", "effect"])
+    score.index.names = ["size", "window"]
+    scores.append(score.reset_index().assign(gene = gene))
+
+    windows_oi = score.index.get_level_values("window").unique()
+    windowscore = pd.DataFrame({
+        "deltacor":regionmultiwindow.scores["deltacor"].sel_xr(gene).sel(phase = "test").mean("fold").sel(window = windows_oi),
+        "effect":regionmultiwindow.scores["effect"].sel_xr(gene).sel(phase = "test").mean("fold").sel(window = windows_oi),
+        "lost":regionmultiwindow.scores["lost"].sel_xr(gene).sel(phase = "test").mean("fold").sel(window = windows_oi),
+    })
+    windowscore.index = windows_oi
+    windowscores.append(windowscore.reset_index().assign(gene = gene))
+
+scores = pd.concat(scores)
+windowscores = pd.concat(windowscores)
+
+# %%
+len(windowscores["gene"].unique())
+
 
 # %% [markdown]
 # ## Get GC content
 # %%
-onehot_promoters = pickle.load(
-    (folder_data_preproc / ("onehot_promoters_" + promoter_name + ".pkl")).open("rb")
-)
+def extract_gc(fasta, chrom, start, end, strand):
+    """
+    Extract GC content in a region
+    """
+
+    actual_start = start
+    if actual_start < 0:
+        actual_start = 0
+    seq = fasta.fetch(chrom, actual_start, end)
+    if strand == -1:
+        seq = seq[::-1]
+
+    gc = np.isin(np.array(list(seq)), ["c", "g", "C", "G"])
+
+    return gc
+
 
 # %%
-window_contents = []
-for window, window_start, window_end in tqdm.tqdm(
+import pysam
+genome = "GRCh38"
+fasta_file = f"/data/genome/{genome}/{genome}.fa"
+
+fasta = pysam.FastaFile(fasta_file)
+
+# %%
+window_contents = pd.DataFrame(index = scores.groupby(["gene", "window"]).first().index).join(regionmultiwindow.design)
+
+# %%
+window_contents["region"] = window_contents.index.get_level_values("gene")
+window_contents["start"] = window_contents["window_start"]
+window_contents["end"] = window_contents["window_end"]
+window_contents = chd.data.peakcounts.plot.uncenter_multiple_peaks(window_contents, fragments.regions.coordinates)
+
+# %%
+gcs = []
+for chrom, start, end in tqdm.tqdm(
     zip(
-        window_scoring.design.index,
-        window_scoring.design.window_start,
-        window_scoring.design.window_end,
+        window_contents.chrom,
+        window_contents.start_genome,
+        window_contents.end_genome,
     ),
-    total=len(window_scoring.design),
+    total=len(window_contents),
 ):
-    start = window_start - promoter_window[0]
-    end = window_end - promoter_window[0]
-    gc = onehot_promoters[:, start:end, [1, 2]].sum(-1).mean(-1).numpy()
-    window_contents.append(
-        {
-            "gene": genes_oi,
-            "window": np.repeat(window, gc.shape[0]),
-            "gc": gc,
-        }
-    )
-window_contents = pd.concat([pd.DataFrame(wc) for wc in window_contents]).set_index(
-    ["gene", "window"]
-)
+    gcs.append(extract_gc(fasta, chrom, start, end, 1).mean())
+window_contents["gc"] = gcs
 
 # %%
-window_contents.groupby("window").mean()["gc"].plot()
-
-# %%
-if "onehot_promoters" in globals():
-    del onehot_promoters
+window_contents.groupby("window_start").mean()["gc"].plot()
 
 # %% [markdown]
 # ## Get windowsize scores
@@ -190,8 +221,8 @@ np.corrcoef(
 )
 
 # %%
-windowsize_scores["deltacor"] = window_scores["deltacor"]
-windowsize_scores["lost"] = window_scores["lost"]
+windowsize_scores["deltacor"] = windowscores.set_index(["gene", "window"])["deltacor"]
+windowsize_scores["lost"] = windowscores.set_index(["gene", "window"])["lost"]
 
 # %%
 plt.scatter(
@@ -203,13 +234,13 @@ plt.scatter(
 # ## GC and deltacor ratio
 
 # %%
-# windowsize_scores_oi = windowsize_scores
-windowsize_scores_oi = windowsize_scores.query("(window > -10000) | (window > 10000)")
+windowsize_scores["start"] = window_contents.loc[windowsize_scores.index, "start"]
+windowsize_scores["end"] = window_contents.loc[windowsize_scores.index, "end"]
 
 # %%
-windowsize_scores_oi.join(window_contents)[
-    ["rank_deltacor_ratio", "rank_lost_ratio", "gc"]
-].corr()
+# windowsize_scores_oi = windowsize_scores
+windowsize_scores_oi = windowsize_scores.query("(start < -10000) | (start > 10000)")
+# windowsize_scores_oi = windowsize_scores.query("(start > -10000) | (start > 10000)")
 
 # %%
 plotdata = pd.DataFrame(
@@ -230,69 +261,69 @@ ax.scatter(plotdata["bin_deltacor_ratio"].astype(str), plotdata["gc"])
 # %% [markdown]
 # ## Different motifs in footprint vs submono
 # %%
-windowsize_scores["chr"] = promoters.loc[
-    windowsize_scores.index.get_level_values("gene")
-]["chr"].values
-windowsize_scores["strand"] = promoters.loc[
-    windowsize_scores.index.get_level_values("gene")
-]["strand"].values
-windowsize_scores["start"] = window_scoring.design.loc[
-    windowsize_scores.index.get_level_values("window")
-]["window_start"].values
-windowsize_scores["end"] = window_scoring.design.loc[
-    windowsize_scores.index.get_level_values("window")
-]["window_end"].values
-windowsize_scores["tss"] = promoters.loc[
-    windowsize_scores.index.get_level_values("gene")
-]["tss"].values
-windowsize_scores["gstart"] = (
-    windowsize_scores["tss"]
-    + (windowsize_scores["start"] * (windowsize_scores["strand"] == 1))
-    - (windowsize_scores["end"] * (windowsize_scores["strand"] == -1))
-).values
-windowsize_scores["gend"] = (
-    (windowsize_scores["tss"])
-    + (windowsize_scores["end"] * (windowsize_scores["strand"] == 1))
-    - (windowsize_scores["start"] * (windowsize_scores["strand"] == -1))
-).values
+windowsize_scores = windowsize_scores.drop(columns = ["start", "end"]).join(window_contents)
 
 # %%
-motifscan_folder = (
-    chd.get_output() / "motifscans" / dataset_name / promoter_name / "cutoff_0001"
-)
-if "motifscan" not in globals():
-    motifscan = chd.data.Motifscan(motifscan_folder)
+# windowsize_scores["chr"] = promoters.loc[
+#     windowsize_scores.index.get_level_values("gene")
+# ]["chr"].values
+# windowsize_scores["strand"] = promoters.loc[
+#     windowsize_scores.index.get_level_values("gene")
+# ]["strand"].values
+# windowsize_scores["start"] = window_scoring.design.loc[
+#     windowsize_scores.index.get_level_values("window")
+# ]["window_start"].values
+# windowsize_scores["end"] = window_scoring.design.loc[
+#     windowsize_scores.index.get_level_values("window")
+# ]["window_end"].values
+# windowsize_scores["tss"] = promoters.loc[
+#     windowsize_scores.index.get_level_values("gene")
+# ]["tss"].values
+# windowsize_scores["gstart"] = (
+#     windowsize_scores["tss"]
+#     + (windowsize_scores["start"] * (windowsize_scores["strand"] == 1))
+#     - (windowsize_scores["end"] * (windowsize_scores["strand"] == -1))
+# ).values
+# windowsize_scores["gend"] = (
+#     (windowsize_scores["tss"])
+#     + (windowsize_scores["end"] * (windowsize_scores["strand"] == 1))
+#     - (windowsize_scores["start"] * (windowsize_scores["strand"] == -1))
+# ).values
+# %%
+motifscan_name = "hocomocov12_1e-4"
+motifscan = chd.data.motifscan.MotifscanView(chd.get_output() / "datasets" / dataset_name / "motifscans" / regions_name / motifscan_name)
 
 # %%
-indptr = motifscan.indptr
-indices = motifscan.indices
+motifscan_counts = motifscan.count_slices(windowsize_scores)
 
 # %%
-motifscan_counts = []
-for (gene, window), y in tqdm.tqdm(
-    windowsize_scores.iterrows(), total=len(windowsize_scores)
-):
-    gene_ix = transcriptome.var.index.get_loc(gene)
+# indptr = motifscan.indptr
+# indices = motifscan.indices
+# motifscan_counts = []
+# for (gene, window), y in tqdm.tqdm(
+#     windowsize_scores.iterrows(), total=len(windowsize_scores)
+# ):
+#     gene_ix = transcriptome.var.index.get_loc(gene)
 
-    indptr_start = (
-        (gene_ix * (promoter_window[1] - promoter_window[0]))
-        + y["start"]
-        - promoter_window[0]
-    )
-    indptr_end = (
-        (gene_ix * (promoter_window[1] - promoter_window[0]))
-        + y["end"]
-        - promoter_window[0]
-    )
+#     indptr_start = (
+#         (gene_ix * (promoter_window[1] - promoter_window[0]))
+#         + y["start"]
+#         - promoter_window[0]
+#     )
+#     indptr_end = (
+#         (gene_ix * (promoter_window[1] - promoter_window[0]))
+#         + y["end"]
+#         - promoter_window[0]
+#     )
 
-    motifindices = motifscan.indices[
-        motifscan.indptr[indptr_start] : motifscan.indptr[indptr_end + 1]
-    ]
+#     motifindices = motifscan.indices[
+#         motifscan.indptr[indptr_start] : motifscan.indptr[indptr_end + 1]
+#     ]
 
-    motifcounts = np.bincount(motifindices, minlength=(motifscan.n_motifs))
+#     motifcounts = np.bincount(motifindices, minlength=(motifscan.n_motifs))
 
-    motifscan_counts.append(motifcounts)
-motifscan_counts = np.stack(motifscan_counts)
+#     motifscan_counts.append(motifcounts)
+# motifscan_counts = np.stack(motifscan_counts)
 
 # %%
 deltacor_cor = np.corrcoef(
@@ -326,7 +357,7 @@ plotdata = pd.DataFrame(
     {
         "rank_lost_ratio": windowsize_scores["rank_lost_ratio"],
         "rank_deltacor_ratio": windowsize_scores["rank_deltacor_ratio"],
-        "motifscan_counts": motifscan_counts[:, motif_oi_ix],
+        "motifscan_counts": motifscan_counts.values[:, motif_oi_ix],
     }
 )
 plotdata["bin_deltacor_ratio"] = pd.cut(
@@ -358,7 +389,7 @@ def smooth_spline_fit(x, y, x_smooth):
 
 # %%
 x = window_contents.loc[windowsize_scores.index]["gc"].values
-y = motifscan_counts[:, motif_oi_ix]
+y = motifscan_counts.values[:, motif_oi_ix]
 
 y_smooth = smooth_spline_fit(x, y, x)
 residuals = y - y_smooth
@@ -387,7 +418,7 @@ ax.scatter(x, y)
 
 # %%
 gc = window_contents.loc[windowsize_scores.index]["gc"].values
-count = motifscan_counts[:, motif_oi_ix]
+count = motifscan_counts.values[:, motif_oi_ix]
 # outcome = windowsize_scores["effect_100"]
 outcome = windowsize_scores["rank_deltacor_ratio"]
 # outcome = windowsize_scores["rank_lost_ratio"]
@@ -453,7 +484,7 @@ outcome = windowsize_scores["rank_lost_ratio"]
 # outcome = windowsize_scores["effect_100"].rank()
 # outcome = windowsize_scores["deltacor_100"].rank()
 for motif_oi_ix in tqdm.tqdm(range(motifscan_counts.shape[1])):
-    count = motifscan_counts[:, motif_oi_ix]
+    count = motifscan_counts.values[:, motif_oi_ix]
     score = score_gc_corrected(gc, count, outcome)
     score["motif"] = motifscan.motifs.index[motif_oi_ix]
     motifscores_corrected.append(score)
@@ -471,8 +502,8 @@ motifscores_corrected.sort_values("qval", ascending=True).head(20)
 motifscores_corrected.query("qval < 0.05").sort_values("r", ascending=True).head(100)
 
 # %%
-motifscores_corrected["in_diff"] = motifscan.motifs["gene"].isin(
-    transcriptome.var.index
+motifscores_corrected["in_diff"] = motifscan.motifs["HUMAN_gene_symbol"].isin(
+    transcriptome.var["symbol"]
 )
 
 # %%
@@ -486,13 +517,19 @@ motifscores_corrected.query("in_diff").query("qval < 0.1").sort_values(
 )["r"].plot()
 
 # %%
-motifscores_corrected["dispersions_norm"] = (
-    transcriptome.var["dispersions_norm"]
-    .reindex(motifscan.motifs["gene"])[
-        motifscan.motifs.loc[motifscores_corrected.index, "gene"]
-    ]
-    .values
-)
+transcriptome.gene_id(motifscan.motifs["HUMAN_gene_symbol"], optional = True)
+
+# %%
+motifscan.motifs["gene"] = transcriptome.gene_id(motifscan.motifs["HUMAN_gene_symbol"], found = True).values
+
+# %%
+# motifscores_corrected["dispersions_norm"] = (
+#     transcriptome.var["dispersions_norm"]
+#     .reindex(motifscan.motifs["gene"])[
+#         motifscan.motifs.loc[motifscores_corrected.index, "gene"]
+#     ]
+#     .values
+# )
 
 # %%
 fig, ax = plt.subplots(figsize=(2, 4))
@@ -532,7 +569,7 @@ ax.spines["left"].set_visible(False)
 ax.spines["right"].set_visible(False)
 ax.set_yticks([])
 # %%
-sc.pl.umap(transcriptome.adata, color=transcriptome.gene_id(["ZEB1"]))
+# sc.pl.umap(transcriptome.adata, color=transcriptome.gene_id(["ZEB1"]))
 
 # %% [markdown]
 # ## Compare to external footprinting comparison
@@ -540,7 +577,6 @@ sc.pl.umap(transcriptome.adata, color=transcriptome.gene_id(["ZEB1"]))
 import pathlib
 if not pathlib.Path("41592_2016_BFnmeth3772_MOESM205_ESM.xlsx").exists():
     # !wget https://static-content.springer.com/esm/art%3A10.1038%2Fnmeth.3772/MediaObjects/41592_2016_BFnmeth3772_MOESM205_ESM.xlsx
-
 # %%
 # !pip install openpyxl
 external_data = pd.read_excel("41592_2016_BFnmeth3772_MOESM205_ESM.xlsx", sheet_name="Supplementary Dataset 1a", skiprows=2, engine="openpyxl")
@@ -609,21 +645,21 @@ np.corrcoef(
 # %%
 motifscores_deltacor = []
 gc = window_contents.loc[windowsize_scores.index]["gc"].values
-windowsize_scores["effect"] = window_scores["effect"]
+windowsize_scores["effect"] = windowscores["effect"].values
 # outcome = windowsize_scores["effect"].rank()
 outcome = windowsize_scores["deltacor"].rank()
 # outcome = windowsize_scores["deltacor_100"].rank()
 # outcome = windowsize_scores["effect_100"].rank()
 # outcome = windowsize_scores["rank_deltacor_ratio"]
 for motif_oi_ix in tqdm.tqdm(range(motifscan_counts.shape[1])):
-    count = motifscan_counts[:, motif_oi_ix]
+    count = motifscan_counts.values[:, motif_oi_ix]
     score = score_gc_corrected(gc, count, outcome)
     score["motif"] = motifscan.motifs.index[motif_oi_ix]
     motifscores_deltacor.append(score)
 motifscores_deltacor = pd.DataFrame(motifscores_deltacor).set_index("motif")
 
 # %%
-motifscores_deltacor.sort_values("p").head(20)
+motifscores_deltacor.sort_values("r").head(20)
 # %%
 plotdata = pd.concat(
     [
@@ -633,8 +669,13 @@ plotdata = pd.concat(
     axis=1,
 )
 plotdata["gene"] = motifscan.motifs.reset_index().set_index("motif")["gene"].reindex(plotdata.index).values
+plotdata = plotdata.groupby("gene").first().reset_index()
 plotdata["variable"] = plotdata["gene"].isin(transcriptome.var.index)
 plotdata = plotdata.loc[plotdata["variable"]].copy()
+plotdata = plotdata.loc[plotdata["r_deltacor"] < (plotdata["r_deltacor"].mean() + 2 * plotdata["r_deltacor"].std())]
+
+# %%
+plotdata
 
 # %%
 fig, ax = plt.subplots(figsize=(3.5, 3.5))
@@ -646,9 +687,11 @@ ax.scatter(
 )
 
 plotdata["oi"] = (
-    (plotdata["r_deltacor"] < np.quantile(plotdata["r_deltacor"], 0.3)) 
+    False
+    # | (plotdata["r_corrected"].abs() > np.quantile(plotdata["r_corrected"].abs(), 0.80)) 
+    | (plotdata["r_deltacor"] < np.quantile(plotdata["r_deltacor"], 0.1)) 
     | (plotdata["gene"] == transcriptome.gene_id("CTCF"))
-    | (plotdata["r_corrected"] < plotdata["r_corrected"].sort_values().iloc[6])
+    | (plotdata["r_corrected"] < plotdata["r_corrected"].sort_values().iloc[4])
     | (plotdata["r_corrected"] > plotdata["r_corrected"].sort_values(ascending = False).iloc[20])
     )
 
@@ -688,7 +731,6 @@ annot = adjustText.adjust_text(texts, arrowprops=dict(arrowstyle='-', color='#AA
 for text in texts:
     text.zorder = 10
     text.set_path_effects([mpl.patheffects.withStroke(linewidth=1.2, foreground='#FFFFFFCC')])
-
 
 manuscript.save_figure(fig, "7", "motif_enrichment_ratio")
 

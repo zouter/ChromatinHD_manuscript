@@ -12,6 +12,7 @@ import tqdm.auto as tqdm
 
 import pickle
 import pathlib
+import time
 
 from chromatinhd_manuscript.designs_diff import (
     dataset_latent_peakcaller_diffexp_combinations as design,
@@ -21,15 +22,15 @@ from chromatinhd_manuscript.designs_diff import (
 design = design.query("diffexp == 'snap'")
 
 # design = design.query("dataset in ['lymphoma', 'pbmc10kx', 'pbmc10k', 'liver']")
-# design = design.query("dataset == 'pbmc10k'")
+design = design.query("dataset == 'pbmc10k'")
 # design = design.query("dataset == 'hspc'")
 # design = design.query("dataset == 'liver'")
 # design = design.query("dataset == 'lymphoma'")
 # design = design.query("dataset == 'e18brain'")
 # design = design.query("dataset == 'hspc'")
-# design = design.query("regions == '100k100k'")
-design = design.query("peakcaller != 'gene_body'")
-# design = design.query("peakcaller == 'macs2_summits'")
+design = design.query("regions == '100k100k'")
+# design = design.query("peakcaller != 'gene_body'")
+design = design.query("peakcaller == 'macs2_summits'")
 # design = design.query("peakcaller == 'cellranger'")
 # design = design.query("peakcaller in ['encode_screen', 'macs2_leiden_0.1_merged', 'macs2_summits']")
 # design = design.query("peakcaller in ['encode_screen', 'rolling_500']")
@@ -40,7 +41,7 @@ if design.shape[0] == 0:
 design = design.copy()
 dry_run = False
 design["force"] = False
-# design["force"] = True
+design["force"] = True
 # dry_run = True
 
 R_location = "/data/peak_free_atac/software/R-4.2.2/bin/"
@@ -71,6 +72,8 @@ for _, design_row in design.iterrows():
 
     print(design_row)
 
+    start = time.time()
+
     try:
         peakcounts = chd.flow.Flow.from_path(
             chd.get_output() / "datasets" / dataset_name / "peakcounts" / peakcaller / regions_name
@@ -93,6 +96,8 @@ for _, design_row in design.iterrows():
         counts_cluster.append(counts[obs["cluster"] == cluster].sum(0))
     counts_cluster = pd.DataFrame(np.stack(counts_cluster, 0), index=obs["cluster"].cat.categories)
     counts_cluster.to_csv("/tmp/counts_cluster.csv")
+
+    print(counts_cluster.shape)
 
     # run R script
     import os
@@ -128,3 +133,7 @@ for _, design_row in design.iterrows():
     scoring_folder.mkdir(exist_ok=True, parents=True)
 
     pickle.dump(differential_slices_peak, open(scoring_folder / "differential_slices.pkl", "wb"))
+
+    end = time.time()
+    pickle.dump({"total": end - start}, open(scoring_folder / "time.pkl", "wb"))
+    print(end - start)

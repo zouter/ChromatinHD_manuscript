@@ -99,6 +99,9 @@ for file_name in glob.glob(str(folder / "guide_counts") + "/*-R*.tsv"):
 data_orig = pd.concat(data)
 
 # %%
+counts
+
+# %%
 fig, ax = plt.subplots()
 plotdata = data_orig.query("Gene == 'CALR'")
 plotdata = plotdata.loc[(plotdata["start"] > plotdata["start"].quantile(0.01)) & (plotdata["start"] < plotdata["start"].quantile(0.97))]
@@ -130,6 +133,12 @@ import liftover
 converter = liftover.get_lifter("hg19", "hg38")
 data["start"] = [converter[chrom][pos][0][1] for chrom, pos in zip(data["chrom"], data["start_orig"])]
 data["end"] = [converter[chrom][pos][0][1] for chrom, pos in zip(data["chrom"], data["end_orig"])]
+
+# %% [markdown]
+# ### Store
+
+# %%
+data.to_csv(folder / "data.tsv", sep="\t", index=False)
 
 # %% [markdown]
 # ### Load interpretation

@@ -17,6 +17,8 @@ from chromatinhd_manuscript.designs_diff import (
 )
 from chromatinhd_manuscript.diff_params import params
 
+import time
+
 
 def rank_genes_groups_df(
     adata,
@@ -66,21 +68,23 @@ def rank_genes_groups_df(
     return d.reset_index(drop=True)
 
 
-# design = design.query("diffexp in ['t-test', 't-test-foldchange']")
+# design = design.query("diffexp in ['wilcoxon']")
+# design = design.query("diffexp in ['logreg']")
 design = design.query("diffexp == 't-test'")
 # design = design.query("diffexp == 't-test-foldchange'")
 # design = design.query("diffexp == 'logreg'")
-design = design.query("diffexp != 'signac'")
+# design = design.query("diffexp != 'signac'")
 # design = design.query("diffexp != 'logreg'")
 # design = design.query("dataset in ['lymphoma', 'pbmc10kx', 'pbmc10k', 'liver']")
-# design = design.query("dataset == 'pbmc10k'")
+design = design.query("dataset == 'pbmc10k'")
 # design = design.query("dataset == 'hspc'")
 # design = design.query("dataset == 'liver'")
 # design = design.query("dataset == 'lymphoma'")
 # design = design.query("dataset == 'e18brain'")
 # design = design.query("dataset == 'hspc'")
-# design = design.query("regions == '100k100k'")
+design = design.query("regions == '100k100k'")
 design = design.query("peakcaller != 'gene_body'")
+design = design.query("peakcaller == 'rolling_500'")
 # design = design.query("peakcaller == 'macs2_summits'")
 # design = design.query("peakcaller == 'cellranger'")
 # design = design.query("peakcaller in ['encode_screen', 'macs2_leiden_0.1_merged', 'macs2_summits']")
@@ -92,7 +96,7 @@ if design.shape[0] == 0:
 design = design.copy()
 dry_run = False
 design["force"] = False
-# design["force"] = True
+design["force"] = True
 # dry_run = True
 
 min_score = np.log(1.25)
@@ -119,6 +123,8 @@ for _, design_row in design.iterrows():
         continue
 
     print(design_row)
+
+    start = time.time()
 
     try:
         peakcounts = chd.flow.Flow.from_path(
@@ -214,3 +220,6 @@ for _, design_row in design.iterrows():
     scoring_folder.mkdir(exist_ok=True, parents=True)
 
     pickle.dump(differential_slices_peak, open(scoring_folder / "differential_slices.pkl", "wb"))
+
+    end = time.time()
+    pickle.dump({"time": end - start}, open(scoring_folder / "time.pkl", "wb"))

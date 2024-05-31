@@ -817,11 +817,6 @@ plt.rcParams['figure.dpi'] = 150
 
 
 # %%
-def interpolate(x, y, a):
-    return x + (y-x) * a
-
-
-# %%
 t = 0
 plotdata_genome_keyframes = []
 keyframes_genome = []
@@ -879,6 +874,9 @@ n_frames = frame_design.shape[0]
 
 
 # %%
+def interpolate(x, y, a):
+    return x + (y-x) * a
+
 def get_keyframes(keyframes, t):
     if t == 0:
         keyframe_1 = keyframes.iloc[0]

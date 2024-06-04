@@ -85,8 +85,6 @@ for (dataset_name, regions_name), subdesign in design.groupby(["dataset", "regio
                 if (region in size.scores) or (performance.scores["cor"][region, :, "test"].mean() < 0.2):
                     continue
 
-                print(transcriptome.symbol(region))
-
                 if dry_run:
                     continue
                 models.train_models(device=device, regions_oi=[region])

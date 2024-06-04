@@ -1,8 +1,8 @@
 # Preprocessing
 
-Preprocessing of all snATAC+RNA datasets
+These notebooks download and preprocess the datasets
 
-Also:
-
-- Visualization of fragments
-- Downloading and preprocessing of QTL, motif, TF binding, and Hi-C data
+- ()[multiome_datasets] Preprocessing of all multiome datasets
+- ()[visualize_fragments] Visualization of the fragments for Extended Data Fig. 1
+- ()[qtl] Preprocessing of GWAS and eQTL data
+- ()[peaks] Peak calling and counting

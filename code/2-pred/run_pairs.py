@@ -58,18 +58,18 @@ for (dataset_name, regions_name), subdesign in design.groupby(["dataset", "regio
             performance = chd.models.pred.interpret.Performance(prediction_reference / "scoring" / "performance")
 
             censorer = chd.models.pred.interpret.MultiWindowCensorer(
-                fragments.regions.window, window_sizes=(200,), relative_stride=0.5
+                fragments.regions.window, window_sizes=(100,), relative_stride=1.0
             )
             regionmultiwindow = chd.models.pred.interpret.RegionMultiWindow.create(
                 folds,
                 transcriptome,
                 fragments,
                 censorer,
-                path=prediction.path / "scoring" / "regionmultiwindow",
+                path=prediction.path / "scoring" / "regionmultiwindow2",
             )
 
             regionpairwindow = chd.models.pred.interpret.RegionPairWindow(
-                prediction.path / "scoring" / "regionpairwindow"
+                prediction.path / "scoring" / "regionpairwindow2"
             )
 
             method_info = params[method_name]
@@ -95,12 +95,13 @@ for (dataset_name, regions_name), subdesign in design.groupby(["dataset", "regio
 
                 regionmultiwindow.score(models, device="cpu")
 
-                windows_oi = regionmultiwindow.design.query("window_size == 200").index
+                windows_oi = regionmultiwindow.design.query("window_size == 100").index
                 # windows_oi = windows_oi[regionmultiwindow.scores["deltacor"].sel_xr(gene_oi).sel(phase = "test").sel(window = windows_oi.tolist()).mean("fold") < -0.0005]
                 windows_oi = windows_oi[
                     regionmultiwindow.scores["lost"]
                     .sel_xr(region)
-                    .sel(phase="test")
+                    .sel(phase=["test", "validation"])
+                    .mean("phase")
                     .sel(window=windows_oi.tolist())
                     .mean("fold")
                     > 1e-3

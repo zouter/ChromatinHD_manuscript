@@ -137,19 +137,24 @@ if True:
 # %% metadata={}
 fragments_all = chd.data.Fragments.from_path(dataset_folder / "fragments" / "all")
 
-# %% metadata={}
-mmc5 = pd.read_excel(data_folder / "mmc5.xlsx", sheet_name = "Table S4")
+# %%
+tfs_folder = pathlib.Path('/home/wsaelens/projects/probabilistic-cell/ensor_manuscript/output/targets/tfs')
+
+# %%
+diffexp = pd.read_csv(tfs_folder / "diffexp.csv", index_col = 0)
+
+# %%
+symbols = diffexp["lfc100"].sort_values(ascending = False).head(250).index
 
 # %% metadata={}
-mmc5["symbol"] = mmc5["Annotation/Divergence"].str.split("|").str[0]
+# mmc5 = pd.read_excel(data_folder / "mmc5.xlsx", sheet_name = "Table S4")
+# mmc5["symbol"] = mmc5["Annotation/Divergence"].str.split("|").str[0]
+# mmc5["significant"] = (np.abs(mmc5["smadCTRt4.vs.smadKOt4n.log2FoldChange"]) > 1) & (mmc5["smadCTRt4.vs.smadKOt4n.padj"] < 0.05)
+# symbols = list(set(mmc5.sort_values("smadCTRt4.vs.smadKOt4n.log2FoldChange").query("significant")["symbol"].tolist()))
+# print(len(symbols))
 
 # %% metadata={}
-mmc5["significant"] = (np.abs(mmc5["smadCTRt4.vs.smadKOt4n.log2FoldChange"]) > 1) & (mmc5["smadCTRt4.vs.smadKOt4n.padj"] < 0.05)
-symbols = list(set(mmc5.sort_values("smadCTRt4.vs.smadKOt4n.log2FoldChange").query("significant")["symbol"].tolist()))
-print(len(symbols))
-
-# %% metadata={}
-symbols = "Clec4f, Cd207, Cd5l, Cdh5, Cd38, Nr1h3".split(", ")
+# symbols = "Clec4f, Cd207, Cd5l, Cdh5, Cd38, Nr1h3".split(", ")
 
 # %% metadata={}
 regions_name = "100k100k"
@@ -200,7 +205,7 @@ motifscan.create_region_indptr()
 # plt.hist(motifscan.coordinates, bins = 20)
 
 # %%
-plt.hist(motifscan.get_slice(region_id = gene_id)[0])
+plt.hist(motifscan.get_slice(region_id = fragments.var.index[2])[0])
 
 # %% [markdown]
 # ## Clustering
@@ -215,6 +220,9 @@ clustering = chd.data.Clustering.from_labels(obs["condition"], path = dataset_fo
 # %%
 regions_name = "100k100k"
 fragments = chd.data.fragments.FragmentsView(dataset_folder / "fragments" / regions_name)
+
+# %%
+clustering = chd.data.Clustering(dataset_folder / "clusterings" / "cluster")
 
 # %% metadata={}
 fold = {
@@ -236,9 +244,9 @@ model = chd.models.diff.model.binary.Model.create(
     encoder = "split",
     encoder_params=dict(
         delta_regularization=True,
-        delta_p_scale = 1.5,
+        delta_p_scale = 0.5,
         bias_regularization=True,
-        bias_p_scale = 1.5,
+        bias_p_scale = 0.5,
         # binwidths = (5000, 1000)
         # binwidths = (5000, 1000, 500, 100, 50)
         binwidths = (5000, 1000, 500, 100, 50, 25)
@@ -261,11 +269,11 @@ genepositional.score(
     clustering,
     # genes = fragments.var.reset_index().set_index("symbol").loc[["Kit", "Apoe", "Apln", "Odc1", "Dll4", "Dll1", "Jag1", "Meis1", "Efnb1", "Efnb2"]]["gene"],
     force = False,
-    normalize_per_cell=2
+    normalize_per_cell=5
 )
 
 # %% metadata={}
-prob_cutoff = 1.
+prob_cutoff = 2.
 
 # %% metadata={}
 import xarray as xr
@@ -306,13 +314,8 @@ cluster_info_oi = clustering.var
 # cluster_info_oi["label"] = cluster_info_oi.index
 # cluster_info_oi["label"] = pd.Series({"liver_kc_Smad4 flox/flox":"Control", "liver_kc_Smad4 flox/flox Clecf4-cre":"Smad4 -/-"})[cluster_info_oi["condition"]].values
 
-# %% metadata={}
-mmc5.query("symbol == 'Nr1h3'")[["significant"]]
-
-# %% metadata={}
-symbols
-
 # %%
+motifscan_name = "hocomoco_0001"
 motifscan = chd.data.Motifscan(
     path = dataset_folder / "motifscans" / regions_name / motifscan_name,
 )
@@ -390,23 +393,25 @@ panel_peaks.ax.set_ylabel("")
 motifs_oi = pd.DataFrame([
     # [motifs.index[motifs.index.str.contains("SUH")][0], "Notch->Rbpj"],
     # [motifs.index[motifs.index.str.contains("EVI1")][0], "Notch-->Mecom"],
-    [motifs.index[motifs.index.str.contains("SUH")][0], "Rbpj", "Rbpj", "green"],
-    [motifs.index[motifs.index.str.contains("SUH")][0], "Rbpj", "Rbpj", "green"],
+    [motifscan.motifs.index[motifscan.motifs.index.str.contains("SUH")][0], "Rbpj", "Rbpj", "green"],
+    [motifscan.motifs.index[motifscan.motifs.index.str.contains("SUH")][0], "Rbpj", "Rbpj", "green"],
     # [motifs.index[motifs.index.str.contains("HEY1")][0], "Notch-->Hey1", "Notch-->Hey1", "cyan"],
     # [motifs.index[motifs.index.str.contains("HES1")][0], "Notch-->Hes1", "Notch-->Hes1", "cyan"],
     *[[motif, motif, "smad", "red"] for motif in motifscan.motifs.index[motifscan.motifs.index.str.contains("SMAD")]],
     ["RXRA.H12CORE.2.SM.B", "Rxra", "Rxra", "blue"], 
+    ["ZIK1.H12CORE.0.P.C", "Other", "Other", "grey"], 
 ], columns = ["motif", "label", "group", "color"]
 ).set_index("motif")
 motif_groups = pd.DataFrame([
     ["Rbpj", "green", "RBPJ"],
     ["smad", "red", "SMAD"],
     ["Rxra", "blue", "RXRA"],
+    ["Other", "grey", "Other"],
 ], columns = ["group", "color", "label"]).set_index("group")
 panel_motifs = chd.data.motifscan.plot.Motifs(motifscan, gene_id, motifs_oi, width = width, window = window)
 fig.main.add_under(panel_motifs)
 
-# fig.plot()
+fig.plot()
 
 # %%
 genepositional.regions = fragments.regions
@@ -416,8 +421,9 @@ genepositional.regions = fragments.regions
 # symbol = "Cd5l"
 # symbol = "Clec4f"
 # symbol = "Cd207"
-symbol = "Cd38"
-# symbol = "Cdh5"
+# symbol = "Cd38"
+symbol = "Cdh5"
+# symbol = "Id3"
 gene_id = fragments.var.index[fragments.var["symbol"] == symbol][0]
 
 # %%
@@ -428,15 +434,14 @@ display(HTML("<style>.jp-OutputArea-output {display:flex}</style>"))
 # ### Classic
 
 # %%
-regions = pd.DataFrame({"start":[-1000], "end":[1000]})
-
-regions = genepositional.select_regions(gene_id, prob_cutoff = 0.5, padding = 800)
+windows = pd.DataFrame({"start":[-1000], "end":[1000]})
+windows = genepositional.select_windows(gene_id, prob_cutoff = 2.5, padding = 800)
 
 # %%
 clustering.cluster_info.loc["liver_KC___WT_", "label"] = "KC"
 
 # %%
-breaking = chd.grid.broken.Breaking(regions, 0.05, resolution = 2000)
+breaking = chd.grid.broken.Breaking(windows, 0.05, resolution = 2000)
 
 fig = chd.grid.Figure(chd.grid.Grid(padding_height=0.05, padding_width=0.05))
 
@@ -463,8 +468,8 @@ fig.plot()
 # ### Focus on motif
 
 # %%
-regions_oi = fragments.regions.coordinates.loc[fragments.regions.coordinates.reset_index().set_index("symbol").loc[["Cdh5", "Clec4f", "Cd38", "Cd207", "Cd5l"]]["gene"].tolist()]
-# regions_oi = fragments.regions.coordinates.loc[fragments.regions.coordinates.reset_index().set_index("symbol").loc[["Nr1h3"]]["gene"].tolist()]
+regions_oi = fragments.regions.coordinates.loc[fragments.regions.coordinates.reset_index().set_index("symbol").loc[["Cdh5", "Clec4f", "Cd207", "Cd5l"]]["gene"].tolist()]
+regions_oi = fragments.regions.coordinates.loc[fragments.regions.coordinates.reset_index().set_index("symbol").loc[["Rhob", "Il1a", "Il1rl2"]]["gene"].tolist()]
 
 # %%
 selection_cluster_ids = ["liver_KC___WT_"]
@@ -477,13 +482,18 @@ motifs_oi = pd.DataFrame([
     # *[[motif, motif, "smad", "#2ECC40"] for motif in motifscan.motifs.index[motifscan.motifs.index.str.contains("SMAD")]],
     ["RXRA.H12CORE.2.SM.B", "Rxra", "Rxra", "#0074D9"], 
     ["NR1H2.H12CORE.0.P.C", "Lxra", "Lxra", "#7FDBFF"], 
+    ["CUX1.H12CORE.1.S.B", "CUX", "CUX", "red"], 
+    ["MITF.H12CORE.0.P.B", "MITF", "MITF", "cyan"], 
+    # ["TFEC.H12CORE.0.M.B", "oi", "oi", "#7FDBFF"], 
 ], columns = ["motif", "label", "group", "color"]
 ).set_index("motif")
 motif_groups = pd.DataFrame([
     # ["Rbpj", "green", "RBPJ"],
     # ["smad", "red", "SMAD"],
-    ["Rxra", "blue", "RXR"],
-    ["Lxra", "cyan", "LXR"],
+    ["Rxra", "", "RXR"],
+    ["Lxra", "", "LXR"],
+    ["CUX", "", "CUX"],
+    ["MITF", "", "MITF"],
 ], columns = ["group", "color", "label"]).set_index("group")
 
 motif_ids = motifs_oi.index
@@ -521,9 +531,6 @@ slicescores_oi = slicescores_oi.iloc[:n]
 breaking = chd.grid.broken.Breaking(slicescores_oi, 0.05, resolution = 3000)
 
 # %%
-motifscan.regions
-
-# %%
 from chromatinhd.plot import format_distance
 import textwrap
 
@@ -546,7 +553,7 @@ for subregion_ix, (_, subregion_info), grid, width in zip(
         ax_labeling = panel_labeling.ax
 
     region = fragments.regions.coordinates.loc[subregion_info["region"]]
-    window = subregion_info[["start", "end"]]
+    window = subregion_info[["start", "end"]].tolist()
     panel_differential = chd.models.diff.plot.Differential.from_regionpositional(
         subregion_info["region"],
         genepositional,
@@ -558,7 +565,7 @@ for subregion_ix, (_, subregion_info), grid, width in zip(
         label_accessibility=False,
         label_cluster=False,
         show_tss=False,
-        ymax = 10.,
+        ymax = 50.,
         norm_atac_diff = norm_atac_diff,
     )
     grid.add_under(panel_differential)
@@ -589,7 +596,7 @@ last_x = breaking.regions["start"].iloc[0]
 gap_data = breaking.gap * breaking.resolution
 ax_labeling.set_ylim(-0.2, 0.2)
 y = 0.2
-for region_id, subregions in breaking.regions.groupby("region"):
+for region_id, subregions in breaking.regions.groupby("region", observed = False):
     symbol = fragments.regions.coordinates.loc[region_id, "symbol"]
     if len(subregions) == 0:
         continue
@@ -645,16 +652,6 @@ for subregion_id, subregion in breaking.regions.iterrows():
 fig.plot()
 
 # %%
-oi = (motifscan.indices[:] == motif_ix) & (motifscan.region_indices[:] == 4)
-# oi = (np.arange(len(motifscan.indices)) > motifscan.region_indptr[4]) & (np.arange(len(motifscan.indices)) < motifscan.region_indptr[4+1]) & (motifscan.indices[:] == motif_ix)
-
-# %%
-motifscan.region_indptr[:]
-
-# %%
-motifscan.coordinates[oi]
-
-# %%
 motif_ix = motifscan.motifs.index.get_loc(motif_ids[0])
 
 # %%
@@ -663,8 +660,11 @@ motif_ix
 # %%
 motifs_oi
 
+# %% [markdown]
+# ## Enrichment
+
 # %%
-slices = genepositional.calculate_slices(0., step = 5)
+slices = genepositional.calculate_slices(3., step = 5)
 differential_slices = genepositional.calculate_differential_slices(slices, fc_cutoff = 1.5)
 
 # %%
@@ -679,22 +679,63 @@ enrichment = chd.models.diff.interpret.enrichment.enrichment_cluster_vs_clusters
 enrichment["log_odds"] = np.log(enrichment["odds"])
 
 # %%
+enrichment.loc["liver_KC___WT_"].loc[motifscan.motifs.index[motifscan.motifs.index.str.contains("NR1H3")]]
+
+# %%
+enrichment.loc["liver_KC___WT_"].loc[motifscan.motifs.index[motifscan.motifs.index.str.contains("HES1")]]
+
+# %%
+enrichment.loc["liver_KC___WT_"].loc[motifscan.motifs.index[motifscan.motifs.index.str.contains("HEY1")]]
+
+# %%
 enrichment.loc["liver_KC___WT_"].loc[motifscan.motifs.index[motifscan.motifs.index.str.contains("SUH")]]
 
 # %%
-enrichment.loc["liver_KC___WT_"].loc[motifscan.motifs.index[motifscan.motifs.index.str.contains("SMAD4")]]
+enrichment.loc["liver_KC___WT_"].loc[motifscan.motifs.index[motifscan.motifs.index.str.contains("SMAD5")]]
+
+# %%
+enrichment.loc["liver_KC___WT_"].loc[motifscan.motifs.index[motifscan.motifs.index.str.contains("MEIS3")]]
+
+# %%
+enrichment.loc["liver_KC___WT_"].loc[motifscan.motifs.index[motifscan.motifs.index.str.contains("TF7L2")]]
+
+# %%
+enrichment_oi = enrichment.loc["liver_KC___WT_"].copy()
+enrichment_oi["symbol"] = motifscan.motifs["MOUSE_gene_symbol"]
+enrichment_targets = enrichment_oi.sort_values("q_value").groupby("symbol").first()
+
+target_folder = "/home/wsaelens/projects/probabilistic-cell/ensor_manuscript/output/targets/tfs"
+enrichment_targets.to_csv(target_folder + "/mono_to_kc_motif_enrichment.csv")
+
+# %%
+enrichment.loc["liver_KC___WT_"].query("odds > 1").sort_values("q_value", ascending = True).head(20)
+
+# %%
+cors = pd.DataFrame(np.corrcoef(slicecounts.T), slicecounts.columns, slicecounts.columns)
+
+# %%
+symbols_oi = motifscan.motifs.loc[cors.columns[cors.loc["CUX1.H12CORE.1.S.B"] > 0.05]]["MOUSE_gene_symbol"]
+
+# %%
+diffexp.reindex(symbols_oi).dropna()
+
+# %%
+enrichment.loc["liver_KC___WT_"].query("odds > 1").query("q_value < 0.05").sort_values("odds", ascending = False).head(20)
+
+# %%
+slicecounts["CUX1.H12CORE.1.S.B"].sort_values()
 
 # %%
 
 # %%
-enrichment.loc["liver_KC___WT_"].query("odds > 1").sort_values("q_value").head(20)
+fragments.var.iloc[211]
 
 # %% [markdown]
 # ## Enrichment
 
 # %%
-import chromatinhd.models.diff.differential
-import chromatinhd.models.diff.enrichment
+import chromatinhd.models.diff.interpret.differential
+import chromatinhd.models.diff.interpret.enrichment
 
 # %%
 import xarray as xr
@@ -714,12 +755,12 @@ y_interpolated = chd.utils.interpolate_1d(
 ).numpy()
 
 # %%
-prob_cutoff = 1.
+prob_cutoff = 2.
 basepair_ranking = y_interpolated - y_interpolated.mean(1, keepdims=True)
 basepair_ranking[y_interpolated < prob_cutoff] = -np.inf
 
 # %%
-symbol = "Lepr"
+symbol = "Clec4f"
 gene_id = fragments.var.index[fragments.var["symbol"] == symbol][0]
 gene_ix = fragments.var.index.get_loc(gene_id)
 sns.heatmap(basepair_ranking[gene_ix][:, 120000:150000])

@@ -59,6 +59,9 @@ import requests
 # !curl --location https://www.ebi.ac.uk/gwas/api/search/downloads/full > {folder_qtl}/full.tsv
 
 # %%
+folder_qtl
+
+# %%
 # !head -n 5 {folder_qtl}/full.tsv
 
 # %%
@@ -130,91 +133,91 @@ traits_oi = pd.DataFrame([
     *trait_counts.loc[trait_counts.index.str.contains("migraine", flags = re.IGNORECASE)][:10].index,
 ], columns = ["disease/trait"]).set_index("disease/trait"); motifscan_name = "gwas_cns"
 
-# traits_oi = pd.DataFrame([[x] for x in [
-#     "Cholangiocarcinoma in primary sclerosing cholangitis",
-#     "Cholangiocarcinoma in primary sclerosing cholangitis (time to event)",
-#     *trait_counts.loc[trait_counts.index.str.contains("Liver")][:10].index,
-#     *trait_counts.loc[trait_counts.index.str.contains("liver")][:10].index,
-#     *trait_counts.loc[trait_counts.index.str.contains("Cholesterol")][:10].index,
-#     *trait_counts.loc[trait_counts.index.str.contains("glucose")][:5].index,
-#     *trait_counts.loc[trait_counts.index.str.contains("Hepat")][:5].index,
-#     *trait_counts.loc[trait_counts.index.str.contains("hepat")][:5].index,
-#     "Lipid metabolism phenotypes",
-# ]], columns = ["disease/trait"]).set_index("disease/trait")
-# motifscan_name = "gwas_liver"
+traits_oi = pd.DataFrame([[x] for x in [
+    "Cholangiocarcinoma in primary sclerosing cholangitis",
+    "Cholangiocarcinoma in primary sclerosing cholangitis (time to event)",
+    *trait_counts.loc[trait_counts.index.str.contains("Liver")][:10].index,
+    *trait_counts.loc[trait_counts.index.str.contains("liver")][:10].index,
+    *trait_counts.loc[trait_counts.index.str.contains("Cholesterol")][:10].index,
+    *trait_counts.loc[trait_counts.index.str.contains("glucose")][:5].index,
+    *trait_counts.loc[trait_counts.index.str.contains("Hepat")][:5].index,
+    *trait_counts.loc[trait_counts.index.str.contains("hepat")][:5].index,
+    "Lipid metabolism phenotypes",
+]], columns = ["disease/trait"]).set_index("disease/trait")
+motifscan_name = "gwas_liver"
 
 
-# traits_oi = pd.DataFrame([
-#     ["Chronic lymphocytic leukemia"],
-#     ["Acute lymphoblastic leukemia (childhood)"],
-#     ["Hodgkin's lymphoma"],
-#     ["Childhood ALL/LBL (acute lymphoblastic leukemia/lymphoblastic lymphoma) treatment-related venous thromboembolism"],
-#     ["B-cell malignancies (chronic lymphocytic leukemia, Hodgkin lymphoma or multiple myeloma) (pleiotropy)"],
-#     ["Non-Hodgkin's lymphoma"],
-# ], columns = ["disease/trait"]).set_index("disease/trait")
-# motifscan_name = "gwas_lymphoma"
+traits_oi = pd.DataFrame([
+    ["Chronic lymphocytic leukemia"],
+    ["Acute lymphoblastic leukemia (childhood)"],
+    ["Hodgkin's lymphoma"],
+    ["Childhood ALL/LBL (acute lymphoblastic leukemia/lymphoblastic lymphoma) treatment-related venous thromboembolism"],
+    ["B-cell malignancies (chronic lymphocytic leukemia, Hodgkin lymphoma or multiple myeloma) (pleiotropy)"],
+    ["Non-Hodgkin's lymphoma"],
+], columns = ["disease/trait"]).set_index("disease/trait")
+motifscan_name = "gwas_lymphoma"
 
-# traits_oi = pd.DataFrame(
-#     [
-#         ["Multiple sclerosis"],
-#         ["Type 1 diabetes"],
-#         ["Inflammatory bowel disease"],
-#         ["Crohn's disease"],
-#         ["Systemic lupus erythematosus"],
-#         ["Rheumatoid arthritis"],
-#         ["Ankylosing spondylitis"],
-#         ["Hodgkin's lymphoma"],
-#         ["Psoriasis"],
-#         ["Post bronchodilator FEV1/FVC ratio in COPD"],
-#         ["Non-Hodgkin's lymphoma"],
-#         ["Core binding factor acute myeloid leukemia"],
-#         ["Chronic lymphocytic leukemia"],
-#         ["Interleukin-6 levels"],
-#         ["Interleukin-18 levels"],
-#         [
-#             "6-month creatinine clearance change response to tenofovir treatment in HIV infection (treatment arm interaction)"
-#         ],
-#         [
-#             "Time-dependent creatinine clearance change response to tenofovir treatment in HIV infection (time and treatment arm interaction)"
-#         ],
-#         ["Autoimmune thyroid disease"],
-#         ["IgG glycosylation"],
-#         ["Asthma"],
-#         ["Allergic disease (asthma, hay fever or eczema)"],
-#         ["High IL-1beta levels in gingival crevicular fluid"],
-#         ["C-reactive protein levels (MTAG)"],
-#         ["Behcet's disease"],
-#         ["Neutrophil count"],
-#         ["Eosinophil counts"],
-#         ["Monocyte count"],
-#         ["Lymphocyte count"],
-#         ["Endometriosis"],
-#         ["Medication use (thyroid preparations)"],
-#         ["Basophil count"],
-#         [
-#             "Acute graft versus host disease in bone marrow transplantation (recipient effect)"
-#         ],
-#         ["Selective IgA deficiency"],
-#         ["Lymphocyte-to-monocyte ratio"],
-#         ["COVID-19"],
-#         ["C-reactive protein"],
-#     ],
-#     columns=["disease/trait"],
-# ).set_index("disease/trait")
-# motifscan_name = "gwas_immune"
+traits_oi = pd.DataFrame(
+    [
+        ["Multiple sclerosis"],
+        ["Type 1 diabetes"],
+        ["Inflammatory bowel disease"],
+        ["Crohn's disease"],
+        ["Systemic lupus erythematosus"],
+        ["Rheumatoid arthritis"],
+        ["Ankylosing spondylitis"],
+        ["Hodgkin's lymphoma"],
+        ["Psoriasis"],
+        ["Post bronchodilator FEV1/FVC ratio in COPD"],
+        ["Non-Hodgkin's lymphoma"],
+        ["Core binding factor acute myeloid leukemia"],
+        ["Chronic lymphocytic leukemia"],
+        ["Interleukin-6 levels"],
+        ["Interleukin-18 levels"],
+        [
+            "6-month creatinine clearance change response to tenofovir treatment in HIV infection (treatment arm interaction)"
+        ],
+        [
+            "Time-dependent creatinine clearance change response to tenofovir treatment in HIV infection (time and treatment arm interaction)"
+        ],
+        ["Autoimmune thyroid disease"],
+        ["IgG glycosylation"],
+        ["Asthma"],
+        ["Allergic disease (asthma, hay fever or eczema)"],
+        ["High IL-1beta levels in gingival crevicular fluid"],
+        ["C-reactive protein levels (MTAG)"],
+        ["Behcet's disease"],
+        ["Neutrophil count"],
+        ["Eosinophil counts"],
+        ["Monocyte count"],
+        ["Lymphocyte count"],
+        ["Endometriosis"],
+        ["Medication use (thyroid preparations)"],
+        ["Basophil count"],
+        [
+            "Acute graft versus host disease in bone marrow transplantation (recipient effect)"
+        ],
+        ["Selective IgA deficiency"],
+        ["Lymphocyte-to-monocyte ratio"],
+        ["COVID-19"],
+        ["C-reactive protein"],
+    ],
+    columns=["disease/trait"],
+).set_index("disease/trait")
+motifscan_name = "gwas_immune"
 
-# traits_oi = pd.DataFrame([
-#     *trait_counts.loc[trait_counts.index.str.contains("erythro", flags = re.IGNORECASE)][:20].index,
-#     *trait_counts.loc[trait_counts.index.str.contains("red blood", flags = re.IGNORECASE)][:20].index,
-#     *trait_counts.loc[trait_counts.index.str.contains("hematocrit", flags = re.IGNORECASE)][:20].index,
-#     *trait_counts.loc[trait_counts.index.str.contains("hemoglobin", flags = re.IGNORECASE)][:20].index,
-#     *trait_counts.loc[trait_counts.index.str.contains("red cell", flags = re.IGNORECASE)][:20].index,
-# ], columns = ["disease/trait"]).set_index("disease/trait"); motifscan_name = "gwas_hema"
+traits_oi = pd.DataFrame([
+    *trait_counts.loc[trait_counts.index.str.contains("erythro", flags = re.IGNORECASE)][:20].index,
+    *trait_counts.loc[trait_counts.index.str.contains("red blood", flags = re.IGNORECASE)][:20].index,
+    *trait_counts.loc[trait_counts.index.str.contains("hematocrit", flags = re.IGNORECASE)][:20].index,
+    *trait_counts.loc[trait_counts.index.str.contains("hemoglobin", flags = re.IGNORECASE)][:20].index,
+    *trait_counts.loc[trait_counts.index.str.contains("red cell", flags = re.IGNORECASE)][:20].index,
+], columns = ["disease/trait"]).set_index("disease/trait"); motifscan_name = "gwas_hema"
 
 # %%
 traits_oi.to_csv(folder_qtl / f"traits_{motifscan_name}.tsv", sep="\t", index=True) # store for other databases where we want to reuse the same traits, e.g. causaldb
 traits_oi = traits_oi.loc[~traits_oi.index.duplicated()]
-manuscript.store_supplementary_table(traits_oi.reset_index(), f"traits_{motifscan_name}")
+manuscript.store_supplementary_table(traits_oi.reset_index(), f"traits_gwas", sheet_name = motifscan_name)
 
 # %%
 qtl = qtl.loc[qtl["disease/trait"].isin(traits_oi.index)]

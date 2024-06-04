@@ -47,14 +47,14 @@ import chromatinhd as chd
 import tempfile
 
 # %%
-dataset_name = "pbmc10k"
+# dataset_name = "pbmc10k"
 # dataset_name = "pbmc10k_gran"
 # dataset_name = "pbmc20k"
 # dataset_name = "alzheimer"
 # dataset_name = "e18brain"
 # dataset_name = "hspc"
 # dataset_name = "lymphoma"
-# dataset_name = "liver"
+dataset_name = "liver"
 latent = "leiden_0.1"
 transcriptome = chd.data.Transcriptome(chd.get_output() / "datasets" / dataset_name / "transcriptome")
 if dataset_name == "pbmc10k/subsets/top250":
@@ -75,7 +75,10 @@ import scanpy as sc
 sc.pl.umap(transcriptome.adata, color = "celltype")
 
 # %%
-sc.pl.umap(transcriptome.adata, color = [transcriptome.gene_id("IRF1")], layer = "counts")
+transcriptome.var.sort_values("symbol").iloc[586:].head(20)
+
+# %%
+sc.pl.umap(transcriptome.adata, color = transcriptome.gene_id(["Klf13"]), layer = "counts")
 
 # %%
 models = chd.models.diff.model.binary.Models(chd.get_output() / "diff"/dataset_name/regions_name/"5x1"/"v31")
@@ -679,6 +682,19 @@ n_desired_positions
 slicecounts = motifscan.count_slices(slices)
 enrichment = chd.models.diff.interpret.enrichment.enrichment_cluster_vs_clusters(slicescores, slicecounts)
 enrichment["log_odds"] = np.log(enrichment["odds"])
+
+# %%
+motifs_oi = motifscan.motifs.query("tf == 'RREB1'").index
+# enrichment.loc[enrichment.index.get_level_values("motif").isin(motifs_oi)].sort_values("odds", ascending = False)
+enrichment.loc["KC"].loc[motifscan.motifs.query("tf == 'MEF2C'").index].sort_values("log_odds", ascending = False)
+
+# %%
+enrichment_oi = enrichment.loc["KC"].copy()
+enrichment_oi["symbol"] = motifscan.motifs["MOUSE_gene_symbol"]
+enrichment_targets = enrichment_oi.sort_values("q_value").groupby("symbol").first()
+
+target_folder = "/home/wsaelens/projects/probabilistic-cell/ensor_manuscript/output/targets/tfs"
+enrichment_targets.to_csv(target_folder + "/liver_to_kc_motif_enrichment.csv")
 
 # %%
 # enrichment.query("q_value < 0.05").sort_values("odds", ascending = False).loc["pDCs"].head(30)

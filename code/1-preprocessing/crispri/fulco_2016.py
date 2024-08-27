@@ -215,7 +215,7 @@ joined = joined_all.query("gene == @gene_oi").copy()
 joined["score"] = joined["HS_LS_logratio"] * joined["deltacor"]
 
 # %%
-fig = chd.grid.Figure(chd.grid.Grid(padding_height=0.1))
+fig = polyptich.grid.Figure(polyptich.grid.Grid(padding_height=0.1))
 
 # binwidth = (regionmultiwindow.design["window_end"] - regionmultiwindow.design["window_start"]).iloc[0]
 binwidth = 100
@@ -242,7 +242,7 @@ panel, ax = fig.main.add_under(
 ax.set_xlim(*window)
 ax.set_xticks([])
 
-panel, ax = fig.main.add_under(chd.grid.Panel((10, 1)))
+panel, ax = fig.main.add_under(polyptich.grid.Panel((10, 1)))
 ax.bar(
     joined["window_mid"],
     joined["HS_LS_logratio"],
@@ -266,7 +266,7 @@ ax.set_xticks([])
 ax.set_yticks(np.log([0.125, 0.25, 0.5, 1, 2]))
 ax.set_yticklabels(["⅛", "¼", "½", 1, 2])
 
-panel, ax = fig.main.add_under(chd.grid.Panel((10, 1)))
+panel, ax = fig.main.add_under(polyptich.grid.Panel((10, 1)))
 joined["surprise"] = np.clip(joined["deltacor"], -np.inf, 0) / joined["lost"]
 ax.plot(
     joined["window_mid"],
@@ -585,10 +585,10 @@ allslicescores_stacked = pd.concat([pd.concat(allslicescores[method_name]) for m
 slicescores_stacked = pd.concat([pd.concat(slicescores[method_name]) for method_name in slicescores.keys()], ignore_index=True)
 
 # %%
-fig = chd.grid.Figure(chd.grid.Wrap())
+fig = polyptich.grid.Figure(polyptich.grid.Wrap())
 
 for method, plotdata in allslicescores_stacked.query("w == 20").groupby("method"):
-    panel, ax = fig.main.add(chd.grid.Panel((2, 2)))
+    panel, ax = fig.main.add(polyptich.grid.Panel((2, 2)))
     cors = []
     for gene, plotdata in plotdata.groupby("gene"):
         ax.set_title(method)
@@ -642,12 +642,12 @@ for peakcaller in peakcallers:
     prediction_methods.loc[peakcaller + "/linear_positive", "label"] += " pos"
 
 # %%
-fig = chd.grid.Figure(chd.grid.Grid(padding_width = 0.2))
+fig = polyptich.grid.Figure(polyptich.grid.Grid(padding_width = 0.2))
 
 plotdata = methodscores.loc[(methodscores["w"] == 5) | (methodscores["method"] == "all")].copy()
 methods = prediction_methods.loc[methodscores["method"].unique()]
 
-panel, ax = fig.main.add_under(chd.grid.Panel((2, len(methods)*0.3)))
+panel, ax = fig.main.add_under(polyptich.grid.Panel((2, len(methods)*0.3)))
 color = prediction_methods.reindex(plotdata["method"])["color"]
 ax.barh(plotdata["method"], plotdata["aupr"], color = color)
 ax.set_xlim(0., 1)
@@ -655,14 +655,14 @@ ax.set_xlabel("AUPRC")
 ax.set_yticks(np.arange(len(plotdata["method"])))
 ax.set_yticklabels(prediction_methods.reindex(plotdata["method"])["label"])
 
-panel, ax = fig.main.add_right(chd.grid.Panel((2, len(methods)*0.3)))
+panel, ax = fig.main.add_right(polyptich.grid.Panel((2, len(methods)*0.3)))
 ax.barh(plotdata["method"], plotdata["auroc"], color = color)
 ax.set_xlim(0., 1)
 ax.set_yticks([])
 ax.set_xlabel("AUROC")
 ax.set_title("Fulco et al. 2019")
 
-panel, ax = fig.main.add_right(chd.grid.Panel((2, len(methods)*0.3)))
+panel, ax = fig.main.add_right(polyptich.grid.Panel((2, len(methods)*0.3)))
 ax.barh(plotdata["method"], plotdata["cor"], color = color)
 ax.set_xlim(0., 1)
 ax.set_yticks([])

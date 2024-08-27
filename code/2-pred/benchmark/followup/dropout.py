@@ -112,7 +112,7 @@ symbol_oi = transcriptome.var.loc[gene_oi, "symbol"]
 import chromatinhd_manuscript as chdm
 
 # %%
-fig = chd.grid.Figure(chd.grid.Grid(padding_height = 0))
+fig = polyptich.grid.Figure(polyptich.grid.Grid(padding_height = 0))
 
 binwidth = (regionmultiwindow.design["window_end"] - regionmultiwindow.design["window_start"]).iloc[0]
 
@@ -126,7 +126,7 @@ ax.set_xlim(*window)
 
 # panel, ax = fig.main.add_under(chd.models.pred.plot.Predictivity(regionmultiwindow.get_plotdata(gene_oi), window = window, width = 10, color_by_effect=False))
 
-panel, ax = fig.main.add_under(chd.grid.Panel((10, 1.5)))
+panel, ax = fig.main.add_under(polyptich.grid.Panel((10, 1.5)))
 ax.fill_between(q95.coords["position"], q95.sel(quantile = "upper"), q95.sel(quantile = "lower"), fc = "#AAAAAA", lw = 0.5, ec = "#33333344", label = "95%")
 ax.fill_between(q90.coords["position"], q90.sel(quantile = "upper"), q90.sel(quantile = "lower"), fc = "#888888", lw = 0, label = "90%")
 ax.fill_between(q80.coords["position"], q80.sel(quantile = "upper"), q80.sel(quantile = "lower"), fc = "#444444", lw = 0, label = "80%")
@@ -206,7 +206,7 @@ regionpairwindow.score(fragments, transcriptome, models, folds, censorer=censore
 # %%
 symbol = "CCL4"
 
-fig = chd.grid.Figure(chd.grid.Grid(padding_height=0.05))
+fig = polyptich.grid.Figure(polyptich.grid.Grid(padding_height=0.05))
 width = 10
 
 # genes

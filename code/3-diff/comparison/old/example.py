@@ -388,8 +388,8 @@ class Example:
         plotdata_genome_mean = plotdata_atac_mean
 
         # plot
-        main = chd.grid.Grid(3, 3, padding_width=0.1, padding_height=0.1)
-        self.fig = chd.grid.Figure(main)
+        main = polyptich.grid.Grid(3, 3, padding_width=0.1, padding_height=0.1)
+        self.fig = polyptich.grid.Figure(main)
 
         padding_height = 0.001
         resolution = 0.0003
@@ -476,7 +476,7 @@ class Example:
             design["gene"] = None
 
         # add grid for different tracks
-        grid = self.fig.main.add_under(chd.grid.Grid(padding_width=0.25), column=self.wrap_differential)
+        grid = self.fig.main.add_under(polyptich.grid.Grid(padding_width=0.25), column=self.wrap_differential)
 
         window = [
             self.promoter.start - self.promoter.tss,
@@ -515,7 +515,7 @@ class Example:
 
         first = True
         for bigwig_info in design.itertuples():
-            panel, ax = grid.add_under(chd.grid.Panel((self.panel_width, 0.1)), padding=0)
+            panel, ax = grid.add_under(polyptich.grid.Panel((self.panel_width, 0.1)), padding=0)
 
             # keep track of scores of positions, so we can color motifs
             position_scores = pd.DataFrame(
@@ -648,7 +648,7 @@ class Example:
                 plotdata_expression_clusters_oi = plotdata_expression_clusters.loc[self.cluster_info_oi.index]
 
                 panel_expression, ax_expression = panel.add_inset(
-                    chd.grid.Panel((0.1 * len(plotdata_expression_clusters_oi), 0.1)),
+                    polyptich.grid.Panel((0.1 * len(plotdata_expression_clusters_oi), 0.1)),
                     pos=(1, 0),
                     offset=(0, 0),
                     anchor=(0, 0.5),

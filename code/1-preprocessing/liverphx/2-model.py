@@ -267,7 +267,7 @@ motifscan.parent.create_indptr(overwrite = True)
 # %%
 symbol = fragments.var.loc[gene_id, "symbol"]
 
-fig = chd.grid.Figure(chd.grid.Grid(padding_height=0.05, padding_width=0.05))
+fig = polyptich.grid.Figure(polyptich.grid.Grid(padding_height=0.05, padding_width=0.05))
 
 import dataclasses
 @dataclasses.dataclass
@@ -420,7 +420,7 @@ for gene_id in tqdm.tqdm(gene_ids):
     if (plot_folder / f"{symbol}.pdf").exists():
         continue
 
-    fig = chd.grid.Figure(chd.grid.Grid(padding_height=0.05, padding_width=0.05))
+    fig = polyptich.grid.Figure(polyptich.grid.Grid(padding_height=0.05, padding_width=0.05))
 
     import dataclasses
     @dataclasses.dataclass
@@ -727,21 +727,21 @@ enrichment_condensed = pd.DataFrame(enrichment_condensed)
 enrichment_condensed["label"] = [", ".join([str(x) for x in symbols[:5]]) for symbols in enrichment_condensed["symbols"]]
 
 # %%
-fig = chd.grid.Figure(chd.grid.Grid())
+fig = polyptich.grid.Figure(polyptich.grid.Grid())
 
 n = 30
 
 resolution = 0.25
 
 plotdata = enrichment_condensed["log_odds"].values[:n, None]
-panel, ax = fig.main.add_right(chd.grid.Panel((np.array(plotdata.shape)[::-1] * resolution)))
+panel, ax = fig.main.add_right(polyptich.grid.Panel((np.array(plotdata.shape)[::-1] * resolution)))
 ax.matshow(plotdata, vmin = 0)
 ax.set_xticks([])
 ax.set_yticks(np.arange(plotdata.shape[0]))
 ax.set_yticklabels(enrichment_condensed["label"].iloc[:len(plotdata)], fontsize = 12)
 
 plotdata = enrichment_differential.loc["lsec-central-24h"].loc[enrichment_condensed.index]["log_odds"].values[:n, None]
-panel, ax = fig.main.add_right(chd.grid.Panel((np.array(plotdata.shape)[::-1] * resolution)), padding = 0.05)
+panel, ax = fig.main.add_right(polyptich.grid.Panel((np.array(plotdata.shape)[::-1] * resolution)), padding = 0.05)
 
 norm = mpl.colors.Normalize(vmin = -1, vmax = 1)
 ax.matshow(plotdata, cmap = "RdBu_r", norm = norm)
@@ -916,7 +916,7 @@ a = tot_reshaped.sum(-1, keepdims=True).sum(-2, keepdims=True) - b - c - d
 odds = ((a*d)/(b*c))
 
 # %%
-fig = chd.grid.Figure(chd.grid.Wrap(padding_width=0.1, padding_height=0.0, ncol = 7))
+fig = polyptich.grid.Figure(polyptich.grid.Wrap(padding_width=0.1, padding_height=0.0, ncol = 7))
 
 cmap = mpl.cm.PiYG
 norm = mpl.colors.Normalize(vmin=np.log(0.125), vmax=np.log(8.0))
@@ -924,7 +924,7 @@ norm = mpl.colors.Normalize(vmin=np.log(0.125), vmax=np.log(8.0))
 for (_, (cluster, motif)), odds_motifcluster in zip(
     motifclustermapping[["cluster", "motif"]].iterrows(), odds
 ):
-    panel, ax = fig.main.add(chd.grid.Panel((0.8, 0.8)))
+    panel, ax = fig.main.add(polyptich.grid.Panel((0.8, 0.8)))
     ax.matshow(np.log(odds_motifcluster), cmap=cmap, norm=norm)
     ax.set_xticks([])
     ax.set_yticks([])

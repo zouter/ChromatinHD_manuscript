@@ -608,7 +608,7 @@ scores.sel(param = "spline_binary_1000-31frequencies_splitdistance", regions = "
 import statsmodels.api as sm
 import scipy.stats
 
-fig = chd.grid.Figure(chd.grid.Wrap(padding_width = 0.7, ncol = 4))
+fig = polyptich.grid.Figure(polyptich.grid.Wrap(padding_width = 0.7, ncol = 4))
 
 plotdata["diff"] = plotdata[b] - plotdata[a]
 plotdata["tick"] = (np.arange(len(plotdata)) % int(len(plotdata)/10)) == 0
@@ -628,7 +628,7 @@ plotdata["n_fragments_std"] = n_fragments_std.loc[plotdata.index.get_level_value
 cmap = mpl.colormaps["Set1"]
 
 # rank vs diff
-panel, ax = fig.main.add(chd.grid.Panel((2, 2)))
+panel, ax = fig.main.add(polyptich.grid.Panel((2, 2)))
 ax.scatter(np.arange(len(plotdata)), (plotdata["diff"]), c = cmap(plotdata["oi"].cat.codes), s = 3)
 ax.set_xlabel(a + " rank")
 ax.set_ylabel("$\Delta$ r2")
@@ -641,7 +641,7 @@ z = lowess(plotdata["diff"], np.arange(len(plotdata)), frac = 0.5)
 ax.plot(z[:, 0], z[:, 1], color = "green")
 
 # a vs diff
-panel, ax = fig.main.add(chd.grid.Panel((2, 2)))
+panel, ax = fig.main.add(polyptich.grid.Panel((2, 2)))
 ax.scatter(plotdata[a], (plotdata["diff"]), c = cmap(plotdata["oi"].cat.codes), s = 3)
 ax.set_xlabel(a)
 ax.set_ylabel("$\Delta$ r2")
@@ -656,7 +656,7 @@ ax.axline((0, 0), slope = lm.slope, color = "cyan", linestyle = "--")
 lm.slope
 
 # vs
-panel, ax = fig.main.add(chd.grid.Panel((2, 2)))
+panel, ax = fig.main.add(polyptich.grid.Panel((2, 2)))
 ax.scatter(plotdata[a], plotdata[b], c = cmap(plotdata["oi"].cat.codes), s = 3)
 ax.set_xlabel(a)
 ax.set_ylabel(b)
@@ -679,7 +679,7 @@ ax.annotate(f"cut {1-cut:.1%}", (1, 1), (1, 1.1), arrowprops = dict(arrowstyle =
 ax.annotate(f"$r^2$={lm.rvalue**2:.1%}", (0.95, 0.95), ha = "right", va = "top")
 
 # dispersions vs diff
-panel, ax = fig.main.add(chd.grid.Panel((2, 2)))
+panel, ax = fig.main.add(polyptich.grid.Panel((2, 2)))
 ax.scatter(plotdata["dispersions"], plotdata["diff"], c = cmap(plotdata["oi"].cat.codes), s = 3)
 ax.set_xlabel("dispersion")
 ax.set_ylabel("$\Delta$ r2")
@@ -689,7 +689,7 @@ z = lowess(plotdata["diff"], plotdata["dispersions"], frac = 2/3)
 ax.plot(z[:, 0], z[:, 1], color = "green")
 
 # dispersions vs diff
-panel, ax = fig.main.add(chd.grid.Panel((2, 2)))
+panel, ax = fig.main.add(polyptich.grid.Panel((2, 2)))
 ax.scatter(plotdata["log10means"], plotdata["diff"], c = cmap(plotdata["oi"].cat.codes), s = 3)
 ax.set_xlabel("log10means")
 ax.set_ylabel("$\Delta$ r2")
@@ -699,7 +699,7 @@ z = lowess(plotdata["diff"], plotdata["log10means"], frac = 2/3)
 ax.plot(z[:, 0], z[:, 1], color = "green")
 
 # dispersions_norm vs diff
-panel, ax = fig.main.add(chd.grid.Panel((2, 2)))
+panel, ax = fig.main.add(polyptich.grid.Panel((2, 2)))
 ax.scatter(plotdata["log10dispersions_norm"], plotdata["diff"], c = cmap(plotdata["oi"].cat.codes), s = 3)
 ax.set_xlabel("log10dispersions_norm")
 ax.set_ylabel("$\Delta$ r2")
@@ -709,7 +709,7 @@ z = lowess(plotdata["diff"], plotdata["log10dispersions_norm"], frac = 2/3)
 ax.plot(z[:, 0], z[:, 1], color = "green")
 
 # n fragments
-panel, ax = fig.main.add(chd.grid.Panel((2, 2)))
+panel, ax = fig.main.add(polyptich.grid.Panel((2, 2)))
 ax.scatter(plotdata["log10n_fragments"], plotdata["diff"], c = cmap(plotdata["oi"].cat.codes), s = 3)
 ax.set_xlabel("log10n_fragments")
 ax.set_ylabel("$\Delta$ r2")
@@ -719,7 +719,7 @@ z = lowess(plotdata["diff"], plotdata["log10n_fragments"], frac = 2/3)
 ax.plot(z[:, 0], z[:, 1], color = "green")
 
 # n fragments std
-panel, ax = fig.main.add(chd.grid.Panel((2, 2)))
+panel, ax = fig.main.add(polyptich.grid.Panel((2, 2)))
 ax.scatter(plotdata["n_fragments_std"], plotdata["diff"], c = cmap(plotdata["oi"].cat.codes), s = 3)
 ax.set_xlabel("n_fragments_std")
 ax.set_ylabel("$\Delta$ r2")
@@ -1025,7 +1025,7 @@ regionmultiwindow.score(fragments, transcriptome, [model], [fold], censorer, reg
 regionmultiwindow.interpolate()
 
 # %%
-fig = chd.grid.Figure(chd.grid.Grid(padding_height=0.05))
+fig = polyptich.grid.Figure(polyptich.grid.Grid(padding_height=0.05))
 width = 10
 
 # window = None

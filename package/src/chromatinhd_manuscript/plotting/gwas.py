@@ -1,4 +1,4 @@
-from chromatinhd.grid.broken import Broken, Panel
+from polyptich.grid.broken import Broken, Panel
 import pandas as pd
 import adjustText
 import seaborn as sns

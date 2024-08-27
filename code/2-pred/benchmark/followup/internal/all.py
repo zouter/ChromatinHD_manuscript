@@ -130,7 +130,7 @@ regionmultiwindow.interpolate()
 # %%
 symbol = "CCL4"
 
-fig = chd.grid.Figure(chd.grid.Grid(padding_height=0.05))
+fig = polyptich.grid.Figure(polyptich.grid.Grid(padding_height=0.05))
 width = 10
 
 region = fragments.regions.coordinates.loc[transcriptome.gene_id(symbol)]

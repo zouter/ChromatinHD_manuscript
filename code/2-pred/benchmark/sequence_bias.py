@@ -154,11 +154,11 @@ plotdata["abslfc"] = np.abs(plotdata["lfc"])
 plotdata["log1p_bincount"] = np.log1p(plotdata["bincount"])
 
 # %%
-fig = chd.grid.Figure(chd.grid.Grid())
+fig = polyptich.grid.Figure(polyptich.grid.Grid())
 
 ylims = [-5, 5]
 
-panel, ax = fig.main.add_right(chd.grid.Panel((2, 2)))
+panel, ax = fig.main.add_right(polyptich.grid.Panel((2, 2)))
 ax.scatter(plotdata["log1p_bincount"], plotdata["score"], s = 1)
 ax.set_xlabel("log1p(bincounts)")
 ax.set_ylabel("scores")
@@ -168,7 +168,7 @@ ax.set_ylim(*ylims)
 
 plotdata_oi = plotdata#[plotdata["log1p_bincount"] > 0.]
 
-panel, ax = fig.main.add_right(chd.grid.Panel((2, 2)))
+panel, ax = fig.main.add_right(polyptich.grid.Panel((2, 2)))
 ax.scatter(plotdata_oi["abslfc"], plotdata_oi["score"], s = 1)
 ax.set_xlabel("abs(lfc)")
 ax.set_ylabel("scores")
@@ -180,7 +180,7 @@ ax.set_title("All positions")
 
 plotdata_oi = plotdata[plotdata["log1p_bincount"] > 0.]
 
-panel, ax = fig.main.add_right(chd.grid.Panel((2, 2)))
+panel, ax = fig.main.add_right(polyptich.grid.Panel((2, 2)))
 ax.scatter(plotdata_oi["abslfc"], plotdata_oi["score"], s = 1)
 ax.set_xlabel("abs(lfc)")
 ax.set_ylabel("scores")
@@ -192,7 +192,7 @@ ax.set_title("Positions with at least 1 cut")
 
 plotdata_oi = plotdata[plotdata["log1p_bincount"] > np.log(5+1)]
 
-panel, ax = fig.main.add_right(chd.grid.Panel((2, 2)))
+panel, ax = fig.main.add_right(polyptich.grid.Panel((2, 2)))
 ax.scatter(plotdata_oi["abslfc"], plotdata_oi["score"], s = 1)
 ax.set_xlabel("abs(lfc)")
 ax.set_ylabel("scores")
@@ -205,7 +205,7 @@ ax.set_title("Positions with at least 10 cuts")
 
 plotdata_oi = plotdata[plotdata["log1p_bincount"] > np.log(10+1)]
 
-panel, ax = fig.main.add_right(chd.grid.Panel((2, 2)))
+panel, ax = fig.main.add_right(polyptich.grid.Panel((2, 2)))
 ax.scatter(plotdata_oi["abslfc"], plotdata_oi["score"], s = 1)
 ax.set_xlabel("abs(lfc)")
 ax.set_ylabel("scores")
@@ -301,9 +301,9 @@ plotdata["abslfc"] = np.abs(plotdata["lfc"])
 plotdata["log1p_bincount"] = np.log1p(plotdata["bincount"])
 
 # %%
-fig = chd.grid.Figure(chd.grid.Grid())
+fig = polyptich.grid.Figure(polyptich.grid.Grid())
 
-panel, ax = fig.main.add_right(chd.grid.Panel((2, 2)))
+panel, ax = fig.main.add_right(polyptich.grid.Panel((2, 2)))
 ax.scatter(plotdata["log1p_bincount"], plotdata["score"], s = 1)
 ax.set_xlabel("log1p(bincounts)")
 ax.set_ylabel("scores")
@@ -313,7 +313,7 @@ ax.set_ylim(-15, 15)
 
 plotdata_oi = plotdata#[plotdata["log1p_bincount"] > 0.]
 
-panel, ax = fig.main.add_right(chd.grid.Panel((2, 2)))
+panel, ax = fig.main.add_right(polyptich.grid.Panel((2, 2)))
 ax.scatter(plotdata_oi["lfc"], plotdata_oi["score"], s = 1)
 ax.set_xlabel("lfc")
 ax.set_ylabel("scores")
@@ -322,7 +322,7 @@ ax.annotate(f"cor = {cor:.2f}", (0.95, 0.05), xycoords = "axes fraction", ha = "
 ax.set_ylabel("")
 ax.set_ylim(-15, 15)
 
-panel, ax = fig.main.add_right(chd.grid.Panel((2, 2)))
+panel, ax = fig.main.add_right(polyptich.grid.Panel((2, 2)))
 ax.scatter(plotdata_oi["abslfc"], plotdata_oi["score"], s = 1)
 ax.set_xlabel("abs(lfc)")
 ax.set_ylabel("scores")
@@ -333,7 +333,7 @@ ax.set_ylim(-15, 15)
 
 plotdata_oi = plotdata[plotdata["log1p_bincount"] > 0.]
 
-panel, ax = fig.main.add_right(chd.grid.Panel((2, 2)))
+panel, ax = fig.main.add_right(polyptich.grid.Panel((2, 2)))
 ax.scatter(plotdata_oi["lfc"], plotdata_oi["score"], s = 1)
 ax.set_xlabel("lfc")
 ax.set_ylabel("scores")
@@ -342,7 +342,7 @@ ax.annotate(f"cor = {cor:.2f}", (0.95, 0.05), xycoords = "axes fraction", ha = "
 ax.set_ylabel("")
 ax.set_ylim(-15, 15)
 
-panel, ax = fig.main.add_right(chd.grid.Panel((2, 2)))
+panel, ax = fig.main.add_right(polyptich.grid.Panel((2, 2)))
 ax.scatter(plotdata_oi["abslfc"], plotdata_oi["score"], s = 1)
 ax.set_xlabel("abs(lfc)")
 ax.set_ylabel("scores")

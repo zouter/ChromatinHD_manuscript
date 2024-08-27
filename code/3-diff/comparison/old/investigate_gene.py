@@ -387,14 +387,14 @@ fig, ax = plt.subplots()
 sns.heatmap(probs_diff_masked[gene_oi],cmap=mpl.cm.RdBu_r, vmin = -1, vmax = 1)
 
 # %%
-main = chd.grid.Grid(padding_height=0.1)
-fig = chd.grid.Figure(main)
+main = polyptich.grid.Grid(padding_height=0.1)
+fig = polyptich.grid.Figure(main)
 
 nbins = np.array(model.mixture.transform.nbins)
 bincuts = np.concatenate([[0], np.cumsum(nbins)])
 binmids = bincuts[:-1] + nbins/2
 
-ax = main[0, 0] = chd.grid.Ax((10, 0.25))
+ax = main[0, 0] = polyptich.grid.Ax((10, 0.25))
 ax = ax.ax
 plotdata = (model.mixture.transform.unnormalized_heights.data.cpu().numpy())[[gene_oi]]
 ax.imshow(plotdata, aspect = "auto")
@@ -405,7 +405,7 @@ ax.set_xlim(0-0.5, plotdata.shape[1]-0.5)
 ax.set_xticks([])
 ax.set_ylabel("$h_0$", rotation = 0, ha = "right", va = "center")
 
-ax = main[1, 0] = chd.grid.Ax(dim = (10, n_latent_dimensions * 0.25))
+ax = main[1, 0] = polyptich.grid.Ax(dim = (10, n_latent_dimensions * 0.25))
 ax = ax.ax
 plotdata = (model.decoder.logit_weight.data[gene_oi].data.cpu().numpy())
 ax.imshow(plotdata, aspect = "auto", cmap = mpl.cm.RdBu_r, vmax = np.log(2), vmin = np.log(1/2))
@@ -708,9 +708,9 @@ cmap_atac_diff = mpl.cm.RdBu_r
 cluster_info_oi = cluster_info.loc[["B", "Lymphoma"]]
 
 # %%
-import chromatinhd.grid
-main = chd.grid.Grid(3, 3, padding_width = 0.1, padding_height = 0.1)
-fig = chd.grid.Figure(main)
+import polyptich.grid
+main = polyptich.grid.Grid(3, 3, padding_width = 0.1, padding_height = 0.1)
+fig = polyptich.grid.Figure(main)
 
 padding_height = 0.001
 resolution = 0.0005
@@ -1063,11 +1063,11 @@ def plot_motifscores(ax, motifscores_all):
     # ax.set_xlabel("Odds-ratio differential peaks")
     # ax.set_ylabel("Odds-ratio\ndifferential\nChromatinHD\nregions", rotation = 0, va = "center", ha = "right")
     
-main = chd.grid.Wrap()
-fig = chd.grid.Figure(main)
+main = polyptich.grid.Wrap()
+fig = polyptich.grid.Figure(main)
 
 for cluster in cluster_info.index:
-    ax_ = main.add(chd.grid.Ax((2, 2)))
+    ax_ = main.add(polyptich.grid.Ax((2, 2)))
     
     ax_.ax.set_title(cluster)
     

@@ -311,7 +311,7 @@ joined = regionmultiwindow.scores[gene_oi].mean("model").to_pandas().join(data_b
 joined["window_mid"] = regionmultiwindow.design.loc[joined.index, "window_mid"]
 
 # %%
-fig = chd.grid.Figure(chd.grid.Grid(padding_height=0))
+fig = polyptich.grid.Figure(polyptich.grid.Grid(padding_height=0))
 
 binwidth = (regionmultiwindow.design["window_end"] - regionmultiwindow.design["window_start"]).iloc[0]
 
@@ -323,17 +323,17 @@ window = [40000, 50000]  # IL10 Enhancer
 panel, ax = fig.main.add_under(chd.plot.genome.Genes.from_region(region, width=10, window=window))
 ax.set_xlim(*window)
 
-panel, ax = fig.main.add_under(chd.grid.Panel((10, 1)))
+panel, ax = fig.main.add_under(polyptich.grid.Panel((10, 1)))
 ax.bar(joined["window_mid"], joined["HS_LS_logratio"], lw=0, width=binwidth)
 ax.set_xlim(*window)
 ax.set_ylabel("CRISPRi score", rotation=0, ha="right", va="center")
 
-panel, ax = fig.main.add_under(chd.grid.Panel((10, 1)))
+panel, ax = fig.main.add_under(polyptich.grid.Panel((10, 1)))
 ax.bar(joined["window_mid"], joined["deltacor"], lw=0, width=binwidth)
 ax.set_xlim(*window)
 ax.set_ylabel("$\Delta cor$", rotation=0, ha="right", va="center")
 
-panel, ax = fig.main.add_under(chd.grid.Panel((10, 1)))
+panel, ax = fig.main.add_under(polyptich.grid.Panel((10, 1)))
 ax.bar(joined["window_mid"], joined["lost"], lw=0, width=binwidth)
 ax.set_xlim(*window)
 ax.set_ylabel("# fragments", rotation=0, ha="right", va="center")
@@ -663,14 +663,14 @@ for tick in ax.get_xticklabels(which="minor"):
 # %%
 plotdata = slicescores_stacked.groupby(["gene", "method"]).mean(numeric_only=True).unstack()["lfc"].T
 
-fig = chd.grid.Figure(chd.grid.Grid(padding_width=0.1))
+fig = polyptich.grid.Figure(polyptich.grid.Grid(padding_width=0.1))
 
 cmap = mpl.colormaps["YlGnBu"]
 cmap.set_bad("#EEEEEE")
 
 norm = mpl.colors.Normalize(vmin=0)
 
-panel, ax = fig.main.add_under(chd.grid.Panel(np.array(plotdata.shape)[::-1] * 0.25))
+panel, ax = fig.main.add_under(polyptich.grid.Panel(np.array(plotdata.shape)[::-1] * 0.25))
 ax.matshow(plotdata.values, cmap=cmap, aspect="auto", norm=norm)
 ax.tick_params(top=True, bottom=False, labeltop=True, labelbottom=False)
 ax.set_xticks(np.arange(len(plotdata.columns)))
@@ -678,7 +678,7 @@ ax.set_xticklabels(transcriptome.symbol(plotdata.columns), rotation=45, ha="left
 ax.set_yticks(np.arange(len(plotdata.index)))
 ax.set_yticklabels(plotdata.index)
 
-panel, ax = fig.main.add_right(chd.grid.Panel([0.25, plotdata.shape[0] * 0.25]))
+panel, ax = fig.main.add_right(polyptich.grid.Panel([0.25, plotdata.shape[0] * 0.25]))
 ax.matshow(slicescores_mean["lfc"].values[:, None], cmap=cmap, aspect="auto", norm=norm)
 ax.tick_params(top=True, bottom=False, labeltop=True, labelbottom=False)
 ax.set_xticks([0])

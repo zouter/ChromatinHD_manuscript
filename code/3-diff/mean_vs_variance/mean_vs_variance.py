@@ -146,8 +146,8 @@ plotdata = plotdata.fillna(0.0)
 plotdata = (plotdata / plotdata.values.sum(1, keepdims=True))
 
 # %%
-fig = chd.grid.Figure(chd.grid.Grid())
-panel, ax = fig.main.add_right(chd.grid.Panel((2, 2)))
+fig = polyptich.grid.Figure(polyptich.grid.Grid())
+panel, ax = fig.main.add_right(polyptich.grid.Panel((2, 2)))
 norm = mpl.colors.Normalize(vmin=0, vmax=1)
 norm = mpl.colors.SymLogNorm(linthresh=1e-9, linscale=0.1, vmin=0, vmax=1)
 cmap = mpl.colormaps["viridis"]
@@ -172,8 +172,8 @@ plotdata = plotdata.fillna(0.0)
 plotdata = (plotdata / plotdata.values.sum(1, keepdims=True))
 
 # %%
-fig = chd.grid.Figure(chd.grid.Grid())
-panel, ax = fig.main.add_right(chd.grid.Panel((2, 2)))
+fig = polyptich.grid.Figure(polyptich.grid.Grid())
+panel, ax = fig.main.add_right(polyptich.grid.Panel((2, 2)))
 norm = mpl.colors.Normalize(vmin=0, vmax=1)
 norm = mpl.colors.SymLogNorm(linthresh=1e-9, linscale=0.1, vmin=0, vmax=1)
 cmap = mpl.colormaps["viridis"]
@@ -189,8 +189,8 @@ fig.plot()
 fig.colorbar(mappable = mpl.cm.ScalarMappable(norm=norm, cmap=cmap), ax=ax, shrink=0.5)
 
 # %%
-fig = chd.grid.Figure(chd.grid.Grid())
-panel, ax = fig.main.add_right(chd.grid.Panel((2, 2)))
+fig = polyptich.grid.Figure(polyptich.grid.Grid())
+panel, ax = fig.main.add_right(polyptich.grid.Panel((2, 2)))
 norm = mpl.colors.Normalize(vmin=0, vmax=1)
 norm = mpl.colors.SymLogNorm(linthresh=1e-9, linscale=0.1, vmin=0, vmax=1)
 cmap = mpl.colormaps["viridis"]

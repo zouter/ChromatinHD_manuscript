@@ -417,9 +417,9 @@ cors_ranked = pd.DataFrame(scipy.stats.rankdata(cors_ranked, axis = 1), index = 
 cors_ranked = cors_ranked.loc[:, cors_ranked.mean(0).sort_values().index]
 
 # %%
-fig = chd.grid.Figure(chd.grid.Grid(padding_height = 0))
+fig = polyptich.grid.Figure(polyptich.grid.Grid(padding_height = 0))
 for method in cors_ranked.columns:
-    panel, ax = fig.main.add_under(chd.grid.Panel((1, 0.2)))
+    panel, ax = fig.main.add_under(polyptich.grid.Panel((1, 0.2)))
     ax.hist(cors_ranked[method], bins = np.arange(cors_ranked.max().max()+2), label = method, alpha = 0.5, color = methods.loc[method, "color"], density = True)
     ax.set_ylabel(methods.loc[method, "label"], rotation = 0, ha = "right", va = "center")
     ax.set_yticks([])

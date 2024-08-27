@@ -101,7 +101,7 @@ region_id = transcriptome.gene_id("IRF1")
 
 # %%
 symbol = transcriptome.var.loc[region_id, "symbol"]
-breaking = chd.grid.broken.Breaking(regions, 0.05)
+breaking = polyptich.grid.broken.Breaking(regions, 0.05)
 
 # %%
 breaking.regions
@@ -130,7 +130,7 @@ plotdata2_mean = plotdata2.groupby("coord").mean()
 transcriptome.gene_id("IRF1")
 
 # %%
-fig = chd.grid.Figure(chd.grid.Grid(padding_height=0.05, padding_width=0.05))
+fig = polyptich.grid.Figure(polyptich.grid.Grid(padding_height=0.05, padding_width=0.05))
 
 # region = fragments.regions.coordinates.loc[gene_id]
 # panel_genes = chd.plot.genome.genes.Genes.from_region(region, width=width, window = window, genome = "mm10" if dataset_name == "liver" else "GRCh38", symbol = symbol, label_genome = True, show_genes = False)
@@ -485,7 +485,7 @@ motifs_oi = pd.DataFrame([
 # motifs_oi = pd.DataFrame(columns = ["motif"]).set_index("motif")
 
 # %%
-fig = chd.grid.Figure(chd.grid.Grid(padding_height=0.05, padding_width=0.05))
+fig = polyptich.grid.Figure(polyptich.grid.Grid(padding_height=0.05, padding_width=0.05))
 
 width = (window[1] - window[0]) / 2000
 
@@ -552,7 +552,7 @@ for rsid in snps_oi.sort_values("n_traits", ascending = False).head(50).index:
         window = -window[::-1]
     gene_id = region_info.name
 
-    fig = chd.grid.Figure(chd.grid.Grid(padding_height=0.05, padding_width=0.05))
+    fig = polyptich.grid.Figure(polyptich.grid.Grid(padding_height=0.05, padding_width=0.05))
 
     width = (window[1] - window[0]) / 2000
 
@@ -919,9 +919,9 @@ if dataset_name == "hspc":
         ]
     )
 
-fig = chd.grid.Figure(chd.grid.Grid(padding_height=0.05, padding_width=0.05))
+fig = polyptich.grid.Figure(polyptich.grid.Grid(padding_height=0.05, padding_width=0.05))
 
-# panel, ax = fig.main.add_under(chd.grid.Panel((3, 0.2)))
+# panel, ax = fig.main.add_under(polyptich.grid.Panel((3, 0.2)))
 
 # ax.boxplot([np.log(plotdata["rel"])], vert=False, showfliers=False, widths = 0.8)
 # ax.set_xlim(np.log(0.5), np.log(3))
@@ -932,7 +932,7 @@ fig = chd.grid.Figure(chd.grid.Grid(padding_height=0.05, padding_width=0.05))
 # ax.tick_params(top=True, labeltop=True, bottom=False, labelbottom=False)
 # ax.set_yticks([])
 
-panel, ax = fig.main.add_under(chd.grid.Panel((2, 2.)))
+panel, ax = fig.main.add_under(polyptich.grid.Panel((2, 2.)))
 # ax.set_xlim(0.1, 10)
 ax.barh(y=plotdata["ix"], width=(np.log(plotdata["rel"])), color="#333", lw=0.0, height=1, left=0)
 ax.axvline(plotdata["rel"].mean())
@@ -1013,11 +1013,11 @@ plotdata["transient"] = plotdata.index.get_level_values("cluster").isin(["Granul
 plotdata["stripe"] = plotdata["symbol"].str.upper().isin(stripe_factors.query("perc_stripe > 25")["tf"])
 
 # %%
-fig = chd.grid.Figure(chd.grid.Grid(padding_height=0.05, padding_width=0.05))
+fig = polyptich.grid.Figure(polyptich.grid.Grid(padding_height=0.05, padding_width=0.05))
 
 plotdata_oi = plotdata.loc[plotdata["transient"]]
 
-panel, ax = fig.main.add_right(chd.grid.Panel((2, 2.)))
+panel, ax = fig.main.add_right(polyptich.grid.Panel((2, 2.)))
 ax.barh(y=plotdata["ix"], width=(np.log(plotdata["rel"])), color="#333", lw=0.0, height=1, left=0)
 ax.barh(y=plotdata_oi["ix"], width=(np.log(plotdata_oi["rel"])), color="#0074D9", lw=0.0, height=1, left=0)
 ax.set_title("Enrichment in\ntransient cell states")
@@ -1030,7 +1030,7 @@ ax.set_ylim(-1, len(plotdata))
 
 plotdata_oi = plotdata.loc[plotdata["stripe"]]
 
-panel, ax = fig.main.add_right(chd.grid.Panel((2, 2.)))
+panel, ax = fig.main.add_right(polyptich.grid.Panel((2, 2.)))
 ax.barh(y=plotdata["ix"], width=(np.log(plotdata["rel"])), color="#333", lw=0.0, height=1, left=0)
 ax.barh(y=plotdata_oi["ix"], width=(np.log(plotdata_oi["rel"])), color="#FF4136", lw=0.0, height=1, left=0)
 ax.set_title("Enrichment of stripe-factors")
@@ -1199,13 +1199,13 @@ symbols_oi = []
 genes_oi = transcriptome.gene_id(symbols_oi)
 
 # %%
-fig = chd.grid.Figure(chd.grid.Grid(padding_height=0.05, padding_width=0.05))
+fig = polyptich.grid.Figure(polyptich.grid.Grid(padding_height=0.05, padding_width=0.05))
 
 dim = 1.5
 
 # TF-TF interactions
 
-panel, ax = fig.main.add(chd.grid.Panel((dim, dim)))
+panel, ax = fig.main.add(polyptich.grid.Panel((dim, dim)))
 
 plotdata_oi = plotdata.dropna(subset=["n_links"]).copy()
 plotdata_oi["x"] = np.log(plotdata_oi["n_links"])
@@ -1245,7 +1245,7 @@ for motif, row in plotdata_oi2.iterrows():
     text.set_path_effects([mpl.patheffects.withStroke(linewidth=3, foreground="#FFFFFFCC")])
 
 # IDR
-panel, ax = fig.main.add_right(chd.grid.Panel((dim, dim)))
+panel, ax = fig.main.add_right(polyptich.grid.Panel((dim, dim)))
 
 score = "idr_50_2"
 # score = "idr_50"
@@ -1704,9 +1704,9 @@ associations = chd.data.associations.Associations(chd.get_output() / "datasets" 
 # %%
 symbol = transcriptome.var.loc[region_id, "symbol"]
 
-breaking = chd.grid.broken.Breaking(regions, 0.05, resolution = 2000)
+breaking = polyptich.grid.broken.Breaking(regions, 0.05, resolution = 2000)
 
-fig = chd.grid.Figure(chd.grid.Grid(padding_height=0.05, padding_width=0.05))
+fig = polyptich.grid.Figure(polyptich.grid.Grid(padding_height=0.05, padding_width=0.05))
 
 clusters_oi = ["HSPC", "MEP", "Erythrocyte precursors", "Erythroblast", "GMP", "Myeloid"]; relative_to = ["HSPC"]
 # clusters_oi = ["HSPC", "GMP", "Myeloid"]; relative_to = ["HSPC"]
@@ -1779,9 +1779,9 @@ assert all([path.exists() for path in design["bigwig"]])
 import chromatinhd.data.peakcounts
 
 # %%
-# fig = chd.grid.Figure(chd.grid.Grid(padding_height=0.05, padding_width=0.05))
+# fig = polyptich.grid.Figure(polyptich.grid.Grid(padding_height=0.05, padding_width=0.05))
 
-panel = chd.grid.Grid()
+panel = polyptich.grid.Grid()
 fig.main.add_under(panel)
 
 self = panel
@@ -1794,7 +1794,7 @@ import pyBigWig
 
 for _, setting in design.iterrows():
     broken = self.add_under(
-        chd.grid.Broken(breaking, height=panel_height, margin_height=0.0, padding_height=0.01), padding=0
+        polyptich.grid.Broken(breaking, height=panel_height, margin_height=0.0, padding_height=0.01), padding=0
     )
 
     motifs_oi = pd.DataFrame({"motif":setting["motifs"]}).set_index("motif")
@@ -2168,8 +2168,8 @@ slicescores_oi = (
 slicescores_oi = slicescores_oi.iloc[:n]
 
 # %%
-breaking = chd.grid.broken.Breaking(slicescores_oi, 0.05, resolution = 3000)
-# breaking = chd.grid.broken.Breaking(slicescores_oi, 0.05, resolution = 7500)
+breaking = polyptich.grid.broken.Breaking(slicescores_oi, 0.05, resolution = 3000)
+# breaking = polyptich.grid.broken.Breaking(slicescores_oi, 0.05, resolution = 7500)
 
 # %%
 # preload peakcallers
@@ -2409,7 +2409,7 @@ for region_id in slicescores_oi["region"].unique():
 from chromatinhd.plot import format_distance
 import textwrap
 
-fig = chd.grid.Figure(chd.grid.BrokenGrid(breaking, padding_height = 0.03))
+fig = polyptich.grid.Figure(polyptich.grid.BrokenGrid(breaking, padding_height = 0.03))
 
 # cluster_info = clustering.cluster_info
 cluster_info = clustering.cluster_info.loc[cluster_ids]
@@ -2420,7 +2420,7 @@ for subregion_ix, (_, subregion_info), grid, width in zip(
     range(len(slicescores_oi)), slicescores_oi.iterrows(), fig.main, fig.main.panel_widths
 ):
     # add upper labelling panel
-    panel_labeling = chd.grid.Panel((width, 0.1))
+    panel_labeling = polyptich.grid.Panel((width, 0.1))
     panel_labeling.ax.set_xlim(subregion_info["start"], subregion_info["end"])
     panel_labeling.ax.axis("off")
     grid.add_under(panel_labeling)
@@ -2454,7 +2454,7 @@ for subregion_ix, (_, subregion_info), grid, width in zip(
             ax.set_ylabel(cluster_info_["label"].replace(" ", "\n"), rotation=0, ha="right", va="center")
 
     # chd capture
-    panel, ax = grid.add_under(chd.grid.Panel((width, 0.1)))
+    panel, ax = grid.add_under(polyptich.grid.Panel((width, 0.1)))
     ax.set_ylim(0, 1)
     sns.despine(ax=ax, left=True, bottom=True)
     ax.set_xlim(subregion_info["start"], subregion_info["end"])
@@ -2545,7 +2545,7 @@ for subregion_ix, (_, subregion_info), grid, width in zip(
             do_bigwig = setting["bigwig"] is not None
 
 
-            panel, ax = grid.add_under(chd.grid.Panel((width, 0.35 if do_bigwig else 0.2)))
+            panel, ax = grid.add_under(polyptich.grid.Panel((width, 0.35 if do_bigwig else 0.2)))
             # ax.set_ylabel(setting["label"], rotation = 0, ha = "right", va = "center")
 
             ax.set_ylim(0, 100)
@@ -2618,7 +2618,7 @@ for subregion_ix, (_, subregion_info), grid, width in zip(
 
     # crispr
     if subregion_info["region"] in region_crisprdata:
-        panel, ax = grid.add_under(chd.grid.Panel((width, 0.35)))
+        panel, ax = grid.add_under(polyptich.grid.Panel((width, 0.35)))
         ax.set_ylim(np.log(1), np.log(1/16))
 
         crisprdata = region_crisprdata[subregion_info["region"]]
@@ -2802,10 +2802,10 @@ slicescores_oi = (
 slicescores_oi = slicescores_oi.iloc[:n]
 
 # %%
-breaking = chd.grid.broken.Breaking(slicescores_oi, 0.05, resolution = 3000)
+breaking = polyptich.grid.broken.Breaking(slicescores_oi, 0.05, resolution = 3000)
 
 # %%
-fig = chd.grid.Figure(chd.grid.Grid())
+fig = polyptich.grid.Figure(polyptich.grid.Grid())
 
 region = fragments.regions.coordinates.loc[transcriptome.gene_id("Lhx2")]
 panel_genes = chd.plot.genome.genes.GenesBroken.from_region(
@@ -3309,7 +3309,7 @@ clustering.var.loc["Granulocyte precursor", "label"] = "Granulo. prec."
 clustering.var.loc["Megakaryocyte progenitors", "label"] = "Mega. prec."
 
 # %%
-fig = chd.grid.Figure(chd.grid.Wrap(padding_width=0.1, padding_height=0.0, ncol = 12))
+fig = polyptich.grid.Figure(polyptich.grid.Wrap(padding_width=0.1, padding_height=0.0, ncol = 12))
 
 cmap = mpl.cm.PiYG
 norm = mpl.colors.Normalize(vmin=np.log(0.125), vmax=np.log(8.0))
@@ -3334,7 +3334,7 @@ for (_, motif_cluster), odds_motifcluster in zip(
 
     norm = mpl.colors.Normalize(vmin=np.log(1/odds_max), vmax=np.log(odds_max))
 
-    panel, ax = fig.main.add(chd.grid.Panel((size, size)))
+    panel, ax = fig.main.add(polyptich.grid.Panel((size, size)))
     ax.matshow(np.log(odds_motifcluster), cmap=cmap, norm=norm)
     ax.set_xticks([])
     ax.set_yticks([])
@@ -3524,7 +3524,7 @@ for region_ix, region_id in tqdm.tqdm(zip(np.arange(len(fragments.var)), fragmen
     scores.append((np.argmax(y2[:, positions], 0) == indices).mean())
 
 # %%
-fig = chd.grid.Figure(chd.grid.Grid(padding_height=0.05, padding_width=0.05))
+fig = polyptich.grid.Figure(polyptich.grid.Grid(padding_height=0.05, padding_width=0.05))
 
 window = [20000, 28000]
 width = (window[1] - window[0]) / 2000

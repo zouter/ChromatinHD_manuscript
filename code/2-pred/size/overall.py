@@ -330,10 +330,10 @@ sizes = pd.DataFrame(
 width = 3
 padding_height = 0.1
 
-fig = chd.grid.Figure(chd.grid.Grid(padding_height=padding_height))
+fig = polyptich.grid.Figure(polyptich.grid.Grid(padding_height=padding_height))
 
 # abundance
-panel, ax = fig.main.add_under(chd.grid.Panel((width, 0.5)))
+panel, ax = fig.main.add_under(polyptich.grid.Panel((width, 0.5)))
 ax.plot(lengthscores["window_mid"], -lengthscores["lost"], zorder=0, color="#333")
 ax.scatter(
     lengthscores["window_mid"],
@@ -351,7 +351,7 @@ ax.xaxis.tick_top()
 ax.xaxis.set_ticks_position("top")
 
 # predictivity (delta cor)
-panel, ax = fig.main.add_under(chd.grid.Panel((width, 1.5)))
+panel, ax = fig.main.add_under(polyptich.grid.Panel((width, 1.5)))
 
 ax.plot(lengthscores["window_mid"], lengthscores["normdeltacor"] * 1000, color="black")
 ax.scatter(
@@ -427,7 +427,7 @@ for relmin_ in relmin:
 ax.set_ylabel("$\\Delta$ cor per\n1000 fragments", rotation=0, ha="right", va="center")
 
 # effect
-panel, ax = fig.main.add_under(chd.grid.Panel((width, 0.5)))
+panel, ax = fig.main.add_under(polyptich.grid.Panel((width, 0.5)))
 ax.plot(
     lengthscores["window_mid"],
     lengthscores["normeffect"] * 1000,
@@ -448,7 +448,7 @@ ax.set_xticks([])
 xlim = ax.get_xlim()
 
 # types
-panel, ax = fig.main.add_under(chd.grid.Panel((width, 0.5)))
+panel, ax = fig.main.add_under(polyptich.grid.Panel((width, 0.5)))
 texts = []
 adjustments = np.array([-30, -15, -5, 0, 0, 0, 0, 0, 5])
 for i, size in sizes.iterrows():

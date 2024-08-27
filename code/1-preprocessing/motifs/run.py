@@ -4,45 +4,37 @@ Make sure to first run scanp.ipynb to create the motifscans for the whole genome
 """
 
 import pandas as pd
-import numpy as np
-import tqdm.auto as tqdm
 
 import chromatinhd as chd
 import chromatinhd.data.peakcounts
-
-import pathlib
-
-from chromatinhd_manuscript.designs_pred import dataset_peakcaller_combinations as design_1
-from chromatinhd_manuscript.designs_pred import (
-    traindataset_testdataset_peakcaller_combinations as design_2,
-)
 
 device = "cuda:1"
 
 design = chd.utils.crossing(
     pd.DataFrame.from_records(
         [
-            ["pbmc10k", "hs"],
-            ["pbmc10kx", "hs"],
-            ["pbmc3k", "hs"],
-            ["pbmc10k_gran", "hs"],
-            ["e18brain", "mm"],
-            ["hspc", "hs"],
-            ["lymphoma", "hs"],
-            ["liver", "mm"],
-            ["hepatocytes", "mm"],
-            ["pbmc20k", "hs"],
-            ["alzheimer", "hs"],
+            # ["pbmc10k", "hs"],
+            # ["pbmc10kx", "hs"],
+            # ["pbmc3k", "hs"],
+            # ["pbmc10k_gran", "hs"],
+            # ["e18brain", "mm"],
+            # ["hspc", "hs"],
+            # ["lymphoma", "hs"],
+            # ["liver", "mm"],
+            # ["hepatocytes", "mm"],
+            # ["pbmc20k", "hs"],
+            # ["alzheimer", "hs"],
+            ["liverkia_lsecs", "mm"],
         ],
         columns=["dataset", "organism"],
     ),
     pd.DataFrame({"motifs": ["hocomocov12"]}),
-    pd.DataFrame({"regions": ["10k10k", "100k100k"]}),
-    pd.DataFrame({"cutoff": ["cutoff_0.0001"], "cutoff_label": ["1e-4"]}),
+    pd.DataFrame({"regions": ["100k100k"]}),
+    # pd.DataFrame({"regions": ["10k10k", "100k100k"]}),
+    pd.DataFrame({"cutoff": ["cutoff_0.0001", "cutoff_0.0005", "cutoff_5"], "cutoff_label": ["1e-4", "5e-4", "cutoff_5"]}),
 )
-design = design.query("dataset == 'alzheimer'")
-design["force"] = False
-# design["force"] = True
+# design["force"] = False
+design["force"] = True
 
 for _, row in design.iterrows():
     print(row)
@@ -62,7 +54,8 @@ for _, row in design.iterrows():
         genome_folder = chd.get_output() / "genomes" / "GRCh38"
     elif row["organism"] == "mm":
         genome_folder = chd.get_output() / "genomes" / "mm10"
-    parent = chd.flow.Flow.from_path(genome_folder / "motifscans" / motifscan_name)
+    parent = chd.data.motifscan.Motifscan(genome_folder / "motifscans" / motifscan_name)
+    # parent = chd.flow.Flow.from_path(genome_folder / "motifscans" / motifscan_name)
 
     motifscan = chd.data.motifscan.MotifscanView(
         path=chd.get_output() / "datasets" / dataset_name / "motifscans" / regions_name / motifscan_name,

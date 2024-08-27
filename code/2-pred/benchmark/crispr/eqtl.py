@@ -491,7 +491,7 @@ joined = joined_all.query("gene == @gene_oi").copy()
 joined["score"] = joined["HS_LS_logratio"] * joined["deltacor"]
 
 # %%
-fig = chd.grid.Figure(chd.grid.Grid(padding_height=0.1))
+fig = polyptich.grid.Figure(polyptich.grid.Grid(padding_height=0.1))
 
 # binwidth = (regionmultiwindow.design["window_end"] - regionmultiwindow.design["window_start"]).iloc[0]
 binwidth = 100
@@ -547,7 +547,7 @@ panel, ax = fig.main.add_under(
 ax.set_xlim(*window)
 ax.set_xticks([])
 
-panel, ax = fig.main.add_under(chd.grid.Panel((10, 1)))
+panel, ax = fig.main.add_under(polyptich.grid.Panel((10, 1)))
 ax.bar(
     joined["window_mid"],
     joined["HS_LS_logratio"],
@@ -579,7 +579,7 @@ for arrow in arrows:
     panel.add_arrow(**arrow)
 
 # interaction
-# panel, ax = fig.main.add_under(chd.grid.Panel((10, 0.5)))
+# panel, ax = fig.main.add_under(polyptich.grid.Panel((10, 0.5)))
 # plotdata = pd.DataFrame(
 #     {
 #         "deltacor":regionpairwindow.scores[gene_oi].mean("fold")["deltacor"].to_pandas().values,
@@ -596,7 +596,7 @@ for arrow in arrows:
 # )
 # ax.set_xlim(*window)
 
-# panel, ax = fig.main.add_under(chd.grid.Panel((10, 0.5)))
+# panel, ax = fig.main.add_under(polyptich.grid.Panel((10, 0.5)))
 # # # !wget https://www.encodeproject.org/files/ENCFF010PHG/@@download/ENCFF010PHG.bigWig
 # import pyBigWig
 # file = pyBigWig.open("ENCFF010PHG.bigWig")
@@ -607,7 +607,7 @@ for arrow in arrows:
 # ax.set_ylim(0, 20)
 # ax.set_ylabel("H3K27ac\nsignal", rotation = 0, ha = "right", va = "center")
 
-# panel, ax = fig.main.add_under(chd.grid.Panel((10, 0.5)))
+# panel, ax = fig.main.add_under(polyptich.grid.Panel((10, 0.5)))
 # # # !wget https://www.encodeproject.org/files/ENCFF814IYI/@@download/ENCFF814IYI.bigWig
 # import pyBigWig
 # file = pyBigWig.open("ENCFF814IYI.bigWig")
@@ -618,7 +618,7 @@ for arrow in arrows:
 # ax.set_ylim(0, 20)
 # ax.set_ylabel("H3K4me3\nsignal", rotation = 0, ha = "right", va = "center")
 
-# panel, ax = fig.main.add_under(chd.grid.Panel((10, 0.5)))
+# panel, ax = fig.main.add_under(polyptich.grid.Panel((10, 0.5)))
 # # # !wget https://www.encodeproject.org/files/ENCFF242ENK/@@download/ENCFF242ENK.bigWig
 # import pyBigWig
 # file = pyBigWig.open("ENCFF242ENK.bigWig")
@@ -1010,7 +1010,7 @@ slicescores_stacked = pd.concat([pd.concat(slicescores[method_name]) for method_
 w_oi = 10
 
 # %%
-fig = chd.grid.Figure(chd.grid.Wrap())
+fig = polyptich.grid.Figure(polyptich.grid.Wrap())
 
 for method, plotdata in allslicescores_stacked.query("w == @w_oi").groupby("method"):
     # if method.startswith("rolling"):
@@ -1018,7 +1018,7 @@ for method, plotdata in allslicescores_stacked.query("w == @w_oi").groupby("meth
     plotdata["HS_LS_logratio2"] = plotdata["HS_LS_logratio"]
     plotdata["score"] = plotdata["score"].abs()
     plotdata["HS_LS_logratio2"] = plotdata.groupby("score")["HS_LS_logratio"].transform("mean")
-    panel, ax = fig.main.add(chd.grid.Panel((2, 2)))
+    panel, ax = fig.main.add(polyptich.grid.Panel((2, 2)))
     cors = []
     auprs = []
     aurocs = []
@@ -1039,11 +1039,11 @@ for method, plotdata in allslicescores_stacked.query("w == @w_oi").groupby("meth
 fig.plot()
 
 # %%
-fig = chd.grid.Figure(chd.grid.Wrap())
+fig = polyptich.grid.Figure(polyptich.grid.Wrap())
 
 w_oi = 10.
 for method_name, slicescores_oi in allslicescores_stacked.query("w == @w_oi").groupby("method"):
-    panel, ax = fig.main.add(chd.grid.Panel((2, 2)))
+    panel, ax = fig.main.add(polyptich.grid.Panel((2, 2)))
 
     # x = slicescores_oi["score"].abs()
     x = np.clip(slicescores_oi["score"].abs(), 0, np.inf)
@@ -1131,12 +1131,12 @@ for peakcaller in peakcallers:
 w_oi = 10
 
 # %%
-fig = chd.grid.Figure(chd.grid.Grid(padding_width = 0.2))
+fig = polyptich.grid.Figure(polyptich.grid.Grid(padding_width = 0.2))
 
 plotdata = methodscores.loc[(methodscores["w"] == w_oi) | (methodscores["method"] == "all")].copy()
 methods = prediction_methods.loc[methodscores["method"].unique()]
 
-panel, ax = fig.main.add_under(chd.grid.Panel((2, len(methods)*0.3)))
+panel, ax = fig.main.add_under(polyptich.grid.Panel((2, len(methods)*0.3)))
 color = prediction_methods.reindex(plotdata["method"])["color"]
 ax.barh(plotdata["method"], plotdata["aupr"], color = color)
 ax.set_xlim(0., 1)
@@ -1144,20 +1144,20 @@ ax.set_xlabel("AUPRC")
 ax.set_yticks(np.arange(len(plotdata["method"])))
 ax.set_yticklabels(prediction_methods.reindex(plotdata["method"])["label"])
 
-panel, ax = fig.main.add_right(chd.grid.Panel((2, len(methods)*0.3)))
+panel, ax = fig.main.add_right(polyptich.grid.Panel((2, len(methods)*0.3)))
 ax.barh(plotdata["method"], plotdata["auroc"], color = color)
 ax.set_xlim(0.5, 1)
 ax.set_yticks([])
 ax.set_xlabel("AUROC")
 ax.set_title("Fulco et al. 2019")
 
-panel, ax = fig.main.add_right(chd.grid.Panel((2, len(methods)*0.3)))
+panel, ax = fig.main.add_right(polyptich.grid.Panel((2, len(methods)*0.3)))
 ax.barh(plotdata["method"], plotdata["cor"], color = color)
 ax.set_xlim(0., 1)
 ax.set_yticks([])
 ax.set_xlabel("cor")
 
-panel, ax = fig.main.add_right(chd.grid.Panel((2, len(methods)*0.3)))
+panel, ax = fig.main.add_right(polyptich.grid.Panel((2, len(methods)*0.3)))
 ax.barh(plotdata["method"], plotdata["r2"], color = color)
 ax.set_xlim(0., 1)
 ax.set_yticks([])
@@ -1242,14 +1242,14 @@ w_oi = genescores_stacked.query("method == 'v33'").groupby(["w"])["cor"].mean().
 w_oi
 
 # %%
-fig = chd.grid.Figure(chd.grid.Grid(padding_width = 0.2))
+fig = polyptich.grid.Figure(polyptich.grid.Grid(padding_width = 0.2))
 
 plotdata = genescores_stacked.loc[(genescores_stacked["w"] == w_oi) | (genescores_stacked["method"] == "all")].groupby("method").mean(numeric_only = True).reset_index()
 methods = prediction_methods.loc[plotdata["method"].unique()]
 
 plotdata["color"] = prediction_methods.reindex(plotdata["method"])["color"].values
 
-panel, ax = fig.main.add_right(chd.grid.Panel((1.2, len(methods)*0.2)))
+panel, ax = fig.main.add_right(polyptich.grid.Panel((1.2, len(methods)*0.2)))
 ax.barh(plotdata["method"], plotdata["cor"]**2, color = plotdata["color"], height = 0.9, lw = 0)
 ax.set_xlim(0., 1)
 ax.set_yticks([])
@@ -1257,20 +1257,20 @@ ax.set_xlabel("R2 between\nprediction and CRISPRi")
 ax.set_yticks(np.arange(len(plotdata["method"])))
 ax.set_yticklabels(prediction_methods.reindex(plotdata["method"])["label"])
 
-panel, ax = fig.main.add_right(chd.grid.Panel((1.2, len(methods)*0.2)))
+panel, ax = fig.main.add_right(polyptich.grid.Panel((1.2, len(methods)*0.2)))
 ax.barh(plotdata["method"], plotdata["cor"], color = plotdata["color"], height = 0.9, lw = 0)
 ax.set_xlim(0., 1)
 ax.set_yticks([])
 ax.set_xlabel("Correlation between\nprediction and CRISPRi")
 ax.set_yticks([])
 
-# panel, ax = fig.main.add_right(chd.grid.Panel((2, len(methods)*0.3)))
+# panel, ax = fig.main.add_right(polyptich.grid.Panel((2, len(methods)*0.3)))
 # ax.barh(plotdata["method"], plotdata["aupr"], color = plotdata["color"])
 # ax.set_xlim(0., 1)
 # ax.set_xlabel("AUPRC")
 # ax.set_yticks([])
 
-# panel, ax = fig.main.add_right(chd.grid.Panel((2, len(methods)*0.3)))
+# panel, ax = fig.main.add_right(polyptich.grid.Panel((2, len(methods)*0.3)))
 # ax.barh(plotdata["method"], plotdata["auroc"], color = plotdata["color"])
 # ax.set_xlim(0.5, 1)
 # ax.set_yticks([])
@@ -1473,7 +1473,7 @@ def fill_between_gradient(x, y1, y2, y, ax, cmap, norm, **kwargs):
 resolution = 2000
 
 # %%
-fig = chd.grid.Figure(chd.grid.Grid(padding_height=0.1))
+fig = polyptich.grid.Figure(polyptich.grid.Grid(padding_height=0.1))
 
 # binwidth = (regionmultiwindow.design["window_end"] - regionmultiwindow.design["window_start"]).iloc[0]
 binwidth = 50
@@ -1487,7 +1487,7 @@ panel, ax = fig.main.add_under(
     chd.models.pred.plot.Pileup(regionmultiwindow.get_plotdata(gene_oi), window=window, width=width)
 )
 
-panel, ax = fig.main.add_under(chd.grid.Panel((width, 1)))
+panel, ax = fig.main.add_under(polyptich.grid.Panel((width, 1)))
 ax.bar(
     joined["window_mid"],
     joined["HS_LS_logratio"],
@@ -1552,7 +1552,7 @@ for i, peakcaller in enumerate([
 
     joined = calculate_peak_difference(joined, peak_gene_links_oi, x)
 
-    panel, ax = fig.main.add_under(chd.grid.Panel((width, 0.4)), padding = 0)
+    panel, ax = fig.main.add_under(polyptich.grid.Panel((width, 0.4)), padding = 0)
 
     norm = mpl.colors.Normalize(vmin=-2, vmax=2)
     cmap = mpl.cm.PiYG

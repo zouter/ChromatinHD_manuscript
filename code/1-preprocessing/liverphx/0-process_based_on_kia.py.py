@@ -13,41 +13,8 @@
 # ---
 
 # %%
-# # # cd output/data/liverphx
-# # ssh -J liesbetm@cp0001.irc.ugent.be:22345 liesbetm@cn2031
-# # on cn2031, proxied via 
-# # /srv/data/liesbetm/Projects/u_mgu/JeanFrancois/epiPipeline/outputBowtie_filtered
-# # sftp -o "ProxyJump=liesbetm@cp0001.irc.ugent.be:22345" liesbetm@cn2031:/srv/data/liesbetm/Projects/u_mgu/JeanFrancois/epiPipeline/outputBowtie_filtered
-
-# get KcAtacRep1.bam
-# get KcAtacRep2.bam
-# get LsecCvPh24hAtacRep1.bam
-# get LsecCvPh24hAtacRep2.bam
-# get LsecPvPh24hAtacRep1.bam
-# get LsecPvPh24hAtacRep2.bam
-# get LsecCvShamAtacRep1.bam
-# get LsecCvShamAtacRep2.bam
-# get LsecPvShamAtacRep1.bam
-# get LsecPvShamAtacRep2.bam
-
-# get KcAtacRep1.bam.bai
-# get KcAtacRep2.bam.bai
-# get LsecCvPh24hAtacRep1.bam.bai
-# get LsecCvPh24hAtacRep2.bam.bai
-# get LsecPvPh24hAtacRep1.bam.bai
-# get LsecPvPh24hAtacRep2.bam.bai
-# get LsecCvShamAtacRep1.bam.bai
-# get LsecCvShamAtacRep2.bam.bai
-# get LsecPvShamAtacRep1.bam.bai
-# get LsecPvShamAtacRep2.bam.bai
-
-
-
-# # cd /srv/data/liesbetm/Projects/u_mgu/JeanFrancois/epiPipeline/outputMergePeaks/LsecCvPh24h/
-# get LsecCvPh24h.fwp.filter.non_overlapping.bed
-
-# # cd /srv/data/liesbetm/Projects/u_mgu/JeanFrancois/epiPipeline/outputMergePeaks/LsecPvPh24h
-# get ./LsecPvPh24h.fwp.filter.non_overlapping.bed
+# cd output/data/liverphx
+# cp /srv/data/liesbetm/Projects/u_mgu/JeanFrancois/epiPipeline/outputBowtie_filtered/* ./
 
 # %%
 # %load_ext autoreload
@@ -77,10 +44,10 @@ import chromatinhd as chd
 
 # %%
 obs = pd.DataFrame([
-    ["lsec", "central", "24h", 1, "LsecCvPh24hAtacRep1.bam"],
-    ["lsec", "central", "24h", 2, "LsecCvPh24hAtacRep2.bam"],
-    ["lsec", "portal", "24h", 1, "LsecPvPh24hAtacRep1.bam"],
-    ["lsec", "portal", "24h", 2, "LsecPvPh24hAtacRep2.bam"],
+    # ["lsec", "central", "24h", 1, "LsecCvPh24hAtacRep1.bam"],
+    # ["lsec", "central", "24h", 2, "LsecCvPh24hAtacRep2.bam"],
+    # ["lsec", "portal", "24h", 1, "LsecPvPh24hAtacRep1.bam"],
+    # ["lsec", "portal", "24h", 2, "LsecPvPh24hAtacRep2.bam"],
     ["lsec", "central", "sham", 1, "LsecCvShamAtacRep1.bam"],
     ["lsec", "central", "sham", 2, "LsecCvShamAtacRep2.bam"],
     ["lsec", "portal", "sham", 1, "LsecPvShamAtacRep1.bam"],
@@ -88,7 +55,7 @@ obs = pd.DataFrame([
     # ["kc", "-", "-", 1, "KcAtacRep1.bam"],
     # ["kc", "-", "-", 2, "KcAtacRep2.bam"],
 ], columns = ["celltype", "zonation", "treatment", "replicate", "path"])
-obs["path"] = "/home/wsaelens/projects/chromatinhd/chromatinhd_manuscript/output/data/liverphx/" + obs["path"]
+obs["path"] = "/home/wouters/projects/ChromatinHD_manuscript/output/data/liverphx/" + obs["path"]
 
 import pysam
 obs["alignment"] = obs["path"].apply(lambda x: pysam.AlignmentFile(x, "rb"))
@@ -96,120 +63,33 @@ obs["alignment"] = obs["path"].apply(lambda x: pysam.AlignmentFile(x, "rb"))
 # %%
 dataset_folder = chd.get_output() / "datasets" / "liverphx"
 
-# %%
-# import genomepy
-# genomepy.install_genome("mm10", genomes_dir="/data/genome/")
-fasta_file = "/data/genome/mm10/mm10.fa"
-chromosomes_file = "/data/genome/mm10/mm10.fa.sizes"
-
-regions = chd.data.Regions.from_chromosomes_file(chromosomes_file, path = dataset_folder / "regions" / "all")
-
-fragments_all = chd.data.Fragments.from_alignments(
-    obs,
-    regions=regions,
-    alignment_column="alignment",
-    path=dataset_folder / "fragments" / "all",
-    # overwrite=True,
-    overwrite = False,
-    batch_size = 10e7,
-)
+# %% [markdown]
+# ## Create view for specific transcripts
 
 # %%
-phx_genes = """
-Myadm
-Lgals1
-Actg1
-Kit
-Jam2
-Sgk1
-Egr1
-Gja4
-Armcx4
-Dusp1
-Zfp36
-Junb
-Klf4
-Jpt1
-Cyp4b1
-Apoe
-Orm2
-Mir6236
-""".strip().split("\n")
-
-own_genes = """
-Dll1
-Mecom
-Dll4
-Meis1
-Odc1
-Cdkn1a
-Thbd
-Fabp4
-Armcx4
-Ttr
-C1qb
-Apln
-Jag1
-Meis1
-Kcne3
-Angpt2
-Hey1
-Heyl
-Hes1
-Sox18
-Sox17
-Sox7
-Adam15
-Efnb1
-Efnb2
-Efna1
-Foxo1
-Ltbp4
-Lama4
-Esm1
-Stc1
-Lrp4
-Wnt2
-Wnt9b
-Rspo3
-Kit
-Thbd
-Ccnd2
-Ccn4
-""".strip().split("\n")
-
-zonated_genes = """
-Glul
-""".strip().split("\n")
-
-diffexp_genes = pd.read_csv(chd.get_output() / "data" / "liverphx" / "transcriptome/endothelial/diffexp.csv", index_col = 0)["symbol"].tolist()
-
-symbols = sorted(list(set(phx_genes + own_genes + diffexp_genes)))
-
-# %%
+# get transcripts from kia dataset
+folder_data_preproc2 = chd.get_output() / "data" / "liverkia" / "liver_control_JVG28"
+folder_dataset2 = chd.get_output() / "datasets" / "liverkia_lsecs"
+transcriptome = chd.data.transcriptome.Transcriptome(folder_dataset2 / "transcriptome")
+transcripts = pickle.load(
+    (folder_data_preproc2 / "selected_transcripts.pkl").open("rb")
+).loc[transcriptome.var.index]
 regions_name = "100k100k"
-# regions_name = "10k10k"
-transcripts = chd.biomart.get_canonical_transcripts(
-    chd.biomart.Dataset.from_genome("mm10"),
-    filter_canonical = True,
-    symbols = symbols,
+regions = chd.data.regions.Regions.from_transcripts(
+    transcripts, [-100000, 100000], dataset_folder / "regions" / "100k100k", overwrite = True
 )
-# transcripts = transcripts.loc[transcripts["ensembl_gene_id"].isin(gene_ids)]
-
-if regions_name == "100k100k":
-    window = [-100000, 100000]
-elif regions_name == "10k10k":
-    window = [-10000, 10000]
-regions = chd.data.Regions.from_transcripts(transcripts, window, path = dataset_folder / "regions" / regions_name, overwrite = True)
 
 # %%
-fragments = chd.data.fragments.FragmentsView.from_fragments(
-    fragments_all,
+fragments = chd.data.fragments.Fragments.from_alignments(
+    obs,
     regions = regions,
+    alignment_column = "alignment",
     path = dataset_folder / "fragments" / regions_name,
     overwrite = True
 )
-fragments.create_regionxcell_indptr2(
+
+# %%
+fragments.create_regionxcell_indptr(
     overwrite = True,
 )
 fragments.var["symbol"] = transcripts["symbol"]
@@ -254,8 +134,8 @@ motifscan = chd.data.motifscan.MotifscanView.from_motifscan(
 # ## Clustering
 
 # %%
-obs["cluster"] = obs["celltype"] + "-" + obs["zonation"] + "-" + obs["treatment"] + "-" + obs["replicate"].astype(str)
-clustering = chd.data.Clustering.from_labels(obs["cluster"], var = obs.groupby("cluster")[["celltype", "zonation", "treatment", "replicate"]].first(), path = dataset_folder / "clusterings" / "cluster_replicate", overwrite = True)
+# obs["cluster"] = obs["celltype"] + "-" + obs["zonation"] + "-" + obs["treatment"] + "-" + obs["replicate"].astype(str)
+# clustering = chd.data.Clustering.from_labels(obs["cluster"], var = obs.groupby("cluster")[["celltype", "zonation", "treatment", "replicate"]].first(), path = dataset_folder / "clusterings" / "cluster_replicate", overwrite = True)
 
 obs["cluster"] = obs["celltype"] + "-" + obs["zonation"] + "-" + obs["treatment"]
 clustering = chd.data.Clustering.from_labels(obs["cluster"], var = obs.groupby("cluster")[["celltype", "zonation", "treatment", "replicate"]].first(), path = dataset_folder / "clusterings" / "cluster", overwrite = True)

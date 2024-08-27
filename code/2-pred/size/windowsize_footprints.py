@@ -775,8 +775,8 @@ for gene in tqdm.tqdm(genes_oi):
 genescores = pd.DataFrame(genescores).set_index("gene")
 
 # %%
-fig = chd.grid.Figure(chd.grid.Grid())
-panel, ax = fig.main.add_under(chd.grid.Panel((3, 3)))
+fig = polyptich.grid.Figure(polyptich.grid.Grid())
+panel, ax = fig.main.add_under(polyptich.grid.Panel((3, 3)))
 plotdata = pd.DataFrame(
     np.nan_to_num(np.stack(genescores.loc[genescores.index.intersection(genes_diffexp)]["cor"]), 0).mean(0),
     index = genescores["cor"].iloc[0].index,
@@ -784,7 +784,7 @@ plotdata = pd.DataFrame(
 )
 ax.set_title("Diffexp B-cell genes")
 sns.heatmap(plotdata, vmin = -1, vmax = 1, cmap = "coolwarm",  annot = True, fmt = ".2f", ax = ax, cbar = False)
-panel, ax = fig.main.add_right(chd.grid.Panel((3, 3)))
+panel, ax = fig.main.add_right(polyptich.grid.Panel((3, 3)))
 plotdata = pd.DataFrame(
     np.nan_to_num(np.stack(genescores["cor"]), 0).mean(0),
     index = genescores["cor"].iloc[0].index,

@@ -188,12 +188,12 @@ width = (window_oi[1] - window_oi[0]) // resolution
 # %%
 # fig, (ax_fragments, ax_gex) = plt.subplots(1, 2, figsize = (15, n_cells/10), sharey = True, width_ratios = [2, 0.5])
 
-fig = chd.grid.Figure(chd.grid.Grid())
+fig = polyptich.grid.Figure(polyptich.grid.Grid())
 
-main = fig.main.add_under(chd.grid.Grid())
+main = fig.main.add_under(polyptich.grid.Grid())
 
-panel_fragments, ax_fragments = main.add_right(chd.grid.Panel((width, n_cells/1000)))
-panel_gex, ax_gex = main.add_right(chd.grid.Panel((1, n_cells/1000)))
+panel_fragments, ax_fragments = main.add_right(polyptich.grid.Panel((width, n_cells/1000)))
+panel_gex, ax_gex = main.add_right(polyptich.grid.Panel((1, n_cells/1000)))
 
 ax_fragments.set_xlim(*window_oi)
 ax_fragments.set_ylim(0, n_cells)
@@ -216,7 +216,7 @@ ax_fragments.set_xlabel("Distance from TSS")
 ax_fragments.xaxis.set_label_position('top')
 ax_fragments.xaxis.tick_top()
 
-panel_legend, ax_legend = fig.main.add_under(chd.grid.Panel((9, 1)))
+panel_legend, ax_legend = fig.main.add_under(polyptich.grid.Panel((9, 1)))
 ax_legend.axis("off")
 
 for celltype in celltype_colors.index:
@@ -268,15 +268,15 @@ celltype_info = pd.DataFrame(
 celltype_info["color"] = sns.color_palette("husl", n_colors=len(celltype_info))
 
 # %%
-fig = chd.grid.Figure(chd.grid.Grid(padding_height = 0.05))
+fig = polyptich.grid.Figure(polyptich.grid.Grid(padding_height = 0.05))
 
-main = fig.main.add_under(chd.grid.Grid(padding_height = 0.15))
+main = fig.main.add_under(polyptich.grid.Grid(padding_height = 0.15))
 
 height = n_cells / 2000
 
 # celltype
 panel_celltypelabel, ax_celltypelabel = main.add_right(
-    chd.grid.Panel((1, height)), padding=0.0, row=0
+    polyptich.grid.Panel((1, height)), padding=0.0, row=0
 )
 ax_celltypelabel.set_yticks([])
 ax_celltypelabel.set_xticks([])
@@ -308,7 +308,7 @@ for i, (celltype, row) in enumerate(plotdata.iterrows()):
 ax_celltypelabel.axis("off")
 
 panel, ax_celltype = main.add_right(
-    chd.grid.Panel((0.2, height)), padding=0.0, row=0
+    polyptich.grid.Panel((0.2, height)), padding=0.0, row=0
 )
 patches = []
 for _, obs_row in obs.iterrows():
@@ -330,7 +330,7 @@ ax_celltype.set_xticks([])
 ax_celltype.set_ylim(ax_fragments.get_ylim())
 
 # expression
-panel_gex, ax_gex = main.add_right(chd.grid.Panel((1, height)), padding=0.25)
+panel_gex, ax_gex = main.add_right(polyptich.grid.Panel((1, height)), padding=0.25)
 ax_gex.plot(obs["gex"], obs["y"], color = "#333")
 ax_gex.set_xlabel(transcriptome.symbol(gene_id) + " expression")
 ax_gex.set_ylim(0, n_cells)
@@ -346,7 +346,7 @@ for i, width, window_oi, resolution in [
     [1, width2, window_oi2, resolution2],
     [2, width3, window_oi3, resolution3],
 ]:
-    panel_fragments, ax_fragments = main.add_right(chd.grid.Panel((width, height)), padding=0.15)
+    panel_fragments, ax_fragments = main.add_right(polyptich.grid.Panel((width, height)), padding=0.15)
 
     coordinates_oi = coordinates[
         (coordinates[:, 0] >= window_oi[0])
@@ -408,7 +408,7 @@ for i, width, window_oi, resolution in [
 
     prev_windows.append(window_oi)
 
-# panel_legend, ax_legend = fig.main.add_under(chd.grid.Panel((9, 1)))
+# panel_legend, ax_legend = fig.main.add_under(polyptich.grid.Panel((9, 1)))
 # ax_legend.axis("off")
 # for celltype in celltype_colors.index:
 #     ax_legend.scatter([], [], s=100, c=celltype_colors[celltype], label=celltype)
@@ -483,12 +483,12 @@ width = (window_oi[1] - window_oi[0]) // resolution
 # %%
 # fig, (ax_fragments, ax_gex) = plt.subplots(1, 2, figsize = (15, n_cells/10), sharey = True, width_ratios = [2, 0.5])
 
-fig = chd.grid.Figure(chd.grid.Grid())
+fig = polyptich.grid.Figure(polyptich.grid.Grid())
 
-main = fig.main.add_under(chd.grid.Grid())
+main = fig.main.add_under(polyptich.grid.Grid())
 
-panel_fragments, ax_fragments = main.add_right(chd.grid.Panel((width, n_cells/350)))
-panel_gex, ax_gex = main.add_right(chd.grid.Panel((1, n_cells/350)))
+panel_fragments, ax_fragments = main.add_right(polyptich.grid.Panel((width, n_cells/350)))
+panel_gex, ax_gex = main.add_right(polyptich.grid.Panel((1, n_cells/350)))
 
 ax_fragments.set_xlim(*window_oi)
 ax_fragments.set_ylim(0, n_cells)

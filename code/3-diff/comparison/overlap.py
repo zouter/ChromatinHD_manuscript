@@ -246,10 +246,10 @@ for design_ix, bed in prsets.items():
 import textwrap
 
 # %%
-fig = chd.grid.Figure(chd.grid.Wrap(padding_width = 0.05, padding_height = 0.))
+fig = polyptich.grid.Figure(polyptich.grid.Wrap(padding_width = 0.05, padding_height = 0.))
 
 for ix, focus in enumerate(["encode_screen/t-test", "macs2_summits/t-test", "macs2_leiden_0.1_merged/t-test", "rolling_50/t-test", "rolling_500/t-test"]):
-    panel, ax = fig.main.add(chd.grid.Panel((0.8, 0.8)))
+    panel, ax = fig.main.add(polyptich.grid.Panel((0.8, 0.8)))
 
     ax.set_xscale("log")
     ax.set_xlim(50, 5000)
@@ -508,27 +508,27 @@ design["label"] = chdm.methods.differential_methods.loc[design["method"]]["label
 # design["label"] = design['method']
 
 # %%
-fig = chd.grid.Figure(chd.grid.Grid())
+fig = polyptich.grid.Figure(polyptich.grid.Grid())
 
 resolution = 0.12
 dim = (len(design) * resolution, len(design) * resolution)
 
 # vertical dendrogram
-panel, ax_dendrogram = fig.main[0, 1] = chd.grid.Panel((dim[0], 0.2))
+panel, ax_dendrogram = fig.main[0, 1] = polyptich.grid.Panel((dim[0], 0.2))
 ax_dendrogram.set_axis_off()
 dendrogram = scipy.cluster.hierarchy.dendrogram(
     cluster_f1, ax=ax_dendrogram, orientation="top", no_labels=True, link_color_func=lambda x: "black"
 )
 
 # horizontal dendrogram
-panel, ax_dendrogram = fig.main[1, 0] = chd.grid.Panel((0.2, dim[1]))
+panel, ax_dendrogram = fig.main[1, 0] = polyptich.grid.Panel((0.2, dim[1]))
 ax_dendrogram.set_axis_off()
 dendrogram = scipy.cluster.hierarchy.dendrogram(
     cluster_f1, ax=ax_dendrogram, orientation="left", no_labels=True, link_color_func=lambda x: "black"
 )
 ax_dendrogram.invert_yaxis()
 
-panel, ax = fig.main.add(chd.grid.Panel(dim), padding_height = 0., padding_width = 0., column = 1, row = 1)
+panel, ax = fig.main.add(polyptich.grid.Panel(dim), padding_height = 0., padding_width = 0., column = 1, row = 1)
 
 norm_f1 = mpl.colors.Normalize(vmin=0, vmax=.5)
 cmap_f1 = mpl.cm.get_cmap("viridis")
@@ -559,25 +559,25 @@ ax.tick_params(axis='y', which='major', length=0, pad = 2.0)
 for method, ticklabel in zip(design["method"], ax.get_yticklabels()):
     ticklabel.set_color(chdm.methods.differential_methods.loc[method]["color"])
 
-# panel, ax = fig.main.add_right(chd.grid.Panel((0.1, dim[1])), padding = 0.1, row = 1)
+# panel, ax = fig.main.add_right(polyptich.grid.Panel((0.1, dim[1])), padding = 0.1, row = 1)
 # ax.matshow(jaccard.values[np.argsort(design["ix"]), :][:, np.argsort(design["ix"])].mean(0, keepdims = True).T, cmap = cmap_jaccard, norm = norm_jaccard)
 # ax.set_xticks([0.])
 # ax.set_xticklabels(["Mean"], rotation=90)
 # ax.set_yticks([])
 
-panel, ax = fig.main.add_under(chd.grid.Panel([panel.dim[1], 0.1]), padding = 0.5, column = 1)
+panel, ax = fig.main.add_under(polyptich.grid.Panel([panel.dim[1], 0.1]), padding = 0.5, column = 1)
 cbar = fig.colorbar(mpl.cm.ScalarMappable(norm = norm_jaccard, cmap = cmap_jaccard), cax = ax, orientation = "horizontal", label = "Positional overlap (Jaccard)", extend = "max")
 cbar.ax.xaxis.set_ticks_position('top')
 cbar.ax.xaxis.set_label_position('top')
 cbar.ax.tick_params(width = 0.5, pad = 0.)
 
-# panel, ax = fig.main.add_under(chd.grid.Panel((dim[0], 0.1)), padding = 0.1, column = 1)
+# panel, ax = fig.main.add_under(polyptich.grid.Panel((dim[0], 0.1)), padding = 0.1, column = 1)
 # ax.matshow(f1.values[np.argsort(design["ix"]), :][:, np.argsort(design["ix"])].mean(0, keepdims = True), cmap = cmap_f1, norm = norm_f1)
 # ax.set_xticks([])
 # ax.set_yticks([0])
 # ax.set_yticklabels(["Mean"])
 
-panel, ax = fig.main.add_under(chd.grid.Panel([dim[0], 0.1]), padding = 0.0, column = 1)
+panel, ax = fig.main.add_under(polyptich.grid.Panel([dim[0], 0.1]), padding = 0.0, column = 1)
 cbar = fig.colorbar(mpl.cm.ScalarMappable(norm = norm_f1, cmap = cmap_f1), cax = ax, orientation = "horizontal", label = "Region overlap (F1)", extend = "max")
 cbar.ax.tick_params(width = 0.5, pad = 2.)
 

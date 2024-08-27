@@ -209,8 +209,8 @@ logodds_cmap = mpl.cm.RdBu_r
 expression_cmap = mpl.cm.magma
 expression_norm = mpl.colors.Normalize(vmin=0)
 
-fig = chd.grid.Figure(chd.grid.Grid(padding_height=0.1))
-panel = fig.main[0, 0] = chd.grid.Panel((2, len(plotdata_logodds_peaks.columns) * 0.15))
+fig = polyptich.grid.Figure(polyptich.grid.Grid(padding_height=0.1))
+panel = fig.main[0, 0] = polyptich.grid.Panel((2, len(plotdata_logodds_peaks.columns) * 0.15))
 panel.ax.imshow(
     plotdata_logodds_peaks.T, cmap=logodds_cmap, norm=logodds_norm, aspect="auto"
 )
@@ -222,7 +222,7 @@ panel.ax.set_yticklabels(
     fontsize=10,
 )
 
-panel = fig.main[1, 0] = chd.grid.Panel((2, 1 * 0.15))
+panel = fig.main[1, 0] = polyptich.grid.Panel((2, 1 * 0.15))
 panel.ax.imshow(
     plotdata_logodds_region.values[None, :],
     cmap=logodds_cmap,
@@ -232,7 +232,7 @@ panel.ax.imshow(
 panel.ax.set_yticks([0])
 panel.ax.set_yticklabels(["ChromatinHD"], fontsize=10)
 
-panel = fig.main[2, 0] = chd.grid.Panel((2, 1 * 0.15))
+panel = fig.main[2, 0] = polyptich.grid.Panel((2, 1 * 0.15))
 panel.ax.imshow(
     plotdata_expression.values[None, :],
     cmap=expression_cmap,
@@ -436,10 +436,10 @@ motifscores_oi.loc[cluster_oi].groupby("motif")[
 motifscores_grouped = motifscores_oi.groupby("design_ix")
 
 # %%
-fig = chd.grid.Figure(chd.grid.Wrap())
+fig = polyptich.grid.Figure(polyptich.grid.Wrap())
 
 for design_ix, motifscores_group in motifscores_grouped:
-    panel = fig.main.add(chd.grid.Panel((1.5, 1.5)))
+    panel = fig.main.add(polyptich.grid.Panel((1.5, 1.5)))
     ax = panel.ax
     motifscores_group = motifscores_group.reset_index().set_index("motif")
     plot(ax, motifscores_group, motif_ids_oi=motif_ids_oi)
@@ -468,10 +468,10 @@ motifscores_grouped = (
 )
 
 # %%
-fig = chd.grid.Figure(chd.grid.Wrap())
+fig = polyptich.grid.Figure(polyptich.grid.Wrap())
 
 for (design_ix, cluster), motifscores_group in motifscores_grouped:
-    panel = fig.main.add(chd.grid.Panel((1.5, 1.5)))
+    panel = fig.main.add(polyptich.grid.Panel((1.5, 1.5)))
     ax = panel.ax
     motifscores_group = motifscores_group.reset_index().set_index("motif")
     # plot(ax, motifscores_group, motif_ids_oi=motif_ids_oi)

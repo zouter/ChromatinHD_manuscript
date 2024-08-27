@@ -191,8 +191,8 @@ print(len(plotdata_interaction))
 
 
 # %%
-main = chd.grid.Grid(padding_height=0.1)
-fig = chd.grid.Figure(main)
+main = polyptich.grid.Grid(padding_height=0.1)
+fig = polyptich.grid.Figure(main)
 
 panel_width = 8
 
@@ -216,7 +216,7 @@ peaks_panel = main.add_under(
     )
 )
 
-panel_interaction = main.add_under(chd.grid.Panel((panel_width, panel_width / 2)))
+panel_interaction = main.add_under(polyptich.grid.Panel((panel_width, panel_width / 2)))
 ax = panel_interaction.ax
 
 # norm = mpl.colors.Normalize(0, plotdata_interaction["cor"].max())
@@ -457,8 +457,8 @@ regions.index = pd.Series(range(len(regions)), name="region")
 regions["width"] = regions["end"] - regions["start"]
 
 # %%
-main = chd.grid.Grid(padding_height=0.1)
-fig = chd.grid.Figure(main)
+main = polyptich.grid.Grid(padding_height=0.1)
+fig = polyptich.grid.Figure(main)
 
 # resolution = 1 / 4500
 resolution = 1 / 1000
@@ -511,7 +511,7 @@ panel_predictive = chd.predictive.plot.PredictiveBroken(
 panel_predictive = main.add_under(panel_predictive, padding=0)
 
 ##
-panel_interaction = main.add_under(chd.grid.Panel((panel_width, panel_width / 2)), padding=0.0)
+panel_interaction = main.add_under(polyptich.grid.Panel((panel_width, panel_width / 2)), padding=0.0)
 ax = panel_interaction.ax
 
 norm = mpl.colors.CenteredNorm(0, np.abs(plotdata_interaction["cor"]).max())
@@ -543,7 +543,7 @@ chd.plot.matshow45(
 ax.invert_yaxis()
 
 if symbol in ["BCL2"]:
-    panel_interaction_legend = panel_interaction.add_inset(chd.grid.Panel((0.05, 0.8)))
+    panel_interaction_legend = panel_interaction.add_inset(polyptich.grid.Panel((0.05, 0.8)))
     plt.colorbar(
         mpl.cm.ScalarMappable(norm=norm, cmap=cmap),
         cax=panel_interaction_legend.ax,
@@ -661,8 +661,8 @@ plotdata_hic["distance"] = np.abs(plotdata_hic["window1"] - plotdata_hic["window
 plotdata_hic = plotdata_hic.loc[plotdata_hic["distance"] > 1000]
 
 # %%
-main = chd.grid.Grid(padding_height=0.1)
-fig = chd.grid.Figure(main)
+main = polyptich.grid.Grid(padding_height=0.1)
+fig = polyptich.grid.Figure(main)
 
 panel_width = 8
 
@@ -670,7 +670,7 @@ plotdata_predictive = window_scoring.genescores.sel(gene=gene).sel(phase="test")
 plotdata_predictive["position"] = plotdata_predictive.index
 
 ##
-panel_interaction = main.add_under(chd.grid.Panel((panel_width, panel_width / 2)))
+panel_interaction = main.add_under(polyptich.grid.Panel((panel_width, panel_width / 2)))
 ax = panel_interaction.ax
 
 # norm = mpl.colors.Normalize(0, plotdata_interaction["cor"].max())
@@ -735,7 +735,7 @@ panel_genes = main.add_under(panel_genes)
 panel_predictive = chd.models.pred.plot.Predictivity(plotdata_predictive, window, panel_width)
 panel_predictive = main.add_under(panel_predictive, padding=0)
 
-panel_interaction = main.add_under(chd.grid.Panel((panel_width, panel_width / 2)))
+panel_interaction = main.add_under(polyptich.grid.Panel((panel_width, panel_width / 2)))
 ax = panel_interaction.ax
 
 norm = mpl.colors.Normalize(0, np.abs(plotdata_hic["balanced_log"]).max())

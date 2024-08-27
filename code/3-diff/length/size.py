@@ -429,13 +429,13 @@ motif_scores = pd.DataFrame(motif_scores)
 import chromatinhd_manuscript as chdm
 
 # %%
-fig = chd.grid.Figure(chd.grid.Grid(padding_height = 0.1, padding_width = 1.5))
+fig = polyptich.grid.Figure(polyptich.grid.Grid(padding_height = 0.1, padding_width = 1.5))
 
 panel_width = 1
 panel_height = 0.5
 
 ## # positions
-panel, ax = fig.main[0, 0] = fig.main.add_under(chd.grid.Panel((panel_width, panel_height)))
+panel, ax = fig.main[0, 0] = fig.main.add_under(polyptich.grid.Panel((panel_width, panel_height)))
 plotdata = length_scores
 plotdata["ix"] = length_bins.loc[plotdata.index, "ix"]
 ax.bar(
@@ -450,7 +450,7 @@ ax.set_ylabel("# positions", rotation = 0, ha = "right", va = "center")
 ax.yaxis.set_major_formatter(chd.plot.tickers.distance_ticker)
 
 ## # slices
-panel, ax = fig.main[1, 0] = chd.grid.Panel((panel_width, panel_height))
+panel, ax = fig.main[1, 0] = polyptich.grid.Panel((panel_width, panel_height))
 plotdata = length_scores
 plotdata["ix"] = length_bins.loc[plotdata.index, "ix"]
 ax.bar(
@@ -465,7 +465,7 @@ ax.set_ylabel("# regions", rotation = 0, ha = "right", va = "center")
 
 
 ## CRISPR
-panel, ax = fig.main[2, 0] = (chd.grid.Panel((panel_width, panel_height)))
+panel, ax = fig.main[2, 0] = (polyptich.grid.Panel((panel_width, panel_height)))
 plotdata = crispr_scores
 plotdata["ix"] = length_bins.loc[plotdata.index, "ix"]
 ax.bar(
@@ -515,7 +515,7 @@ text.set_path_effects(
 max_odds = 8.
 
 for ix, (motifscan_name, plotdata) in enumerate(scores.groupby("motifscan")):
-    panel, ax = fig.main[ix, 1] = chd.grid.Panel((panel_width, panel_height))
+    panel, ax = fig.main[ix, 1] = polyptich.grid.Panel((panel_width, panel_height))
 
     plotdata["length"] = length_bins["label"].iloc[plotdata["length_bin"]].values
     ax.bar(
@@ -556,7 +556,7 @@ for ix, (motifscan_name, plotdata) in enumerate(scores.groupby("motifscan")):
     ax.axhline(1.1, color = "tomato", dashes = (2, 2), lw = 1.5)
 
 ## Motif
-panel, ax = fig.main[ix+1, 1] = chd.grid.Panel((panel_width, panel_height))
+panel, ax = fig.main[ix+1, 1] = polyptich.grid.Panel((panel_width, panel_height))
 plotdata = motif_scores
 plotdata["ix"] = length_bins.loc[plotdata.index, "ix"]
 ax.bar(

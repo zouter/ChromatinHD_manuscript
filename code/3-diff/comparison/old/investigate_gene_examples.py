@@ -284,10 +284,10 @@ bw = pyBigWig.open(
 )
 
 # %%
-fig = chd.grid.Figure(chd.grid.Wrap())
+fig = polyptich.grid.Figure(polyptich.grid.Wrap())
 
 for _, row in motifdata.iterrows():
-    panel, ax = fig.main.add(chd.grid.Panel((2, 1)))
+    panel, ax = fig.main.add(polyptich.grid.Panel((2, 1)))
 
     ax.plot(
         bw.values(row["chr"], row["start_genome"], row["end_genome"]),
@@ -441,10 +441,10 @@ bw = pyBigWig.open(
 )
 
 # %%
-fig = chd.grid.Figure(chd.grid.Wrap())
+fig = polyptich.grid.Figure(polyptich.grid.Wrap())
 
 for _, row in motifdata.iterrows():
-    panel, ax = fig.main.add(chd.grid.Panel((2, 1)))
+    panel, ax = fig.main.add(polyptich.grid.Panel((2, 1)))
 
     ax.plot(
         bw.values(row["chr"], row["start_genome"], row["end_genome"]),
@@ -765,10 +765,10 @@ bw = pyBigWig.open(
 )
 
 # %%
-fig = chd.grid.Figure(chd.grid.Wrap())
+fig = polyptich.grid.Figure(polyptich.grid.Wrap())
 
 for _, row in motifdata.iterrows():
-    panel, ax = fig.main.add(chd.grid.Panel((2, 1)))
+    panel, ax = fig.main.add(polyptich.grid.Panel((2, 1)))
 
     ax.plot(
         bw.values(row["chr"], row["start_genome"], row["end_genome"]),

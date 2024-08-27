@@ -84,10 +84,10 @@ def plot_motifscore_expression_correlations(
 ):
     assert len(design_rows) > 0
 
-    fig = chd.grid.Figure(chd.grid.Wrap(ncol=2))
+    fig = polyptich.grid.Figure(polyptich.grid.Wrap(ncol=2))
 
     for design_ix in [*design_rows.index, "region"]:
-        panel = fig.main.add(chd.grid.Panel((1.5, 1.5)))
+        panel = fig.main.add(polyptich.grid.Panel((1.5, 1.5)))
         ax = panel.ax
         if design_ix == "region":
             if ref_design_ix is None:

@@ -35,8 +35,6 @@ import pickle
 import scanpy as sc
 import pathlib
 
-import torch_scatter
-import torch
 import math
 
 import tqdm.auto as tqdm
@@ -193,12 +191,15 @@ organism = "hs"
 genome = "mm10"
 organism = "mm"
 
+genome = "GRCm39"
+organism = "mm"
+
 # %%
 genome_folder = chd.get_output() / "genomes" / genome
 
 # %%
-fasta_file = f"/data/genome/{genome}/{genome}.fa"
-chromosomes_file = f"/data/genome/{genome}/{genome}.fa.sizes"
+fasta_file = f"/srv/data/genomes/{genome}/{genome}.fa"
+chromosomes_file = f"/srv/data/genomes/{genome}/{genome}.fa.sizes"
 
 regions = chd.data.Regions.from_chromosomes_file(chromosomes_file, path = genome_folder / "regions")
 # regions = regions.filter(["chr22"])
@@ -207,25 +208,25 @@ regions = chd.data.Regions.from_chromosomes_file(chromosomes_file, path = genome
 region_onehots = chd.data.motifscan.motifscan.create_region_onehots(regions, fasta_file)
 
 # %%
-import gzip
 motifs_folder = chd.get_output() / "data" / "motifs" / organism / "hocomocov12"
 motifs_folder.mkdir(parents=True, exist_ok=True)
 
 pwms, motifs = chd.data.motifscan.download.get_hocomoco(motifs_folder, organism = organism)
-# motifs = motifs.iloc[:5]
-# pwms = {k: v for k, v in pwms.items() if k in motifs.index}
 
 # %%
 # # !ls -la {chd.data.Motifscan(genome_folder / "motifscans" / motifscan_name).path}
 
 # %%
-motifscan_name = "hocomocov12_1e-4"
+motifscan_name = "hocomocov12_1e-4";cutoff_col="cutoff_0.0001"
+# motifscan_name = "hocomocov12_5e-4";cutoff_col="cutoff_0.0005"
+# motifscan_name = "hocomocov12_5";cutoff_col="cutoff_5"
+motifs["cutoff_5"] = 5
 motifscan = chd.data.Motifscan.from_pwms(
     pwms,
     regions,
     motifs=motifs,
     region_onehots=region_onehots,
-    cutoff_col="cutoff_0.0001",
+    cutoff_col=cutoff_col,
     min_cutoff = 3,
     fasta_file=fasta_file,
     path=genome_folder / "motifscans" / motifscan_name,
@@ -233,11 +234,11 @@ motifscan = chd.data.Motifscan.from_pwms(
     overwrite = True,
 )
 
-# motifscan.create_region_indptr()
-# motifscan.create_indptr()
-
 # %%
 motifscan.create_region_indptr()
+
+# %%
+motifscan.create_indptr()
 
 # %%
 counts = np.bincount(motifscan.indices[:])
@@ -246,7 +247,7 @@ counts = np.bincount(motifscan.indices[:])
 pd.DataFrame({
     "motif": motifs.index,
     "count": counts,
-    "cutoff": motifs["cutoff_0.0001"],
+    "cutoff": motifs[cutoff_col],
 }).sort_values("count", ascending = False).tail(50)
 
 # %%
@@ -256,7 +257,7 @@ np.diff(motifscan.region_indptr[:])
 chd.data.motifscan.Motifscan(motifscan.path)
 
 # %%
-motifscan.create_indptr()
+
 
 # %% [markdown]
 # ## Full genome jaspar

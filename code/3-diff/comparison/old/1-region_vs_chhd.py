@@ -191,15 +191,15 @@ for ix, design_row in design.iterrows():
 design = design.query("dataset != 'alzheimer'")
 
 # %%
-fig = chd.grid.Figure(
-    chd.grid.Grid(len(rows), len(columns), padding_height=0, padding_width=0)
+fig = polyptich.grid.Figure(
+    polyptich.grid.Grid(len(rows), len(columns), padding_height=0, padding_width=0)
 )
 
 for ix, design_row in design.iterrows():
     regionvspeak = design_row["regionvspeak"]
 
     if not pd.isnull(regionvspeak):
-        fig.main[design_row.y, design_row.x] = panel = chd.grid.Panel((0.5, 0.5))
+        fig.main[design_row.y, design_row.x] = panel = polyptich.grid.Panel((0.5, 0.5))
         ax = panel.ax
         # if design_row.y == 0:
         #     ax.set_title(design_row.dataset)

@@ -100,16 +100,17 @@ print(
 
 # %%
 to_download = [
-    # "filtered_feature_bc_matrix.h5",
+    "filtered_feature_bc_matrix.h5",
     "atac_fragments.tsv.gz",
-    # "atac_fragments.tsv.gz.tbi",
-    # "atac_peaks.bed",
-    # "atac_peak_annotation.tsv",
+    "atac_fragments.tsv.gz.tbi",
+    "atac_peaks.bed",
+    "atac_peak_annotation.tsv",
 ]
 
 for filename in to_download:
     if not (folder_data_preproc / filename).exists():
-        # !wget {main_url}_{filename} -O {folder_data_preproc}/{filename}
+        import os
+        os.system(f"wget {main_url}_{filename} -O {folder_data_preproc}/{filename}")
 # !cat {folder_data_preproc}/atac_peaks.bed | sed '/^#/d' > {folder_data_preproc}/peaks.tsv
 
 # %%

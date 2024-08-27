@@ -318,7 +318,7 @@ motifscan = chd.data.Motifscan(
 )
 
 # %% metadata={}
-fig = chd.grid.Figure(chd.grid.Grid(padding_height=0.05, padding_width=0.05))
+fig = polyptich.grid.Figure(polyptich.grid.Grid(padding_height=0.05, padding_width=0.05))
 
 window = fragments.regions.window
 
@@ -436,9 +436,9 @@ regions = genepositional.select_regions(gene_id, prob_cutoff = 0.5, padding = 80
 clustering.cluster_info.loc["liver_KC___WT_", "label"] = "KC"
 
 # %%
-breaking = chd.grid.broken.Breaking(regions, 0.05, resolution = 2000)
+breaking = polyptich.grid.broken.Breaking(regions, 0.05, resolution = 2000)
 
-fig = chd.grid.Figure(chd.grid.Grid(padding_height=0.05, padding_width=0.05))
+fig = polyptich.grid.Figure(polyptich.grid.Grid(padding_height=0.05, padding_width=0.05))
 
 region = fragments.regions.coordinates.loc[gene_id]
 panel_genes = chd.plot.genome.genes.GenesBroken.from_region(
@@ -518,7 +518,7 @@ slicescores_oi = (
 slicescores_oi = slicescores_oi.iloc[:n]
 
 # %%
-breaking = chd.grid.broken.Breaking(slicescores_oi, 0.05, resolution = 3000)
+breaking = polyptich.grid.broken.Breaking(slicescores_oi, 0.05, resolution = 3000)
 
 # %%
 motifscan.regions
@@ -527,7 +527,7 @@ motifscan.regions
 from chromatinhd.plot import format_distance
 import textwrap
 
-fig = chd.grid.Figure(chd.grid.BrokenGrid(breaking, padding_height = 0.03))
+fig = polyptich.grid.Figure(polyptich.grid.BrokenGrid(breaking, padding_height = 0.03))
 
 # cluster_info = clustering.cluster_info
 cluster_info = clustering.cluster_info.loc[cluster_ids]
@@ -538,7 +538,7 @@ for subregion_ix, (_, subregion_info), grid, width in zip(
     range(len(slicescores_oi)), slicescores_oi.iterrows(), fig.main, fig.main.panel_widths
 ):
     # add upper labelling panel
-    panel_labeling = chd.grid.Panel((width, 0.1))
+    panel_labeling = polyptich.grid.Panel((width, 0.1))
     panel_labeling.ax.set_xlim(subregion_info["start"], subregion_info["end"])
     panel_labeling.ax.axis("off")
     grid.add_under(panel_labeling)

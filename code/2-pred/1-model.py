@@ -376,11 +376,11 @@ regions
 # %%
 symbol = transcriptome.var.loc[gene_oi, "symbol"]
 
-fig = chd.grid.Figure(chd.grid.Grid(padding_height=0.05, padding_width=0.05))
+fig = polyptich.grid.Figure(polyptich.grid.Grid(padding_height=0.05, padding_width=0.05))
 
 score_panel_width = 0.8
 
-breaking = chd.grid.broken.Breaking(regions, 0.05)
+breaking = polyptich.grid.broken.Breaking(regions, 0.05)
 
 region = fragments.regions.coordinates.loc[region_id]
 panel_genes = chd.plot.genome.genes.GenesBroken.from_region(
@@ -411,9 +411,9 @@ regions["resolution"] = (regions["end"] - regions["start"])
 
 # %%
 symbol = transcriptome.var.loc[region_id, "symbol"]
-breaking = chd.grid.broken.Breaking(regions, 0.05)
+breaking = polyptich.grid.broken.Breaking(regions, 0.05)
 
-fig = chd.grid.Figure(chd.grid.Grid(padding_height=0.05, padding_width=0.05))
+fig = polyptich.grid.Figure(polyptich.grid.Grid(padding_height=0.05, padding_width=0.05))
 
 region = fragments.regions.coordinates.loc[region_id]
 # panel_genes = chd.plot.genome.genes.GenesBroken.from_region(
@@ -437,7 +437,7 @@ fig.plot()
 manuscript.save_figure(fig, "1", "chromatinhd_pred")
 
 # %%
-fig = chd.grid.Figure(chd.grid.Grid(padding_height=0.05, padding_width=0.05))
+fig = polyptich.grid.Figure(polyptich.grid.Grid(padding_height=0.05, padding_width=0.05))
 
 peakcallers = chdm.plotting.peaks.get_peakcallers(chd.get_output() / "peaks" / dataset_name, add_rolling = True)
 peakcallers["label"] = chdm.peakcallers["label"]
@@ -454,7 +454,7 @@ manuscript.save_figure(fig, "1", "peaks")
 regions
 
 # %%
-fig = chd.grid.Figure(chd.grid.Grid(padding_height=0.05, padding_width=0.05))
+fig = polyptich.grid.Figure(polyptich.grid.Grid(padding_height=0.05, padding_width=0.05))
 
 panel_genes = chd.plot.genome.genes.Genes.from_region(
     fragments.regions.coordinates.loc[region_id],
@@ -524,11 +524,11 @@ associations = chd.data.associations.Associations(
 # %%
 symbol = transcriptome.var.loc[gene_oi, "symbol"]
 
-fig = chd.grid.Figure(chd.grid.Grid(padding_height=0.0, padding_width=0.05))
+fig = polyptich.grid.Figure(polyptich.grid.Grid(padding_height=0.0, padding_width=0.05))
 
 score_panel_width = 0.8
 
-breaking = chd.grid.broken.Breaking(regions, 0.02, resolution = 7500)
+breaking = polyptich.grid.broken.Breaking(regions, 0.02, resolution = 7500)
 
 region = fragments.regions.coordinates.loc[region_id]
 panel_genes = chd.plot.genome.genes.GenesBroken.from_region(
@@ -582,7 +582,7 @@ plotdata["dist"] = windows.loc[plotdata.index.get_level_values(
     "window1"
 ), "window_mid"].values
 
-transform = chd.grid.broken.TransformBroken(breaking)
+transform = polyptich.grid.broken.TransformBroken(breaking)
 plotdata["window1_broken"] = transform(
     windows.loc[plotdata.index.get_level_values(
     "window1"
@@ -605,7 +605,7 @@ import chromatinhd.data.associations
 
 # %%
 panel_interaction = fig.main.add_under(
-    chd.grid.Panel((breaking.width, breaking.width / 2)), padding=0.0
+    polyptich.grid.Panel((breaking.width, breaking.width / 2)), padding=0.0
 )
 ax = panel_interaction.ax
 
@@ -622,7 +622,7 @@ chd.plot.matshow45(
 ax.invert_yaxis()
 
 if symbol in ["BCL2"]:
-    panel_interaction_legend = panel_interaction.add_inset(chd.grid.Panel((0.05, 0.8)), pos = (-0.1, 0.5))
+    panel_interaction_legend = panel_interaction.add_inset(polyptich.grid.Panel((0.05, 0.8)), pos = (-0.1, 0.5))
     plt.colorbar(
         mpl.cm.ScalarMappable(norm=norm, cmap=cmap),
         cax=panel_interaction_legend.ax,
@@ -704,7 +704,7 @@ plotdata["dist"] = windows.loc[plotdata.index.get_level_values(
     "window1"
 ), "window_mid"].values
 
-transform = chd.grid.broken.TransformBroken(breaking)
+transform = polyptich.grid.broken.TransformBroken(breaking)
 plotdata["window1_broken"] = transform(
     windows.loc[plotdata.index.get_level_values(
     "window1"
@@ -752,10 +752,10 @@ ax.set_xlim(0, 550)
 ax.set_ylim(550, 0)
 
 # %%
-fig = chd.grid.Figure(chd.grid.Grid())
+fig = polyptich.grid.Figure(polyptich.grid.Grid())
 
 panel_interaction = fig.main.add_under(
-    chd.grid.Panel((breaking.width, breaking.width / 2)), padding=0.0
+    polyptich.grid.Panel((breaking.width, breaking.width / 2)), padding=0.0
 )
 ax = panel_interaction.ax
 
@@ -771,7 +771,7 @@ chd.plot.matshow45(
 )
 
 panel_interaction = fig.main.add_under(
-    chd.grid.Panel((breaking.width, breaking.width / 2)), padding=0.0
+    polyptich.grid.Panel((breaking.width, breaking.width / 2)), padding=0.0
 )
 ax = panel_interaction.ax
 
@@ -1019,10 +1019,10 @@ cmap = mpl.cm.RdBu_r
 encoding = sine_encoding(coordinates).detach().numpy()
 
 # %%
-fig = chd.grid.Figure(chd.grid.Grid())
+fig = polyptich.grid.Figure(polyptich.grid.Grid())
 main = fig.main
 
-panel, ax = main.add_under(chd.grid.Panel((7, 2)))
+panel, ax = main.add_under(polyptich.grid.Panel((7, 2)))
 ax.matshow(encoding, norm = norm, cmap = cmap, aspect = "auto")
 ax.set_xlabel("Dimensions")
 ax.xaxis.tick_bottom()
@@ -1047,10 +1047,10 @@ coordinates = torch.tensor([
 encoding = sine_encoding(coordinates).detach().numpy()
 
 # %%
-fig = chd.grid.Figure(chd.grid.Grid())
+fig = polyptich.grid.Figure(polyptich.grid.Grid())
 main = fig.main
 
-panel, ax = main.add_under(chd.grid.Panel((8, 2)))
+panel, ax = main.add_under(polyptich.grid.Panel((8, 2)))
 ax.matshow(encoding, norm = norm, cmap = cmap, aspect = "auto")
 ax.set_xlabel("Dimensions")
 ax.xaxis.tick_bottom()
@@ -1060,13 +1060,13 @@ fig.plot()
 manuscript.save_figure(fig, "2", "snote", "encoders", name + "_subset")
 
 # %%
-fig = chd.grid.Figure(chd.grid.Grid())
+fig = polyptich.grid.Figure(polyptich.grid.Grid())
 main = fig.main
 
 encoding = sine_encoding(coordinates).detach().numpy()
 
 for i in range(encoding.shape[0]):
-    panel, ax = main.add_under(chd.grid.Panel((8, 0.2)), padding = 0.35)
+    panel, ax = main.add_under(polyptich.grid.Panel((8, 0.2)), padding = 0.35)
     encoding_oi = encoding[i]
     encoding_selection =  np.abs(encoding_oi) > 0.01
     encoding_oi = encoding_oi[encoding_selection]

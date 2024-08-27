@@ -737,7 +737,7 @@ colorbar.set_ticklabels(["⅛", "1", "8"])
 manuscript.save_figure(fig_colorbar, "4", "colorbar_odds")
 
 # %%
-fig = chd.grid.Figure(chd.grid.Wrap(padding_width=0.1, padding_height=0.0))
+fig = polyptich.grid.Figure(polyptich.grid.Wrap(padding_width=0.1, padding_height=0.0))
 
 cmap = mpl.cm.PiYG
 norm = mpl.colors.Normalize(vmin=np.log(0.125), vmax=np.log(8.0))
@@ -745,7 +745,7 @@ norm = mpl.colors.Normalize(vmin=np.log(0.125), vmax=np.log(8.0))
 for (_, (cluster, motif)), odds in zip(
     motifclustermapping[["cluster", "motif"]].iterrows(), odds_cluster_motifs
 ):
-    panel, ax = fig.main.add(chd.grid.Panel((0.8, 0.8)))
+    panel, ax = fig.main.add(polyptich.grid.Panel((0.8, 0.8)))
     ax.matshow(np.log(odds).T, cmap=cmap, norm=norm)
     ax.set_xticks([])
     ax.set_yticks([])

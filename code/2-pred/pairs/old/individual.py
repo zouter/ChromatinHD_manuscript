@@ -140,10 +140,10 @@ hic = clean_hic(hic, bins_hic)
 hic = chdm.hic.maxipool_hic(hic, bins_hic, k=5)
 
 # %%
-fig = chd.grid.Figure(chd.grid.Wrap(padding_width=0))
+fig = polyptich.grid.Figure(polyptich.grid.Wrap(padding_width=0))
 
 for k in range(0, 12, 2):
-    panel, ax = fig.main.add(chd.grid.Panel((1.5, 1.5)))
+    panel, ax = fig.main.add(polyptich.grid.Panel((1.5, 1.5)))
     if k == 0:
         hic2 = hic
     else:
@@ -154,7 +154,7 @@ for k in range(0, 12, 2):
     ax.axis("off")
     ax.set_title(f"{k}kb")
 for k in range(0, 12, 2):
-    panel, ax = fig.main.add(chd.grid.Panel((1.5, 1.5)))
+    panel, ax = fig.main.add(polyptich.grid.Panel((1.5, 1.5)))
     if k == 0:
         hic2 = hic
     else:
@@ -268,13 +268,13 @@ matching["windowmid"] = (
 
 # %%
 # plot slices
-fig = chd.grid.Figure(chd.grid.Grid(padding_height=0.1))
+fig = polyptich.grid.Figure(polyptich.grid.Grid(padding_height=0.1))
 for distance1, distance2 in tqdm.tqdm(distslices[["distance1", "distance2"]].values):
     matching_oi = matching.query("dist > @distance1").query("dist <= @distance2")
     resolution = 0.025
     width = len(matching_oi["windowmid"].unique()) * resolution
     height = len(matching_oi["dist"].unique()) * resolution
-    panel = fig.main.add_under(chd.grid.Panel((width, height)), padding=0)
+    panel = fig.main.add_under(polyptich.grid.Panel((width, height)), padding=0)
     chd.plotting.matshow45(
         panel.ax,
         matching_oi["cor"],
@@ -289,7 +289,7 @@ for distance1, distance2 in tqdm.tqdm(distslices[["distance1", "distance2"]].val
     panel.ax.set_yticks([panel.ax.get_ylim()[0]])
     panel.ax.set_yticklabels([f"{distance1/1000:.0f}kb-{distance2/1000:.0f}kb"])
 
-    panel = fig.main.add_under(chd.grid.Panel((width, height)))
+    panel = fig.main.add_under(polyptich.grid.Panel((width, height)))
     chd.plotting.matshow45(
         panel.ax,
         matching_oi["balanced"],
@@ -376,12 +376,12 @@ distance_scores["logodds"] = np.log(distance_scores["odds"])
 plt.plot(distance_scores["distance1"], distance_scores["logodds"])
 
 # %%
-main = chd.grid.Grid(padding_width=0)
-fig = chd.grid.Figure(main)
+main = polyptich.grid.Grid(padding_width=0)
+fig = polyptich.grid.Figure(main)
 
 panel_dim = (6, 6)
 
-panel_hic = main[0, 0] = chd.grid.Panel(panel_dim)
+panel_hic = main[0, 0] = polyptich.grid.Panel(panel_dim)
 ax = panel_hic.ax
 
 bins_hic["ix"] = np.arange(len(bins_hic))
@@ -409,7 +409,7 @@ ax.matshow(
 )
 ax.set_title("Hi-C (GM12878)")
 
-# panel_chd = main[0, 1] = chd.grid.Panel(panel_dim)
+# panel_chd = main[0, 1] = polyptich.grid.Panel(panel_dim)
 # ax = panel_chd.ax
 ax.matshow(
     plotdata_chd.groupby(["window1", "window2"])["cor"].mean().unstack(),
@@ -546,17 +546,17 @@ hic_maxi_5["distance"] = np.abs(
     - hic_maxi_5.index.get_level_values("window2").astype(float)
 )
 
-fig = chd.grid.Figure(chd.grid.Grid())
-panel = fig.main.add_right(chd.grid.Panel((2, 2)))
+fig = polyptich.grid.Figure(polyptich.grid.Grid())
+panel = fig.main.add_right(polyptich.grid.Panel((2, 2)))
 panel.ax.matshow(hic.query("distance > 1000")["balanced"].unstack())
 
-panel = fig.main.add_right(chd.grid.Panel((2, 2)))
+panel = fig.main.add_right(polyptich.grid.Panel((2, 2)))
 panel.ax.matshow(hic_max.query("distance > 1000")["balanced"].unstack())
 
-panel = fig.main.add_right(chd.grid.Panel((2, 2)))
+panel = fig.main.add_right(polyptich.grid.Panel((2, 2)))
 panel.ax.matshow(hic_maxi.query("distance > 1000")["balanced"].unstack())
 
-panel = fig.main.add_right(chd.grid.Panel((2, 2)))
+panel = fig.main.add_right(polyptich.grid.Panel((2, 2)))
 panel.ax.matshow(hic_maxi_5.query("distance > 1000")["balanced"].unstack())
 
 fig.plot()

@@ -149,15 +149,15 @@ param_summary["color"] = sns.color_palette("tab10", len(param_summary))
 param_info = param_summary.set_index("label")
 
 # %%
-fig = chd.grid.Figure(chd.grid.Grid())
+fig = polyptich.grid.Figure(polyptich.grid.Grid())
 
-panel, ax = fig.main.add_right(chd.grid.Panel((2, 2)))
+panel, ax = fig.main.add_right(polyptich.grid.Panel((2, 2)))
 ax.set_title("10k10k")
 for param in genescores.coords["param"].values:
     sns.ecdfplot(genescores.sel(regions = "10k10k", param = param, gene = genes_test)["cor"].mean(["phase"]).to_pandas(), ax = ax, label = param, color = param_info.loc[param, "color"])
     sns.ecdfplot(genescores.sel(regions = "10k10k", param = param, gene = genes_train)["cor"].mean(["phase"]).to_pandas(), ax = ax, label = param, linestyle = "--", color = param_info.loc[param, "color"])
 
-panel, ax = fig.main.add_right(chd.grid.Panel((2, 2)))
+panel, ax = fig.main.add_right(polyptich.grid.Panel((2, 2)))
 ax.set_title("100k100k")
 for param in genescores.coords["param"].values:
     sns.ecdfplot(genescores.sel(regions = "100k100k", param = param, gene = genes_test)["cor"].mean(["phase"]).to_pandas(), ax = ax, label = param)

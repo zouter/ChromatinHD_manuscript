@@ -280,15 +280,15 @@ sns.heatmap(scores.groupby(["clusterprobs_diff_bin", "probs_mean_bin"])["missing
 sns.heatmap(np.log(scores.groupby(["clusterprobs_diff_bin", "probs_mean_bin"]).size().unstack().T))
 
 # %%
-fig = chd.grid.Figure(chd.grid.Grid())
-panel, ax = fig.main.add_under(chd.grid.Panel((2, 2)))
+fig = polyptich.grid.Figure(polyptich.grid.Grid())
+panel, ax = fig.main.add_under(polyptich.grid.Panel((2, 2)))
 
 ax.scatter(scores["clusterprobs_diff"], scores["HS_LS_logratio"], s = 1)
 for clusterprobs_diff_bin in clusterprobs_diff_bins["cut"]:
     ax.axvline(clusterprobs_diff_bin, color = "black", alpha = 0.5)
 ax.set_xlabel("probs_diff")
 
-panel, ax = fig.main.add_right(chd.grid.Panel((2, 2)))
+panel, ax = fig.main.add_right(polyptich.grid.Panel((2, 2)))
 ax.scatter(scores["probs_mean"], scores["HS_LS_logratio"], s = 1)
 for probs_mean_bin in probs_mean_bins["cut"]:
     ax.axvline(probs_mean_bin, color = "black", alpha = 0.5)
@@ -297,8 +297,8 @@ ax.set_xlabel("probs_mean")
 fig.plot()
 
 # %%
-fig = chd.grid.Figure(chd.grid.Grid())
-panel, ax = fig.main.add_under(chd.grid.Panel((2, 2)))
+fig = polyptich.grid.Figure(polyptich.grid.Grid())
+panel, ax = fig.main.add_under(polyptich.grid.Panel((2, 2)))
 
 ax.scatter(data_binned["clusterprobs_diff"], data_binned["HS_LS_logratio"], s = 1)
 for clusterprobs_diff_bin in clusterprobs_diff_bins["cut"]:
@@ -306,7 +306,7 @@ for clusterprobs_diff_bin in clusterprobs_diff_bins["cut"]:
 ax.set_xlabel("probs_diff")
 lm = sns.regplot(x = data_binned["clusterprobs_diff"], y = data_binned["HS_LS_logratio"], scatter = False, ax = ax)
 
-panel, ax = fig.main.add_right(chd.grid.Panel((2, 2)))
+panel, ax = fig.main.add_right(polyptich.grid.Panel((2, 2)))
 ax.scatter(data_binned["probs_mean"], data_binned["HS_LS_logratio"], s = 1)
 for probs_mean_bin in probs_mean_bins["cut"]:
     ax.axvline(probs_mean_bin, color = "black", alpha = 0.5)

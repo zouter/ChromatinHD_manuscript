@@ -1,5 +1,5 @@
 import chromatinhd
-import chromatinhd.grid
+import polyptich.grid
 import matplotlib as mpl
 import matplotlib.collections
 import seaborn as sns
@@ -11,7 +11,7 @@ length_cmap = mpl.cm.get_cmap("viridis_r")
 length_norm = mpl.colors.Normalize(vmin=0, vmax=700)
 
 
-class Fragments(chromatinhd.grid.Ax):
+class Fragments(polyptich.grid.Ax):
     def __init__(
         self,
         coordinates,

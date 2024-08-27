@@ -393,7 +393,7 @@ plotdata.shape[0]
 import statsmodels.api as sm
 import scipy.stats
 
-fig = chd.grid.Figure(chd.grid.Wrap(padding_width = 0.7, ncol = 4))
+fig = polyptich.grid.Figure(polyptich.grid.Wrap(padding_width = 0.7, ncol = 4))
 
 plotdata = plotdata.sort_values(a)
 plotdata["diff"] = plotdata[b] - plotdata[a]
@@ -420,7 +420,7 @@ b_label = chdm.methods.prediction_methods.loc[b]["label"]
 cmap = mpl.colormaps["Set1"]
 
 # rank vs diff
-panel, ax = fig.main.add(chd.grid.Panel((2, 2)))
+panel, ax = fig.main.add(polyptich.grid.Panel((2, 2)))
 ax.scatter(np.arange(len(plotdata)), (plotdata["diff"]), c = cmap(plotdata["oi"].cat.codes), s = 3)
 ax.set_xlabel(a_label + " rank")
 ax.set_ylabel("$\Delta$ r2")
@@ -433,7 +433,7 @@ z = lowess(plotdata["diff"], np.arange(len(plotdata)), frac = 0.5)
 ax.plot(z[:, 0], z[:, 1], color = "green")
 
 # a vs diff
-panel, ax = fig.main.add(chd.grid.Panel((2, 2)))
+panel, ax = fig.main.add(polyptich.grid.Panel((2, 2)))
 ax.scatter(plotdata[a], (plotdata["diff"]), c = cmap(plotdata["oi"].cat.codes), s = 3)
 ax.set_xlabel(a_label)
 ax.set_ylabel("$\Delta$ r2")
@@ -448,7 +448,7 @@ ax.axline((0, 0), slope = lm.slope, color = "cyan", linestyle = "--")
 lm.slope
 
 # vs
-panel, ax = fig.main.add(chd.grid.Panel((2, 2)))
+panel, ax = fig.main.add(polyptich.grid.Panel((2, 2)))
 ax.scatter(plotdata[a], plotdata[b], c = cmap(plotdata["oi"].cat.codes), s = 3)
 ax.set_xlabel(a_label)
 ax.set_ylabel(b_label)
@@ -471,7 +471,7 @@ ax.annotate(f"cut {1-cut:.1%}", (1, 1), (1, 1.1), arrowprops = dict(arrowstyle =
 ax.annotate(f"$r^2$={lm.rvalue**2:.1%}", (0.95, 0.95), ha = "right", va = "top")
 
 # dispersions vs diff
-panel, ax = fig.main.add(chd.grid.Panel((2, 2)))
+panel, ax = fig.main.add(polyptich.grid.Panel((2, 2)))
 ax.scatter(plotdata["dispersions"], plotdata["diff"], c = cmap(plotdata["oi"].cat.codes), s = 3)
 ax.set_xlabel("dispersion")
 ax.set_ylabel("$\Delta$ r2")
@@ -481,7 +481,7 @@ z = lowess(plotdata["diff"], plotdata["dispersions"], frac = 2/3)
 ax.plot(z[:, 0], z[:, 1], color = "green")
 
 # dispersions vs diff
-panel, ax = fig.main.add(chd.grid.Panel((2, 2)))
+panel, ax = fig.main.add(polyptich.grid.Panel((2, 2)))
 ax.scatter(plotdata["log10means"], plotdata["diff"], c = cmap(plotdata["oi"].cat.codes), s = 3)
 ax.set_xlabel("log10means")
 ax.set_ylabel("$\Delta$ r2")
@@ -491,7 +491,7 @@ z = lowess(plotdata["diff"], plotdata["log10means"], frac = 2/3)
 ax.plot(z[:, 0], z[:, 1], color = "green")
 
 # dispersions_norm vs diff
-panel, ax = fig.main.add(chd.grid.Panel((2, 2)))
+panel, ax = fig.main.add(polyptich.grid.Panel((2, 2)))
 ax.scatter(plotdata["log10dispersions_norm"], plotdata["diff"], c = cmap(plotdata["oi"].cat.codes), s = 3)
 ax.set_xlabel("log10dispersions_norm")
 ax.set_ylabel("$\Delta$ r2")
@@ -501,7 +501,7 @@ z = lowess(plotdata["diff"], plotdata["log10dispersions_norm"], frac = 2/3)
 ax.plot(z[:, 0], z[:, 1], color = "green")
 
 # n fragments
-panel, ax = fig.main.add(chd.grid.Panel((2, 2)))
+panel, ax = fig.main.add(polyptich.grid.Panel((2, 2)))
 ax.scatter(plotdata["log10n_fragments"], plotdata["diff"], c = cmap(plotdata["oi"].cat.codes), s = 3)
 ax.set_xlabel("log10n_fragments")
 ax.set_ylabel("$\Delta$ r2")
@@ -511,7 +511,7 @@ z = lowess(plotdata["diff"], plotdata["log10n_fragments"], frac = 2/3)
 ax.plot(z[:, 0], z[:, 1], color = "green")
 
 # n fragments std
-panel, ax = fig.main.add(chd.grid.Panel((2, 2)))
+panel, ax = fig.main.add(polyptich.grid.Panel((2, 2)))
 ax.scatter(plotdata["kurtosis_rank"], plotdata["diff"], c = cmap(plotdata["oi"].cat.codes), s = 3)
 ax.set_xlabel("kurtosis_rank")
 ax.set_ylabel("$\Delta$ r2")
@@ -790,11 +790,11 @@ associations = chd.data.associations.Associations(
 # %%
 symbol = transcriptome.var.loc[region_id, "symbol"]
 
-fig = chd.grid.Figure(chd.grid.Grid(padding_height=0.05, padding_width=0.05))
+fig = polyptich.grid.Figure(polyptich.grid.Grid(padding_height=0.05, padding_width=0.05))
 
 score_panel_width = 0.8
 
-breaking = chd.grid.broken.Breaking(regions, 0.05)
+breaking = polyptich.grid.broken.Breaking(regions, 0.05)
 
 region = fragments.regions.coordinates.loc[region_id]
 panel_genes = chd.plot.genome.genes.GenesBroken.from_region(
@@ -816,7 +816,7 @@ panel_predictivity = fig.main.add_under(
 
 if "plotdata" in globals():
     pane_predictivity_score, ax = fig.main.add_right(
-        chd.grid.Panel((score_panel_width, 0.5)), panel_predictivity
+        polyptich.grid.Panel((score_panel_width, 0.5)), panel_predictivity
     )
     ax.axis("off")
     ax.barh(0., plotdata.loc[region_id].reindex(["v33"]), lw = 0, fc = chdm.methods.prediction_methods.loc["v33", "color"])
@@ -831,7 +831,7 @@ panel_peaks = chd.data.peakcounts.plot.PeaksBroken.from_bed(
 fig.main.add_under(panel_peaks)
 
 if "plotdata" in globals():
-    panel_peaks_score, ax = chd.grid.Panel((score_panel_width, panel_peaks[0, 0].height))
+    panel_peaks_score, ax = polyptich.grid.Panel((score_panel_width, panel_peaks[0, 0].height))
     fig.main[fig.main.get_panel_position(panel_peaks)[0], fig.main.get_panel_position(panel_peaks)[1]+1] = panel_peaks_score
     ax.set_ylim(np.array(panel_peaks[0, 0].ax.get_ylim()) -0.5)
     bars = ax.barh(
@@ -993,7 +993,7 @@ regionmultiwindow_test2.interpolate([region_id], force = True)
 import scanpy as sc
 
 # %%
-fig = chd.grid.Figure(chd.grid.Grid(padding_height=0.05, padding_width=0.05))
+fig = polyptich.grid.Figure(polyptich.grid.Grid(padding_height=0.05, padding_width=0.05))
 
 breaking.resolution = 10000
 
@@ -1054,12 +1054,12 @@ transcriptome2.var["all_zero"] = (transcriptome2.layers["normalized"][:] == 0).a
 # %%
 symbol = transcriptome.var.loc[region_id, "symbol"]
 
-fig = chd.grid.Figure(chd.grid.Grid(padding_height=0.05, padding_width=0.05))
+fig = polyptich.grid.Figure(polyptich.grid.Grid(padding_height=0.05, padding_width=0.05))
 
 score_panel_width = 0.45
 
 regions = regionpositional.select_regions(region_id, prob_cutoff = np.exp(-1.5), padding = 800)
-breaking = chd.grid.broken.Breaking(regions, 0.05, resolution = 7500)
+breaking = polyptich.grid.broken.Breaking(regions, 0.05, resolution = 7500)
 
 region = fragments.regions.coordinates.loc[region_id]
 panel_genes = chd.plot.genome.genes.GenesBroken.from_region(
@@ -1078,7 +1078,7 @@ panel_predictivity = fig.main.add_under(
     chd.models.pred.plot.PredictivityBroken.from_regionmultiwindow(regionmultiwindow_train,region_id,  breaking, height = 0.5, ymax = -0.1)
 )
 pane_predictivity_score, ax = fig.main.add_right(
-    chd.grid.Panel((score_panel_width, 0.5)), panel_predictivity
+    polyptich.grid.Panel((score_panel_width, 0.5)), panel_predictivity
 )
 ax.barh(0., plotdata.loc[region_id].reindex(["v33"]), lw = 0, fc = chdm.methods.prediction_methods.loc["v33", "color"])
 
@@ -1099,7 +1099,7 @@ panel_peaks = chd.data.peakcounts.plot.PeaksBroken.from_bed(
 )
 fig.main.add_under(panel_peaks)
 
-panel_peaks_score, ax = chd.grid.Panel((score_panel_width, panel_peaks[0, 0].height))
+panel_peaks_score, ax = polyptich.grid.Panel((score_panel_width, panel_peaks[0, 0].height))
 fig.main[fig.main.get_panel_position(panel_peaks)[0], fig.main.get_panel_position(panel_peaks)[1]+1] = panel_peaks_score
 ax.set_ylim(np.array(panel_peaks[0, 0].ax.get_ylim()) -0.5)
 bars = ax.barh(
@@ -1128,7 +1128,7 @@ design_ix = design.query("(dataset == @dataset_name) & (regions == @regions_name
 print(design_ix)
 test_cor = scores.sel(gene = region_id, phase = "test", design_ix = design_ix)["cor"].mean()
 
-panel_chd_score, ax = chd.grid.Panel((score_panel_width, 0.5))
+panel_chd_score, ax = polyptich.grid.Panel((score_panel_width, 0.5))
 fig.main[fig.main.get_panel_position(panel_predictivity)[0], fig.main.get_panel_position(panel_predictivity)[1]+1] = panel_chd_score
 ax.set_yticks([])
 ax.set_xticklabels([])
@@ -1150,7 +1150,7 @@ if not transcriptome2.var.loc[region_id, "all_zero"]:
     print(design_ix)
     test_cor = scores.sel(gene = region_id, phase = "test", design_ix = design_ix)["cor"].mean()
 
-    panel_chd_score, ax = chd.grid.Panel((score_panel_width, 0.5))
+    panel_chd_score, ax = polyptich.grid.Panel((score_panel_width, 0.5))
     fig.main[fig.main.get_panel_position(panel_predictivity)[0], fig.main.get_panel_position(panel_predictivity)[1]+1] = panel_chd_score
     ax.barh(0., test_cor, lw = 0, fc = chdm.methods.prediction_methods.loc["v33", "color"])
     ax.set_yticks([])

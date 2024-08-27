@@ -359,13 +359,13 @@ norm_f1 = mpl.colors.Normalize(0, 1)
 cmap_jaccard = mpl.cm.Blues
 cmap_f1 = mpl.cm.Reds
 
-grid = chd.grid.Grid()
-fig = chd.grid.Figure(grid)
+grid = polyptich.grid.Grid()
+fig = polyptich.grid.Figure(grid)
 
 resolution = 0.2
 dim = (1, resolution * len(design))
 
-panel_main = grid[0, 0] = chd.grid.Ax(dim)
+panel_main = grid[0, 0] = polyptich.grid.Ax(dim)
 ax = panel_main.ax
 peakcaller1 = method_oi
 for peakcaller2 in list(methods_info_oi.index):
@@ -396,8 +396,8 @@ ax.set_yticklabels(methods_info_oi["label"])
 ax.set_xticks(np.arange(2) + 0.5)
 ax.set_xticklabels(["Jaccard\npositions", "F1\nregions"])
 
-grid_cbars = grid[0, 1] = chd.grid.Grid(padding_height=0.7)
-panel_jaccard = grid_cbars[0, 0] = chd.grid.Ax((1, 0.1))
+grid_cbars = grid[0, 1] = polyptich.grid.Grid(padding_height=0.7)
+panel_jaccard = grid_cbars[0, 0] = polyptich.grid.Ax((1, 0.1))
 ax = panel_jaccard.ax
 cax = plt.colorbar(
     mpl.cm.ScalarMappable(norm_jaccard, cmap_jaccard),
@@ -406,7 +406,7 @@ cax = plt.colorbar(
     label="Jaccard positions",
     format=mpl.ticker.PercentFormatter(1),
 )
-panel_jaccard = grid_cbars[1, 0] = chd.grid.Ax((1, 0.1))
+panel_jaccard = grid_cbars[1, 0] = polyptich.grid.Ax((1, 0.1))
 ax = panel_jaccard.ax
 cax = plt.colorbar(
     mpl.cm.ScalarMappable(norm_f1, cmap_f1),
@@ -449,13 +449,13 @@ norm_f1 = mpl.colors.Normalize(0, 1)
 cmap_jaccard = mpl.cm.Blues
 cmap_f1 = mpl.cm.Reds
 
-grid = chd.grid.Grid()
-fig = chd.grid.Figure(grid)
+grid = polyptich.grid.Grid()
+fig = polyptich.grid.Figure(grid)
 
 resolution = 0.1
 dim = (resolution * len(design), resolution * len(design))
 
-panel_main = grid[0, 0] = chd.grid.Ax(dim)
+panel_main = grid[0, 0] = polyptich.grid.Ax(dim)
 ax = panel_main.ax
 for peakcaller1, peakcaller2 in itertools.combinations(list(methods_info.index), 2):
     if (peakcaller1, peakcaller2) in peakpair_scores_all.index:
@@ -519,8 +519,8 @@ rect2 = mpl.patches.Rectangle(
 ax.add_patch(rect2)
 
 
-grid_cbars = grid[0, 1] = chd.grid.Grid(padding_height=0.7)
-panel_jaccard = grid_cbars[0, 0] = chd.grid.Ax((1, 0.1))
+grid_cbars = grid[0, 1] = polyptich.grid.Grid(padding_height=0.7)
+panel_jaccard = grid_cbars[0, 0] = polyptich.grid.Ax((1, 0.1))
 ax = panel_jaccard.ax
 cax = plt.colorbar(
     mpl.cm.ScalarMappable(norm_jaccard, cmap_jaccard),
@@ -529,7 +529,7 @@ cax = plt.colorbar(
     label="Jaccard positions",
     format=mpl.ticker.PercentFormatter(1),
 )
-panel_jaccard = grid_cbars[1, 0] = chd.grid.Ax((1, 0.1))
+panel_jaccard = grid_cbars[1, 0] = polyptich.grid.Ax((1, 0.1))
 ax = panel_jaccard.ax
 cax = plt.colorbar(
     mpl.cm.ScalarMappable(norm_f1, cmap_f1),

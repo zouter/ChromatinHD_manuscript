@@ -355,12 +355,12 @@ plotdata = plotdata_individual_diff.mean(1).to_frame().reset_index()
 import chromatinhd.plot.quasirandom
 
 # %%
-fig = chd.grid.Figure(chd.grid.Grid())
+fig = polyptich.grid.Figure(polyptich.grid.Grid())
 
 resolution = 0.35
 width = plotdata.shape[0] * resolution
 
-panel, ax = fig.main.add_under(chd.grid.Panel((width, 2)))
+panel, ax = fig.main.add_under(polyptich.grid.Panel((width, 2)))
 
 color = "#333"
 
@@ -400,7 +400,7 @@ sns.despine(ax=ax)
 resolution_features = 0.14
 s = 50
 
-panel, ax = fig.main.add_under(chd.grid.Panel((width, len(features) * resolution_features)), padding=0.1)
+panel, ax = fig.main.add_under(polyptich.grid.Panel((width, len(features) * resolution_features)), padding=0.1)
 
 ax.set_ylim(-0.5, features["ix"].max() + 0.5)
 ax.set_yticks(features["ix"])
@@ -460,7 +460,7 @@ fragments = chd.flow.Flow.from_path(chd.get_output() / "datasets" / dataset_name
 import statsmodels.api as sm
 import scipy.stats
 
-fig = chd.grid.Figure(chd.grid.Wrap(padding_width = 0.7, ncol = 4))
+fig = polyptich.grid.Figure(polyptich.grid.Wrap(padding_width = 0.7, ncol = 4))
 
 plotdata = plotdata.sort_values(a)
 plotdata["diff"] = plotdata[b] - plotdata[a]
@@ -485,7 +485,7 @@ b_label = str(b)
 cmap = mpl.colormaps["Set1"]
 
 # rank vs diff
-panel, ax = fig.main.add(chd.grid.Panel((2, 2)))
+panel, ax = fig.main.add(polyptich.grid.Panel((2, 2)))
 ax.scatter(np.arange(len(plotdata)), (plotdata["diff"]), c = cmap(plotdata["oi"].cat.codes), s = 3)
 ax.set_xlabel(a_label + " rank")
 ax.set_ylabel("$\Delta$ r2")
@@ -498,7 +498,7 @@ z = lowess(plotdata["diff"], np.arange(len(plotdata)), frac = 0.5)
 ax.plot(z[:, 0], z[:, 1], color = "green")
 
 # a vs diff
-panel, ax = fig.main.add(chd.grid.Panel((2, 2)))
+panel, ax = fig.main.add(polyptich.grid.Panel((2, 2)))
 ax.scatter(plotdata[a], (plotdata["diff"]), c = cmap(plotdata["oi"].cat.codes), s = 3)
 ax.set_xlabel(a_label)
 ax.set_ylabel("$\Delta$ r2")
@@ -513,7 +513,7 @@ ax.axline((0, 0), slope = lm.slope, color = "cyan", linestyle = "--")
 lm.slope
 
 # vs
-panel, ax = fig.main.add(chd.grid.Panel((2, 2)))
+panel, ax = fig.main.add(polyptich.grid.Panel((2, 2)))
 ax.scatter(plotdata[a], plotdata[b], c = cmap(plotdata["oi"].cat.codes), s = 3)
 ax.set_xlabel(a_label)
 ax.set_ylabel(b_label)
@@ -536,7 +536,7 @@ ax.annotate(f"cut {1-cut:.1%}", (1, 1), (1, 1.1), arrowprops = dict(arrowstyle =
 ax.annotate(f"$r^2$={lm.rvalue**2:.1%}", (0.95, 0.95), ha = "right", va = "top")
 
 # dispersions vs diff
-panel, ax = fig.main.add(chd.grid.Panel((2, 2)))
+panel, ax = fig.main.add(polyptich.grid.Panel((2, 2)))
 ax.scatter(plotdata["dispersions"], plotdata["diff"], c = cmap(plotdata["oi"].cat.codes), s = 3)
 ax.set_xlabel("dispersion")
 ax.set_ylabel("$\Delta$ r2")
@@ -546,7 +546,7 @@ z = lowess(plotdata["diff"], plotdata["dispersions"], frac = 2/3)
 ax.plot(z[:, 0], z[:, 1], color = "green")
 
 # dispersions vs diff
-panel, ax = fig.main.add(chd.grid.Panel((2, 2)))
+panel, ax = fig.main.add(polyptich.grid.Panel((2, 2)))
 ax.scatter(plotdata["log10means"], plotdata["diff"], c = cmap(plotdata["oi"].cat.codes), s = 3)
 ax.set_xlabel("log10means")
 ax.set_ylabel("$\Delta$ r2")
@@ -556,7 +556,7 @@ z = lowess(plotdata["diff"], plotdata["log10means"], frac = 2/3)
 ax.plot(z[:, 0], z[:, 1], color = "green")
 
 # dispersions_norm vs diff
-panel, ax = fig.main.add(chd.grid.Panel((2, 2)))
+panel, ax = fig.main.add(polyptich.grid.Panel((2, 2)))
 ax.scatter(plotdata["log10dispersions_norm"], plotdata["diff"], c = cmap(plotdata["oi"].cat.codes), s = 3)
 ax.set_xlabel("log10dispersions_norm")
 ax.set_ylabel("$\Delta$ r2")
@@ -566,7 +566,7 @@ z = lowess(plotdata["diff"], plotdata["log10dispersions_norm"], frac = 2/3)
 ax.plot(z[:, 0], z[:, 1], color = "green")
 
 # n fragments
-panel, ax = fig.main.add(chd.grid.Panel((2, 2)))
+panel, ax = fig.main.add(polyptich.grid.Panel((2, 2)))
 ax.scatter(plotdata["log10n_fragments"], plotdata["diff"], c = cmap(plotdata["oi"].cat.codes), s = 3)
 ax.set_xlabel("log10n_fragments")
 ax.set_ylabel("$\Delta$ r2")
@@ -576,7 +576,7 @@ z = lowess(plotdata["diff"], plotdata["log10n_fragments"], frac = 2/3)
 ax.plot(z[:, 0], z[:, 1], color = "green")
 
 # n fragments std
-panel, ax = fig.main.add(chd.grid.Panel((2, 2)))
+panel, ax = fig.main.add(polyptich.grid.Panel((2, 2)))
 ax.scatter(plotdata["kurtosis"], plotdata["diff"], c = cmap(plotdata["oi"].cat.codes), s = 3)
 ax.set_xlabel("kurtosis")
 ax.set_ylabel("$\Delta$ r2")

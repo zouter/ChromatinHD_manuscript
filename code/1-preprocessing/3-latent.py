@@ -61,6 +61,20 @@ folder_data_preproc.mkdir(exist_ok = True, parents = True)
 folder_dataset = chd.get_output() / "datasets" / dataset_name
 
 # %% [markdown]
+# ## Clustering2
+
+# %%
+import chromatinhd.data
+
+# %%
+for dataset_name in ["liverkia_lsecs"]:
+    folder_dataset = chd.get_output() / "datasets" / dataset_name
+    transcriptome = chromatinhd.data.Transcriptome(folder_dataset / "transcriptome")
+    clustering = chd.data.Clustering.from_labels(transcriptome.adata.obs["celltype2"], path = folder_dataset / "latent" /  ("celltype2"), overwrite = True)
+    clustering.cluster_info["dimension"] = np.arange(clustering.n_clusters)
+    clustering.cluster_info = clustering.cluster_info
+
+# %% [markdown]
 # ## Clustering
 
 # %%

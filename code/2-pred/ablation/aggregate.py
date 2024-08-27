@@ -223,7 +223,7 @@ fragments = chd.flow.Flow.from_path(chd.get_output() / "datasets" / dataset_name
 import statsmodels.api as sm
 import scipy.stats
 
-fig = chd.grid.Figure(chd.grid.Wrap(padding_width = 0.7, ncol = 4))
+fig = polyptich.grid.Figure(polyptich.grid.Wrap(padding_width = 0.7, ncol = 4))
 
 plotdata = plotdata.sort_values(a)
 plotdata["diff"] = plotdata[b] - plotdata[a]
@@ -251,7 +251,7 @@ b_label = str(b)
 cmap = mpl.colormaps["Set1"]
 
 # rank vs diff
-panel, ax = fig.main.add(chd.grid.Panel((2, 2)))
+panel, ax = fig.main.add(polyptich.grid.Panel((2, 2)))
 ax.scatter(np.arange(len(plotdata)), (plotdata["diff"]), c = cmap(plotdata["oi"].cat.codes), s = 3)
 ax.set_xlabel(a_label + " rank")
 ax.set_ylabel("$\Delta$ r2")
@@ -264,7 +264,7 @@ z = lowess(plotdata["diff"], np.arange(len(plotdata)), frac = 0.5)
 ax.plot(z[:, 0], z[:, 1], color = "green")
 
 # a vs diff
-panel, ax = fig.main.add(chd.grid.Panel((2, 2)))
+panel, ax = fig.main.add(polyptich.grid.Panel((2, 2)))
 ax.scatter(plotdata[a], (plotdata["diff"]), c = cmap(plotdata["oi"].cat.codes), s = 3)
 ax.set_xlabel(a_label)
 ax.set_ylabel("$\Delta$ r2")
@@ -279,7 +279,7 @@ ax.axline((0, 0), slope = lm.slope, color = "cyan", linestyle = "--")
 lm.slope
 
 # vs
-panel, ax = fig.main.add(chd.grid.Panel((2, 2)))
+panel, ax = fig.main.add(polyptich.grid.Panel((2, 2)))
 ax.scatter(plotdata[a], plotdata[b], c = cmap(plotdata["oi"].cat.codes), s = 3)
 ax.set_xlabel(a_label)
 ax.set_ylabel(b_label)
@@ -301,7 +301,7 @@ ax.annotate(f"cut {1-cut:.1%}", (1, 1), (1, 1.1), arrowprops = dict(arrowstyle =
 ax.annotate(f"$r^2$={lm.rvalue**2:.1%}", (0.95, 0.95), ha = "right", va = "top")
 
 # dispersions vs diff
-panel, ax = fig.main.add(chd.grid.Panel((2, 2)))
+panel, ax = fig.main.add(polyptich.grid.Panel((2, 2)))
 ax.scatter(plotdata["dispersions"], plotdata["diff"], c = cmap(plotdata["oi"].cat.codes), s = 3)
 ax.set_xlabel("dispersion")
 ax.set_ylabel("$\Delta$ r2")
@@ -311,7 +311,7 @@ z = lowess(plotdata["diff"], plotdata["dispersions"], frac = 2/3)
 ax.plot(z[:, 0], z[:, 1], color = "green")
 
 # dispersions vs diff
-panel, ax = fig.main.add(chd.grid.Panel((2, 2)))
+panel, ax = fig.main.add(polyptich.grid.Panel((2, 2)))
 ax.scatter(plotdata["log10means"], plotdata["diff"], c = cmap(plotdata["oi"].cat.codes), s = 3)
 ax.set_xlabel("log10means")
 ax.set_ylabel("$\Delta$ r2")
@@ -321,7 +321,7 @@ z = lowess(plotdata["diff"], plotdata["log10means"], frac = 2/3)
 ax.plot(z[:, 0], z[:, 1], color = "green")
 
 # dispersions_norm vs diff
-panel, ax = fig.main.add(chd.grid.Panel((2, 2)))
+panel, ax = fig.main.add(polyptich.grid.Panel((2, 2)))
 ax.scatter(plotdata["log10dispersions_norm"], plotdata["diff"], c = cmap(plotdata["oi"].cat.codes), s = 3)
 ax.set_xlabel("log10dispersions_norm")
 ax.set_ylabel("$\Delta$ r2")
@@ -331,7 +331,7 @@ z = lowess(plotdata["diff"], plotdata["log10dispersions_norm"], frac = 2/3)
 ax.plot(z[:, 0], z[:, 1], color = "green")
 
 # n fragments
-panel, ax = fig.main.add(chd.grid.Panel((2, 2)))
+panel, ax = fig.main.add(polyptich.grid.Panel((2, 2)))
 ax.scatter(plotdata["log10n_fragments"], plotdata["diff"], c = cmap(plotdata["oi"].cat.codes), s = 3)
 ax.set_xlabel("log10n_fragments")
 ax.set_ylabel("$\Delta$ r2")
@@ -341,7 +341,7 @@ z = lowess(plotdata["diff"], plotdata["log10n_fragments"], frac = 2/3)
 ax.plot(z[:, 0], z[:, 1], color = "green")
 
 # n fragments std
-panel, ax = fig.main.add(chd.grid.Panel((2, 2)))
+panel, ax = fig.main.add(polyptich.grid.Panel((2, 2)))
 ax.scatter(plotdata["kurtosis"], plotdata["diff"], c = cmap(plotdata["oi"].cat.codes), s = 3)
 ax.set_xlabel("kurtosis")
 ax.set_ylabel("$\Delta$ r2")
@@ -716,12 +716,12 @@ from rpy2.robjects import pandas2ri
 genes_oi = []
 
 # %%
-fig = chd.grid.Figure(chd.grid.Grid())
+fig = polyptich.grid.Figure(polyptich.grid.Grid())
 
 resolution = 0.35
 width = plotdata.shape[0] * resolution
 
-panel, ax = fig.main.add_under(chd.grid.Panel((width, 2)))
+panel, ax = fig.main.add_under(polyptich.grid.Panel((width, 2)))
 
 color = "#333"
 
@@ -775,7 +775,7 @@ sns.despine(ax=ax)
 resolution_features = 0.14
 s = 50
 
-panel, ax = fig.main.add_under(chd.grid.Panel((width, len(features) * resolution_features)), padding=0.1)
+panel, ax = fig.main.add_under(polyptich.grid.Panel((width, len(features) * resolution_features)), padding=0.1)
 
 ax.set_ylim(-0.5, features["ix"].max() + 0.5)
 ax.set_yticks(features["ix"])
@@ -838,9 +838,9 @@ plotdata.index = design.iloc[plotdata.index]["method"].values
 plotdata = plotdata.join(nlayers_design)
 
 # %%
-fig = chd.grid.Figure(chd.grid.Grid())
+fig = polyptich.grid.Figure(polyptich.grid.Grid())
 
-panel, ax = fig.main.add_right(chd.grid.Panel((2.5, 2.5)))
+panel, ax = fig.main.add_right(polyptich.grid.Panel((2.5, 2.5)))
 
 sns.heatmap(plotdata.set_index(["layerfe", "layere2e"])["r2"].unstack(), annot = True, fmt = ".3f", cmap = "Blues", ax = ax, cbar = False)
 ax.set_ylabel("# blocks\nfragment embedder")
@@ -848,7 +848,7 @@ ax.set_xlabel("# blocks embedding to expression")
 ax.set_title("OOS-$R^2$")
 
 
-panel, ax = fig.main.add_right(chd.grid.Panel((2.5, 2.5)))
+panel, ax = fig.main.add_right(polyptich.grid.Panel((2.5, 2.5)))
 sns.heatmap(plotdata.set_index(["layerfe", "layere2e"])["time"].unstack(), ax = ax, cbar = False, annot = True)
 ax.set_ylabel("")
 ax.set_yticklabels([])
@@ -937,12 +937,12 @@ from rpy2.robjects import pandas2ri
 genes_oi = [transcriptome.gene_id("IRF8"), transcriptome.gene_id("PKIA")]
 
 # %%
-fig = chd.grid.Figure(chd.grid.Grid())
+fig = polyptich.grid.Figure(polyptich.grid.Grid())
 
 resolution = 0.35
 width = plotdata.shape[0] * resolution
 
-panel, ax = fig.main.add_under(chd.grid.Panel((width, 2)))
+panel, ax = fig.main.add_under(polyptich.grid.Panel((width, 2)))
 
 color = "#333"
 
@@ -997,7 +997,7 @@ sns.despine(ax=ax)
 resolution_features = 0.14
 s = 50
 
-panel, ax = fig.main.add_under(chd.grid.Panel((width, len(features) * resolution_features)), padding=0.1)
+panel, ax = fig.main.add_under(polyptich.grid.Panel((width, len(features) * resolution_features)), padding=0.1)
 
 ax.set_ylim(-0.5, features["ix"].max() + 0.5)
 ax.set_yticks(features["ix"])
@@ -1195,12 +1195,12 @@ from rpy2.robjects import pandas2ri
 genes_oi = []
 
 # %%
-fig = chd.grid.Figure(chd.grid.Grid())
+fig = polyptich.grid.Figure(polyptich.grid.Grid())
 
 resolution = 0.35
 width = plotdata.shape[0] * resolution
 
-panel, ax = fig.main.add_under(chd.grid.Panel((width, 2)))
+panel, ax = fig.main.add_under(polyptich.grid.Panel((width, 2)))
 
 color = "#333"
 
@@ -1254,7 +1254,7 @@ sns.despine(ax=ax)
 resolution_features = 0.14
 s = 50
 
-panel, ax = fig.main.add_under(chd.grid.Panel((width, len(features) * resolution_features)), padding=0.1)
+panel, ax = fig.main.add_under(polyptich.grid.Panel((width, len(features) * resolution_features)), padding=0.1)
 
 ax.set_ylim(-0.5, features["ix"].max() + 0.5)
 ax.set_yticks(features["ix"])
@@ -1336,12 +1336,12 @@ from rpy2.robjects import pandas2ri
 genes_oi = []
 
 # %%
-fig = chd.grid.Figure(chd.grid.Grid())
+fig = polyptich.grid.Figure(polyptich.grid.Grid())
 
 resolution = 0.35
 width = plotdata.shape[0] * resolution
 
-panel, ax = fig.main.add_under(chd.grid.Panel((width, 2)))
+panel, ax = fig.main.add_under(polyptich.grid.Panel((width, 2)))
 
 color = "#333"
 
@@ -1460,9 +1460,9 @@ plotdata_individual = plotdata_individual.loc[design_oi.index]
 plotdata_individual_rel = plotdata_individual / plotdata_individual.max(0)
 
 # %%
-fig = chd.grid.Figure(chd.grid.Grid(padding_width=0.9))
+fig = polyptich.grid.Figure(polyptich.grid.Grid(padding_width=0.9))
 
-panel, ax = fig.main.add_right(chd.grid.Panel((2, 2)))
+panel, ax = fig.main.add_right(polyptich.grid.Panel((2, 2)))
 for gene, plotdata_individual_gene in plotdata_individual.loc[:, plotdata_individual.max(0) < 0.7].T.iterrows():
     ax.plot(design_oi["n_cells_train"], plotdata_individual_gene, color = "#33333311")
 ax.plot(design_oi["n_cells_train"], plotdata["r2"], lw = 2, marker = "o", color = "#0074D9")
@@ -1475,7 +1475,7 @@ sns.despine(ax = ax)
 ax.set_xlim(design_oi["n_cells_train"].min()*0.9, design_oi["n_cells_train"].max()*1.1)
 ax.set_ylim(0, 0.7)
 
-panel, ax = fig.main.add_right(chd.grid.Panel((2, 2)))
+panel, ax = fig.main.add_right(polyptich.grid.Panel((2, 2)))
 for gene, plotdata_individual_gene in plotdata_individual_rel.T.iterrows():
     ax.plot(design_oi["n_cells_train"], plotdata_individual_gene, color = "#33333311")
 ax.plot(design_oi["n_cells_train"], plotdata_individual_rel.mean(1), lw = 2, marker = "o", color = "#0074D9")
@@ -1527,9 +1527,9 @@ plotdata_individual = plotdata_individual.loc[design_oi.index]
 plotdata_individual_rel = plotdata_individual / plotdata_individual.max(0)
 
 # %%
-fig = chd.grid.Figure(chd.grid.Grid(padding_width=0.9))
+fig = polyptich.grid.Figure(polyptich.grid.Grid(padding_width=0.9))
 
-panel, ax = fig.main.add_right(chd.grid.Panel((2, 2)))
+panel, ax = fig.main.add_right(polyptich.grid.Panel((2, 2)))
 for gene, plotdata_individual_gene in plotdata_individual.loc[:, plotdata_individual.max(0) < 0.7].T.iterrows():
     ax.plot(design_oi["rate"], plotdata_individual_gene, color = "#33333311")
 ax.plot(design_oi["rate"], plotdata["r2"], lw = 2, marker = "o", color = "#0074D9")
@@ -1604,12 +1604,12 @@ from rpy2.robjects import pandas2ri
 genes_oi = []
 
 # %%
-fig = chd.grid.Figure(chd.grid.Grid())
+fig = polyptich.grid.Figure(polyptich.grid.Grid())
 
 resolution = 0.35
 width = plotdata.shape[0] * resolution
 
-panel, ax = fig.main.add_under(chd.grid.Panel((width, 2)))
+panel, ax = fig.main.add_under(polyptich.grid.Panel((width, 2)))
 
 color = "#333"
 
@@ -1663,7 +1663,7 @@ sns.despine(ax=ax)
 resolution_features = 0.14
 s = 50
 
-panel, ax = fig.main.add_under(chd.grid.Panel((width, len(features) * resolution_features)), padding=0.1)
+panel, ax = fig.main.add_under(polyptich.grid.Panel((width, len(features) * resolution_features)), padding=0.1)
 
 ax.set_ylim(-0.5, features["ix"].max() + 0.5)
 ax.set_yticks(features["ix"])
@@ -1728,9 +1728,9 @@ plotdata_individual = plotdata_individual.loc[design_oi.index]
 plotdata_individual_rel = plotdata_individual / plotdata_individual.max(0)
 
 # %%
-fig = chd.grid.Figure(chd.grid.Grid(padding_width=0.9))
+fig = polyptich.grid.Figure(polyptich.grid.Grid(padding_width=0.9))
 
-panel, ax = fig.main.add_right(chd.grid.Panel((2, 2)))
+panel, ax = fig.main.add_right(polyptich.grid.Panel((2, 2)))
 for gene, plotdata_individual_gene in plotdata_individual.loc[:, plotdata_individual.max(0) < 0.7].T.iterrows():
     ax.plot(design_oi["lr"], plotdata_individual_gene, color = "#33333311")
 ax.plot(design_oi["lr"], plotdata["r2"], lw = 2, marker = "o", color = "#0074D9")
@@ -1743,7 +1743,7 @@ sns.despine(ax = ax)
 ax.set_xlim(design_oi["lr"].min()*0.9, design_oi["lr"].max()*1.1)
 ax.set_ylim(0, 0.7)
 
-panel, ax = fig.main.add_right(chd.grid.Panel((2, 2)))
+panel, ax = fig.main.add_right(polyptich.grid.Panel((2, 2)))
 for gene, plotdata_individual_gene in plotdata_individual_rel.T.iterrows():
     ax.plot(design_oi["lr"], plotdata_individual_gene, color = "#33333311")
 ax.plot(design_oi["lr"], plotdata_individual_rel.mean(1), lw = 2, marker = "o", color = "#0074D9")
@@ -1831,12 +1831,12 @@ from rpy2.robjects import pandas2ri
 genes_oi = []
 
 # %%
-fig = chd.grid.Figure(chd.grid.Grid())
+fig = polyptich.grid.Figure(polyptich.grid.Grid())
 
 resolution = 0.35
 width = plotdata.shape[0] * resolution
 
-panel, ax = fig.main.add_under(chd.grid.Panel((width, 2)))
+panel, ax = fig.main.add_under(polyptich.grid.Panel((width, 2)))
 
 color = "#333"
 
@@ -1890,7 +1890,7 @@ sns.despine(ax=ax)
 resolution_features = 0.14
 s = 50
 
-panel, ax = fig.main.add_under(chd.grid.Panel((width, len(features) * resolution_features)), padding=0.1)
+panel, ax = fig.main.add_under(polyptich.grid.Panel((width, len(features) * resolution_features)), padding=0.1)
 
 ax.set_ylim(-0.5, features["ix"].max() + 0.5)
 ax.set_yticks(features["ix"])
@@ -2015,12 +2015,12 @@ features
 design_oi[features.index] = design_oi[features.index].fillna(False)
 
 # %%
-fig = chd.grid.Figure(chd.grid.Grid())
+fig = polyptich.grid.Figure(polyptich.grid.Grid())
 
 resolution = 0.35
 width = plotdata.shape[0] * resolution
 
-panel, ax = fig.main.add_under(chd.grid.Panel((width, 2)))
+panel, ax = fig.main.add_under(polyptich.grid.Panel((width, 2)))
 
 color = "#333"
 
@@ -2060,7 +2060,7 @@ sns.despine(ax=ax)
 resolution_features = 0.14
 s = 50
 
-panel, ax = fig.main.add_under(chd.grid.Panel((width, len(features) * resolution_features)), padding=0.1)
+panel, ax = fig.main.add_under(polyptich.grid.Panel((width, len(features) * resolution_features)), padding=0.1)
 
 ax.set_ylim(-0.5, features["ix"].max() + 0.5)
 ax.set_yticks(features["ix"])

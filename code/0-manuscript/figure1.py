@@ -48,7 +48,7 @@ from manuscript import Manuscript
 manuscript = Manuscript(chd.get_git_root() / "manuscript")
 
 # %%
-fig = chd.grid.Figure(chd.grid.Grid())
+fig = polyptich.grid.Figure(polyptich.grid.Grid())
 
 import chromatinhd.differential.plot
 
@@ -92,7 +92,7 @@ fig.plot()
 
 manuscript.save_figure(fig, "1", "differential_simple", dpi=300)
 # %%
-fig = chd.grid.Figure(chd.grid.Grid())
+fig = polyptich.grid.Figure(polyptich.grid.Grid())
 
 import chromatinhd.differential.plot
 
@@ -140,7 +140,7 @@ fig.plot()
 manuscript.save_figure(fig, "1", "differential_assymetric", dpi=300)
 
 # %%
-fig = chd.grid.Figure(chd.grid.Grid())
+fig = polyptich.grid.Figure(polyptich.grid.Grid())
 
 import chromatinhd.differential.plot
 
@@ -189,7 +189,7 @@ fig.plot()
 manuscript.save_figure(fig, "1", "differential_multires", dpi=300)
 
 # %%
-fig = chd.grid.Figure(chd.grid.Grid())
+fig = polyptich.grid.Figure(polyptich.grid.Grid())
 
 import chromatinhd.differential.plot
 
@@ -241,7 +241,7 @@ manuscript.save_figure(fig, "1", "differential_differentially", dpi=300)
 # %% [markdown]
 # # Figure 3
 # %%
-fig = chd.grid.Figure(chd.grid.Grid())
+fig = polyptich.grid.Figure(polyptich.grid.Grid())
 
 import chromatinhd.differential.plot
 

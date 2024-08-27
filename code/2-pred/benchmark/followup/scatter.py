@@ -171,7 +171,7 @@ region = fragments.regions.coordinates.loc[gene_oi]
 symbol_oi = transcriptome.var.loc[gene_oi, "symbol"]
 
 # %%
-fig = chd.grid.Figure(chd.grid.Grid(padding_height = 0))
+fig = polyptich.grid.Figure(polyptich.grid.Grid(padding_height = 0))
 
 binwidth = (regionmultiwindow.design["window_end"] - regionmultiwindow.design["window_start"]).iloc[0]
 

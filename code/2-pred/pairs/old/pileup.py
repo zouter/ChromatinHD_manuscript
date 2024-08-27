@@ -400,31 +400,31 @@ spots_lr[np.isinf(spots_lr)] = 0
 sns.heatmap(spots_lr)
 
 # %%
-fig = chd.grid.Figure(chd.grid.Grid())
+fig = polyptich.grid.Figure(polyptich.grid.Grid())
 
 vmax = np.nanquantile(spots_lr, 1.)
 norm = mpl.colors.Normalize(-vmax, vmax)
 norm = mpl.colors.LogNorm(np.exp(-vmax), np.exp(vmax))
 cmap = mpl.cm.get_cmap("RdBu_r")
 
-panel, ax = fig.main.add_right(chd.grid.Panel((1.4, 1.4)))
+panel, ax = fig.main.add_right(polyptich.grid.Panel((1.4, 1.4)))
 ax.matshow(np.exp(spots_lr), cmap=cmap, norm=norm)
 center_bullseye(ax, pad = pad, focus=5)
 
 if matcher_name in ["EE20kb-25kb", "EE10kb-15kb", "EE30kb-35kb"] and cool_name == "rao_2014_1kb":
-    panel, ax = fig.main.add_right(chd.grid.Panel((1.4, 1.4)))
+    panel, ax = fig.main.add_right(polyptich.grid.Panel((1.4, 1.4)))
     ax.matshow(np.exp(spots_lr), cmap=cmap, norm=norm)
     center_bullseye(ax, pad = pad, focus=20)
 
 if matcher_name in ["EE10kb-15kb", "EE30kb-35kb"] or (cool_name != "rao_2014_1kb"):
     ax.set_title(matcher_name)
 
-panel, ax = fig.main.add_right(chd.grid.Panel((1.4, 1.4)))
+panel, ax = fig.main.add_right(polyptich.grid.Panel((1.4, 1.4)))
 ax.matshow(np.exp(spots_lr), cmap=cmap, norm=norm)
 center_bullseye(ax, pad = pad, center_square = False, center_rect = False, center_line = True, focus = 50)
 
 if matcher_name in ["EE20kb-25kb"]:
-    panel, ax = fig.main.add_right(chd.grid.Panel((0.1, 1.4)), padding = 0.1)
+    panel, ax = fig.main.add_right(polyptich.grid.Panel((0.1, 1.4)), padding = 0.1)
     cax = plt.colorbar(mpl.cm.ScalarMappable(norm, cmap), cax = ax, format = "%.2f")
     cax.minorformatter = mpl.ticker.FormatStrFormatter('%.2f')
     cax.set_label("contact frequency ratio \n(co-predictive vs random)", rotation = 90, ha = "center", va = "top")
@@ -443,7 +443,7 @@ spot_ixs = spot_scores.groupby("gene").first().sort_values("cor", ascending = Fa
 
 # spot_lr = spots[spot_ix]
 
-fig = chd.grid.Figure(chd.grid.Wrap(10, padding_width = 0.15, padding_height = 0.))
+fig = polyptich.grid.Figure(polyptich.grid.Wrap(10, padding_width = 0.15, padding_height = 0.))
 
 for spot_ix in spot_ixs:
     spot_lr = np.log(spots[spot_ix] / randomspots_mean)
@@ -454,7 +454,7 @@ for spot_ix in spot_ixs:
     norm = mpl.colors.LogNorm(np.exp(-vmax), np.exp(vmax))
     cmap = mpl.cm.get_cmap("RdBu_r")
 
-    panel, ax = fig.main.add(chd.grid.Panel((0.8, 0.8)))
+    panel, ax = fig.main.add(polyptich.grid.Panel((0.8, 0.8)))
     ax.matshow(np.exp(spot_lr), cmap=cmap, norm=norm)
     center_bullseye(ax, pad = pad, focus=5)
     ax.set_xticks([])
@@ -514,14 +514,14 @@ spots_ix_down = spot_scores.loc[spot_scores["gene"].isin(genes_down)]["spot_ix"]
 spots_lr_down = np.log(np.nanmean(spots[spots_ix_down], 0) / np.nanmean(randomspots[spots_ix_down], 0))
 
 # %%
-fig = chd.grid.Figure(chd.grid.Grid())
+fig = polyptich.grid.Figure(polyptich.grid.Grid())
 
-panel, ax = fig.main.add_right(chd.grid.Panel((1.4, 1.4)))
+panel, ax = fig.main.add_right(polyptich.grid.Panel((1.4, 1.4)))
 mappable = ax.matshow(spots_lr_up - spots_lr_down, vmin = -0.05, vmax = 0.05, cmap = "PiYG")
 center_bullseye(ax, pad = pad, focus=20)
 
 if matcher_name == "EE20kb-25kb":
-    panel, ax = fig.main.add_right(chd.grid.Panel((0.1, 1.4)), padding = 0.1)
+    panel, ax = fig.main.add_right(polyptich.grid.Panel((0.1, 1.4)), padding = 0.1)
     cax = plt.colorbar(mappable, cax = ax, format = "%.2f")
     cax.minorformatter = mpl.ticker.FormatStrFormatter('%.2f')
     cax.set_label("$\Delta$ log contact frequency\n(up vs down genes in B-cells)", rotation = 90, ha = "center", va = "top")
@@ -549,14 +549,14 @@ spots_ix_down = spot_scores.loc[spot_scores["cor"] < cutoff]["spot_ix"].values
 spots_lr_down = np.log(np.nanmean(spots[spots_ix_down], 0) / np.nanmean(randomspots[spots_ix_down], 0))
 
 # %%
-fig = chd.grid.Figure(chd.grid.Grid())
+fig = polyptich.grid.Figure(polyptich.grid.Grid())
 
-panel, ax = fig.main.add_right(chd.grid.Panel((1.4, 1.4)))
+panel, ax = fig.main.add_right(polyptich.grid.Panel((1.4, 1.4)))
 mappable = ax.matshow(spots_lr_up - spots_lr_down, vmin = -0.05, vmax = 0.05, cmap = "PiYG")
 center_bullseye(ax, pad = pad, focus=20)
 
 if matcher_name == "EE20kb-25kb":
-    panel, ax = fig.main.add_right(chd.grid.Panel((0.1, 1.4)), padding = 0.1)
+    panel, ax = fig.main.add_right(polyptich.grid.Panel((0.1, 1.4)), padding = 0.1)
     cax = plt.colorbar(mappable, cax = ax, format = "%.2f")
     cax.minorformatter = mpl.ticker.FormatStrFormatter('%.2f')
     cax.set_label("$\Delta$ log contact frequency\n(up vs down genes in B-cells)", rotation = 90, ha = "center", va = "top")

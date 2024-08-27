@@ -29,8 +29,6 @@ import seaborn as sns
 
 sns.set_style("ticks")
 
-import torch
-
 import pickle
 
 import scanpy as sc
@@ -38,15 +36,17 @@ import scanpy as sc
 import tqdm.auto as tqdm
 import io
 
-# %%
 import chromatinhd as chd
+
+import magic
+import eyck
+import scipy.sparse
 
 # %%
 folder_root = chd.get_output()
 folder_data = folder_root / "data"
 
 dataset_name = "liver"
-main_url = "https://cf.10xgenomics.com/samples/cell-arc/2.0.0/pbmc_granulocyte_sorted_10k/pbmc_granulocyte_sorted_10k"
 genome = "mm10"
 organism = "mm"
 
@@ -59,24 +59,36 @@ folder_dataset = chd.get_output() / "datasets" / dataset_name
 # ## Download
 
 # %%
-# ! wget https://ftp.ncbi.nlm.nih.gov/geo/series/GSE218nnn/GSE218468/suppl/GSE218468_TEW_043783_523d9c_Multiome_Liver_10xprotocol_fragments.tsv.gz -O {folder_data_preproc}/atac_fragments.tsv.gz.raw
+print(f"wget https://ftp.ncbi.nlm.nih.gov/geo/series/GSE218nnn/GSE218468/suppl/GSE218468_TEW_043783_523d9c_Multiome_Liver_10xprotocol_fragments.tsv.gz -O {folder_data_preproc}/atac_fragments.tsv.gz.raw")
+
+# %% [markdown]
+# The original data is not block compressed, so we need to recompress the data using tabix.
 
 # %%
 # # !zcat {folder_data_preproc}/atac_fragments.tsv.gz > {folder_data_preproc}/atac_fragments.tsv
-
-if not (folder_data_preproc/"atac_fragments.tsv.gz").exists():
-    import pysam
-    pysam.tabix_compress(str(folder_data_preproc/"atac_fragments.tsv.gz.raw"), str(folder_data_preproc/"atac_fragments.tsv.gz"), force=True)
-    pysam.tabix_index(str(folder_data_preproc/"atac_fragments.tsv.gz"), seq_col = 0, start_col = 1, end_col = 2)
+print(f"zcat {folder_data_preproc}/atac_fragments.tsv.gz.raw > {folder_data_preproc}/atac_fragments.tsv")
 
 # %%
-# !wget https://ftp.ncbi.nlm.nih.gov/geo/series/GSE218nnn/GSE218468/suppl/GSE218468_multiome_rna_counts.tsv.gz -O {folder_data_preproc}/rna_counts.tsv.gz
+if not (folder_data_preproc/"atac_fragments.tsv.gz").exists():
+    import pysam
+    pysam.tabix_compress(str(folder_data_preproc/"atac_fragments.tsv"), str(folder_data_preproc/"atac_fragments.tsv.gz"), force=True)
+    pysam.tabix_index(str(folder_data_preproc/"atac_fragments.tsv.gz"), seq_col = 0, start_col = 1, end_col = 2)
+    
+# %%
+if (folder_data_preproc/"atac_fragments.tsv").exists():
+    (folder_data_preproc/"atac_fragments.tsv").unlink()
+if (folder_data_preproc/"atac_fragments.tsv.gz.raw").exists():
+    (folder_data_preproc/"atac_fragments.tsv.gz.raw").unlink()
+
+
+# %%
+print(f"wget https://ftp.ncbi.nlm.nih.gov/geo/series/GSE218nnn/GSE218468/suppl/GSE218468_multiome_rna_counts.tsv.gz -O {folder_data_preproc}/rna_counts.tsv.gz")
 
 # %% [markdown]
 # ## Create transcriptome
 
 # %%
-transcriptome = chd.data.Transcriptome(folder_dataset / "transcriptome")
+transcriptome = eyck.modalities.Transcriptome(folder_dataset / "transcriptome")
 
 # %%
 counts = pd.read_table(folder_data_preproc / "rna_counts.tsv.gz", index_col=0, sep = "\t").T
@@ -84,7 +96,7 @@ counts = pd.read_table(folder_data_preproc / "rna_counts.tsv.gz", index_col=0, s
 # %%
 obs = pd.DataFrame({"cell":counts.index}).set_index("cell")
 var = pd.DataFrame({"symbol":counts.columns})
-mapping = chd.biomart.map_symbols(chd.biomart.Dataset.from_genome(genome), adata.var.index).groupby("external_gene_name").first().reindex(var["symbol"])
+mapping = chd.biomart.map_symbols(chd.biomart.Dataset.from_genome(genome), var["symbol"]).groupby("external_gene_name").first().reindex(var["symbol"])
 mapping["ix"] = np.arange(len(mapping))
 mapping = mapping.dropna()
 var = var.loc[var["symbol"].isin(mapping.index)]
@@ -92,7 +104,6 @@ var.index = pd.Series(mapping["ensembl_gene_id"], name = "gene")
 counts = counts.loc[:,var["symbol"]]
 
 # %%
-import scipy.sparse
 adata = sc.AnnData(scipy.sparse.csr_matrix(counts.values), obs = obs, var = var)
 
 # %%
@@ -104,12 +115,10 @@ pickle.dump(transcripts, (folder_data_preproc / 'transcripts.pkl').open("wb"))
 adata = adata[:, adata.var.index.isin(transcripts["ensembl_gene_id"])]
 
 # %%
-sc.external.pp.scrublet(adata)
+sc.pp.scrublet(adata)
 
 # %%
 adata.obs["doublet_score"].plot(kind="hist")
-
-# %%
 adata.obs["doublet"] = (adata.obs["doublet_score"] > 0.1).astype("category")
 
 print(adata.obs.shape[0])
@@ -124,7 +133,7 @@ adata.uns["size_factor"] = size_factor
 adata.raw = adata
 
 # %%
-sc.pp.normalize_total(adata, size_factor)
+sc.pp.normalize_total(adata, target_sum = size_factor)
 sc.pp.log1p(adata)
 sc.pp.pca(adata)
 sc.pp.highly_variable_genes(adata)
@@ -137,14 +146,11 @@ adata.layers["normalized"] = adata.X
 adata.layers["counts"] = adata.raw.X
 
 # %%
-import magic
-
 magic_operator = magic.MAGIC(knn=30, solver = "approximate")
 X_smoothened = magic_operator.fit_transform(adata.X)
 adata.layers["magic"] = X_smoothened
 
 # %%
-import pickle
 pickle.dump(adata, (folder_data_preproc / 'adata.pkl').open("wb"))
 
 # %% [markdown]
@@ -164,7 +170,7 @@ sc.tl.rank_genes_groups(adata, "leiden", method="wilcoxon", key_added  = "wilcox
 # %%
 diffexp = sc.get.rank_genes_groups_df(adata, group=None, key='wilcoxon').sort_values("scores", ascending = False).groupby("group").head(5)
 diffexp["symbol"] = diffexp["names"].apply(lambda x: adata.var.loc[x, "symbol"])
-diffexp.set_index("group").loc["10"]
+diffexp.set_index("group").loc["3"]
 
 # %%
 import io
@@ -177,7 +183,7 @@ marker_annotation = pd.read_table(
 0	Ptprb, Stab2	LSEC
 1	Clec4f	KC
 1	Rbms3	Stellate
-1	Pkhd1	Cholangiocyte
+1	Pkhd1, Egfr, Il1r1	Cholangiocyte
 1	Ptprc	Immune
 """
     )
@@ -198,7 +204,8 @@ adata.obs["celltype"] = adata.obs["celltype"] = adata.obs[
 ].astype(str)
 
 # %%
-sc.pl.umap(adata, color=["celltype", "leiden"], legend_loc="on data")
+eyck.modalities.transcriptome.plot_umap(adata, ["celltype", "Dll4", "Wnt2", "Wnt9b", "Glul", "Epcam", "Egfr", "Slc1a2", "Vwf", "Lyve1"]).display()
+# sc.pl.umap(adata, color=["celltype", "leiden"], legend_loc="on data")
 
 # %%
 pickle.dump(adata, (folder_data_preproc / 'adata_annotated.pkl').open("wb"))

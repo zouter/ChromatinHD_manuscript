@@ -386,7 +386,7 @@ regionmultiwindow.score(fragments, transcriptome, [model], [fold], censorer)
 regionmultiwindow.interpolate()
 
 # %%
-fig = chd.grid.Figure(chd.grid.Grid(padding_height = 0))
+fig = polyptich.grid.Figure(polyptich.grid.Grid(padding_height = 0))
 
 binwidth = (regionmultiwindow.design["window_end"] - regionmultiwindow.design["window_start"]).iloc[0]
 

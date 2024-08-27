@@ -848,11 +848,11 @@ peak_position_chosen = peakresult.position_chosen.reshape(
 )
 
 # %%
-import chromatinhd.grid
+import polyptich.grid
 
-main = chd.grid.Grid()
-wrap = main[0, 0] = chd.grid.Wrap(5, padding_width=0.1, padding_height=0.3)
-fig = chd.grid.Figure(main)
+main = polyptich.grid.Grid()
+wrap = main[0, 0] = polyptich.grid.Wrap(5, padding_width=0.1, padding_height=0.3)
+fig = polyptich.grid.Figure(main)
 
 padding_height = 0.001
 resolution = 0.0005
@@ -947,7 +947,7 @@ for slice_oi in slices_oi.to_dict(orient="records"):
 
     chd.models.diff.plot.LabelSlice(ax, gene_label, cluster_label, slice_oi, window)
 
-legend_panel = main[0, 1] = chd.grid.Panel((1, panel_height * 2))
+legend_panel = main[0, 1] = polyptich.grid.Panel((1, panel_height * 2))
 legend_panel.ax.axis("off")
 
 fig.plot()
@@ -996,10 +996,10 @@ promoters = pd.read_csv(
 peaks_folder = chd.get_output() / "peaks" / dataset_name
 
 # %%
-import chromatinhd.grid
+import polyptich.grid
 
-main = wrap = chd.grid.Wrap(5, padding_width=0.1, padding_height=0.3)
-fig = chd.grid.Figure(main)
+main = wrap = polyptich.grid.Wrap(5, padding_width=0.1, padding_height=0.3)
+fig = polyptich.grid.Figure(main)
 
 padding_height = 0.001
 resolution = 0.0005
@@ -1022,7 +1022,7 @@ for slice_ix, slice_oi in enumerate(slices_oi.to_dict(orient="records")):
 
     n += 1
 
-    grid = chd.grid.Grid(
+    grid = polyptich.grid.Grid(
         margin_height=0, margin_width=0, padding_height=0, padding_width=0
     )
     main.add(grid)
@@ -1679,11 +1679,11 @@ umap = umap.UMAP()
 X_umap = umap.fit_transform(X)
 
 # %%
-wrap = chd.grid.Wrap()
-fig = chd.grid.Figure(wrap)
+wrap = polyptich.grid.Wrap()
+fig = polyptich.grid.Figure(wrap)
 
 for feature in features:
-    ax = wrap.add(chd.grid.Ax((3, 3)))
+    ax = wrap.add(polyptich.grid.Ax((3, 3)))
     ax = ax.ax
     ax.scatter(X_pca[:, 0], X_pca[:, 1], c=slicetopologies[feature], s=1)
     ax.set_title(feature)
@@ -1710,10 +1710,10 @@ types_info = chd.slicetypes.types_info
 types_info["ix"] = np.arange(len(types_info))
 
 # %%
-import chromatinhd.grid
+import polyptich.grid
 
-main = chd.grid.Grid(len(types_info), 2, padding_width=0.1, padding_height=0.1)
-fig = chd.grid.Figure(main)
+main = polyptich.grid.Grid(len(types_info), 2, padding_width=0.1, padding_height=0.1)
+fig = polyptich.grid.Figure(main)
 
 padding_height = 0.001
 resolution = 0.0005
@@ -1724,7 +1724,7 @@ total_width_cutoff = 10
 
 for slicetype, slicetype_info in types_info.iterrows():
     slicetype_ix = slicetype_info["ix"]
-    ax_row_title = main[slicetype_ix, 0] = chd.grid.Ax((panel_height, panel_height))
+    ax_row_title = main[slicetype_ix, 0] = polyptich.grid.Ax((panel_height, panel_height))
     ax = ax_row_title.ax
     ax.axis("off")
     ax.text(
@@ -1736,7 +1736,7 @@ for slicetype, slicetype_info in types_info.iterrows():
     )
     chd.slicetypes.plot_type(ax, slicetype)
 
-    wrap = main[slicetype_ix, 1] = chd.grid.Wrap(padding_width=0.1, ncol=10)
+    wrap = main[slicetype_ix, 1] = polyptich.grid.Wrap(padding_width=0.1, ncol=10)
 
     width_so_far = 0
 
@@ -1881,10 +1881,10 @@ for slicetype, slicetype_info in types_info.iterrows():
 fig.plot()
 
 # %%
-wrap = chd.grid.WrapAutobreak(padding_width=0.1, max_width=5, padding_height=0.25)
+wrap = polyptich.grid.WrapAutobreak(padding_width=0.1, max_width=5, padding_height=0.25)
 
 main = wrap
-fig = chd.grid.Figure(main)
+fig = polyptich.grid.Figure(main)
 
 slicetype = "canyon"
 

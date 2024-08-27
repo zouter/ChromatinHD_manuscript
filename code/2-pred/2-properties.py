@@ -359,9 +359,9 @@ genescores_matched_loci = (
 gene_order = genescores_matched_loci.sum(1).sort_values(ascending=True).index[:5000]
 
 # %%
-fig = chd.grid.Figure(chd.grid.Grid())
+fig = polyptich.grid.Figure(polyptich.grid.Grid())
 
-panel, ax = fig.main.add_right(chd.grid.Panel((4, 2)))
+panel, ax = fig.main.add_right(polyptich.grid.Panel((4, 2)))
 inside_peaks = (
     genescores_matched_loci.iloc[:, 1].sum() / genescores_matched_loci.sum().sum()
 )
@@ -407,9 +407,9 @@ genescores_matched_loci = genescores_matched_loci / (genescores_matched_loci.val
 gene_order = (genescores_matched_loci.sum(1)[gene_order] + (genescores_matched_loci.loc[:, False])).sort_values(ascending=False).index[:5000]
 
 # %%
-fig = chd.grid.Figure(chd.grid.Grid())
+fig = polyptich.grid.Figure(polyptich.grid.Grid())
 
-panel, ax = fig.main.add_right(chd.grid.Panel((4, 2)))
+panel, ax = fig.main.add_right(polyptich.grid.Panel((4, 2)))
 inside_peaks = (
     genescores_matched_loci.iloc[:, 1].sum() / genescores_matched_loci.sum().sum()
 )

@@ -47,14 +47,14 @@ import chromatinhd as chd
 import tempfile
 
 # %%
-dataset_name = "pbmc10k"
+# dataset_name = "pbmc10k"
 # dataset_name = "pbmc10k_gran"
 # dataset_name = "pbmc20k"
 # dataset_name = "alzheimer"
 # dataset_name = "e18brain"
 # dataset_name = "hspc"
 # dataset_name = "lymphoma"
-# dataset_name = "liver"
+dataset_name = "liver"
 latent = "leiden_0.1"
 transcriptome = chd.data.Transcriptome(chd.get_output() / "datasets" / dataset_name / "transcriptome")
 if dataset_name == "pbmc10k/subsets/top250":
@@ -75,7 +75,7 @@ import scanpy as sc
 sc.pl.umap(transcriptome.adata, color = "celltype")
 
 # %%
-sc.pl.umap(transcriptome.adata, color = [transcriptome.gene_id("IRF1")], layer = "counts")
+sc.pl.umap(transcriptome.adata, color = [transcriptome.gene_id("Cdh5")], layer = "counts")
 
 # %%
 models = chd.models.diff.model.binary.Models(chd.get_output() / "diff"/dataset_name/regions_name/"5x1"/"v31")
@@ -647,14 +647,14 @@ clustering.var["n_cells"] = clustering.labels.value_counts()
 # ### Load
 
 # %%
-# # slices = regionpositional.calculate_slices(-2., step = 5)
-# # differential_slices = regionpositional.calculate_differential_slices(slices, fc_cutoff = 4.)
+# slices = regionpositional.calculate_slices(-2., step = 5)
+# differential_slices = regionpositional.calculate_differential_slices(slices, fc_cutoff = 4.)
 
 # slices = regionpositional.calculate_slices(-1., step = 5)
 # differential_slices = regionpositional.calculate_differential_slices(slices, fc_cutoff = 4.)
 
-# # slices = regionpositional.calculate_slices(0., step = 5)
-# # differential_slices = regionpositional.calculate_differential_slices(slices, fc_cutoff = 4.)
+# slices = regionpositional.calculate_slices(0., step = 5)
+# differential_slices = regionpositional.calculate_differential_slices(slices, fc_cutoff = 4.)
 
 # scoring_folder = regionpositional.path / "differential" / "-1-1.5"
 # differential_slices = pickle.load(open(scoring_folder / "differential_slices.pkl", "rb"))

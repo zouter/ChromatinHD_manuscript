@@ -58,7 +58,8 @@ folder_root = chd.get_output()
 folder_data = folder_root / "data"
 
 # dataset_name = "lymphoma"
-dataset_name = "pbmc10k"
+dataset_name = "liver"
+# dataset_name = "pbmc10k"
 # dataset_name = "liver"
 # dataset_name = "hspc"
 # dataset_name = "pbmc10k/subsets/mono_t_a"
@@ -97,7 +98,8 @@ celltype_expression.columns = transcriptome.var.index
 # scores.query("mine > 1").head(10)
 
 # %%
-gene_id = transcriptome.gene_id("IRF1")
+gene_id = transcriptome.gene_id("Gdf2")
+# gene_id = transcriptome.gene_id("IRF1")
 # gene_id = transcriptome.gene_id("KLF7")
 # gene_id = transcriptome.gene_id("Clec4f")
 # gene_id = transcriptome.gene_id("Glul")
@@ -153,12 +155,14 @@ obs = obs.set_index("ix")
 
 # %%
 window_oi = fragments.regions.window
+resolution = 2000
+
 # window_oi = [33250, 33400]
 # resolution = 100
-window_oi = [33000, 33150]
-resolution = 100
-window_oi = [52000, 54000]
-resolution = 250
+# window_oi = [33000, 33150]
+# resolution = 100
+# window_oi = [52000, 54000]
+# resolution = 250
 # window_oi = [32750, 34000]
 # resolution = 500
 # window_oi = [30000, 35000]

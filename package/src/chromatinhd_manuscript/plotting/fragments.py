@@ -7,11 +7,11 @@ import numpy as np
 import pandas as pd
 
 
-length_cmap = mpl.cm.get_cmap("viridis_r")
+length_cmap = mpl.colormaps["viridis_r"]
 length_norm = mpl.colors.Normalize(vmin=0, vmax=700)
 
 
-class Fragments(polyptich.grid.Ax):
+class Fragments(polyptich.grid.Panel):
     def __init__(
         self,
         coordinates,

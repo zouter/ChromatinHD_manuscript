@@ -191,7 +191,10 @@ code/*/*.txt
 code/*/*.png
 code/*/*.pdf
 code/*/*.gz
+code/*/*.bw
 code/*/*.xlsx
 code/1-preprocessing/glas_2019/motifs2/annotation.jsonl
 code/1-preprocessing/glas_2019/motifs2/pwms.tar.gz
 code/1-preprocessing/glas_2019/motifs2/thresholds.tar.gz
+
+results/

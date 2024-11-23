@@ -1683,7 +1683,7 @@ wrap = polyptich.grid.Wrap()
 fig = polyptich.grid.Figure(wrap)
 
 for feature in features:
-    ax = wrap.add(polyptich.grid.Ax((3, 3)))
+    ax = wrap.add(polyptich.grid.Panel((3, 3)))
     ax = ax.ax
     ax.scatter(X_pca[:, 0], X_pca[:, 1], c=slicetopologies[feature], s=1)
     ax.set_title(feature)
@@ -1724,7 +1724,7 @@ total_width_cutoff = 10
 
 for slicetype, slicetype_info in types_info.iterrows():
     slicetype_ix = slicetype_info["ix"]
-    ax_row_title = main[slicetype_ix, 0] = polyptich.grid.Ax((panel_height, panel_height))
+    ax_row_title = main[slicetype_ix, 0] = polyptich.grid.Panel((panel_height, panel_height))
     ax = ax_row_title.ax
     ax.axis("off")
     ax.text(

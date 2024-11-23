@@ -1,5 +1,5 @@
+# %%
 import chromatinhd as chd
-import chromatinhd_manuscript as chdm
 from IPython import get_ipython
 
 if get_ipython():
@@ -18,13 +18,18 @@ import pathlib
 import pickle
 
 import tqdm.auto as tqdm
-from chromatinhd_manuscript.designs_qtl import design
+# from chromatinhd_manuscript.designs_qtl import design
+design = pd.DataFrame([
+    ["lung", "100k100k", "hs/gwas", "gwas_asthma", "gwas_asthma", "GRCm39"]
+], columns=["dataset", "regions", "folder_qtl", "qtl_name", "motifscan", "genome"])
 
 # design = design.query("dataset == 'liver'")
 print(design)
 
 design = design.copy()
-design["force"] = False
+design["force"] = True
+
+# %%
 
 import chromatinhd.data.associations
 
@@ -59,12 +64,16 @@ for _, setting in design.iterrows():
             association["disease/trait"] = association["tissue"]
         else:
             association = qtl_mapped.join(snp_info, on="snp")
+            print(association["start"])
             association = association.loc[~pd.isnull(association["start"])]
             association["pos"] = association["start"].astype(int)
 
         # filter on only main snp if necessary
         if motifscan_name.endswith("main"):
+            print("filter")
             association = association.loc[association["snp_main"] == association["snp"]]
+
+        print(association.query("snp == 'rs9391997'"))
 
         # liftover if necessary
         if setting["genome"] == "mm10":
@@ -83,6 +92,31 @@ for _, setting in design.iterrows():
             association_new = []
             for _, row in tqdm.tqdm(association.iterrows(), total=len(association)):
                 converted = converter.convert_coordinate(row["chr"], row["pos"])
+                if len(converted) == 1:
+                    converted = converted[0]
+                    row["chr"] = converted[0]
+                    row["pos"] = converted[1]
+                    association_new.append(row)
+            association_new = pd.DataFrame(association_new)
+            association = association_new
+        elif setting["genome"] == "GRCm39":
+            import liftover
+
+            if "converter" not in globals():
+                chain_file = chd.get_output() / "data" / "hg38ToMm39.over.chain.gz"
+                if not chain_file.exists():
+                    import os
+
+                    os.system(
+                        f"wget http://hgdownload.soe.ucsc.edu/goldenPath/hg38/liftOver/hg38ToMm39.over.chain.gz -O {chain_file}"
+                    )
+                converter = liftover.ChainFile(str(chain_file), "hg38", "Mm39")
+            association_old = association
+            association_new = []
+            for _, row in tqdm.tqdm(association.iterrows(), total=len(association)):
+                converted = converter.convert_coordinate(row["chr"], row["pos"])
+                if row["snp"] in ['rs9391997', 'rs77315098', 'rs75763833']:
+                    print(converted)
                 if len(converted) == 1:
                     converted = converted[0]
                     row["chr"] = converted[0]
@@ -187,8 +221,12 @@ for _, setting in design.iterrows():
 
         motifscan.create_region_indptr(overwrite=True)
 
-        association["snp_main"] = association["snp"]
+        # association["snp_main"] = association["snp"]
         association["rsid"] = association["snp"]
         motifscan.association = association
 
         assert motifscan.scanned
+
+# %%
+association["snp_main"].value_counts()
+# %%

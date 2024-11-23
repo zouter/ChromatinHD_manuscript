@@ -251,13 +251,14 @@ regionpositional_bulk.clustering = clustering_bulk
 # %%
 slices = regionpositional.calculate_slices(-1.0, step=25)
 differential_slices = regionpositional.calculate_differential_slices(
-    slices, fc_cutoff=1.3
+    # slices, fc_cutoff=1.2, expand = 5
+    slices, fc_cutoff=1.3, expand = 0
 )
 
 # %%
 slices_bulk = regionpositional_bulk.calculate_slices(-1.5, step=25)
 differential_slices_bulk = regionpositional_bulk.calculate_differential_slices(
-    slices_bulk, fc_cutoff=1.3
+    slices_bulk, fc_cutoff=1.2
 )
 
 # slices = regionpositional_bulk.calculate_slices(-1.0, step=25)
@@ -334,6 +335,9 @@ motifs_selected = motifscan.motifs.loc[motifscan.motifs.quality.isin(["A", "B"])
 enrichment = enrichment.query("motif in @motifs_selected.index")
 
 # %%
+enrichment.loc[enrichment.index.get_level_values("motif").str.contains("HEY")]
+
+# %%
 genescores = pd.DataFrame(
     {"n_diff": slicescores.groupby("region_ix")["length"].sum().sort_values()}
 )
@@ -341,9 +345,14 @@ genescores.index = transcriptome.var["symbol"].iloc[genescores.index]
 genescores
 
 # %%
-enrichment.loc["LSEC_central"].query("q_value < 0.05").sort_values(
+enrichment.loc["LSEC_portal"].query("q_value < 0.05").sort_values(
     "odds", ascending=False
 ).head(30)
+
+# %%
+enrichment.query("motif == 'SUH.H12CORE.0.P.B'")
+enrichment.query("motif == 'HEY1.H12CORE.0.S.B'")
+
 
 # %%
 enrichment.xs("SRBP1.H12CORE.0.P.B", level = "motif")
@@ -360,9 +369,10 @@ motifs_oi = motifs_selected.loc[
         *motifs_selected.index[motifs_selected.index.str.contains("IRF")],
         *motifs_selected.index[motifs_selected.index.str.contains("SRBP1")],
         *motifs_selected.index[motifs_selected.index.str.contains("SUH")],
+        *motifs_selected.index[motifs_selected.index.str.contains("HEY")],
     ]
 ]
-enrichment.loc[(slice(None), motifs_oi.index), :]["log_odds"].unstack().T.sort_values(
+np.exp(enrichment.loc[(slice(None), motifs_oi.index), :]["log_odds"]).unstack().T.sort_values(
     "LSEC_central"
 ).style.bar(axis=0)
 
@@ -414,6 +424,9 @@ enrichment[diffexp_oi.columns] = diffexp_oi
 # %%
 enrichment.dropna().query("significant")
 
+# %%
+enrichment.query("symbol == 'Rbpj'")
+
 # %% [markdown]
 # ### Group
 # %%
@@ -459,7 +472,13 @@ enrichment_grouped.sort_values("odds", ascending=False)
 enrichment_grouped["color"] = sns.color_palette("tab10", len(enrichment_grouped))
 
 # %%
-enrichment_grouped.sort_values(["cluster", "odds"], ascending = False)
+enrichment_grouped = chd.models.diff.interpret.enrichment.group_enrichment(
+    enrichment, slicecounts, clustering, merge_cutoff=0.2
+)
+enrichment_grouped["color"] = sns.color_palette("tab10", len(enrichment_grouped))
+
+# %%
+enrichment_grouped.sort_values(["cluster", "odds"], ascending = False).style.bar("log_odds")
 
 # %%
 import eyck
@@ -543,8 +562,8 @@ design = pd.concat([
 ]).drop_duplicates()
 
 # %%
-for symbol, cluster_oi in design.values:
-# for symbol, cluster_oi in design.query("symbol == 'Dll4'").values:
+# for symbol, cluster_oi in design.values:
+for symbol, cluster_oi in design.query("symbol in ['Wnt2', 'Wnt9b']").values:
     gene_id = transcriptome.gene_id(symbol)
     relative_to = "LSEC_portal" if cluster_oi == "LSEC_central" else "LSEC_central"
     relative_to_bulk = "lsec-portal-sham" if cluster_oi == "LSEC_central" else "lsec-central-sham"
@@ -571,7 +590,7 @@ for symbol, cluster_oi in design.values:
     fig = polyptich.grid.Figure(polyptich.grid.Grid(padding_height=0.05, padding_width=0.05))
 
     region = fragments.regions.coordinates.loc[gene_id]
-    panel_genes = chd.plot.genome.genes.GenesBroken.from_region(
+    panel_genes = chd.plot.genome.genes.GenesExpanding.from_region(
         region, breaking=breaking, genome="mm10" if "liver" in dataset_name else "GRCh38"
     )
     fig.main.add_under(panel_genes)
@@ -631,6 +650,12 @@ for symbol, cluster_oi in design.values:
     motifs_oi["label"] = motifscan.motifs.loc[motifs_oi.index, "HUMAN_gene_symbol"]
     motifs_oi = motifs_oi.loc[motifs_oi.index.isin(enrichment_gene.index[enrichment_gene > 1])]
     group_info = pd.DataFrame({"group":motifs_oi["group"].unique()}).set_index("group")
+
+    motifs_oi = motifscan.motifs.query("MOUSE_gene_symbol in ['Hif1a', 'Tcf7l2', 'Irf8', 'Rbpj', 'Rfx5']").copy()
+    motifs_oi["group"] = motifs_oi["MOUSE_gene_symbol"]
+    group_info = pd.DataFrame({"group":motifs_oi["group"].unique()}).set_index("group")
+    group_info["color"] = sns.color_palette("tab10", len(group_info))
+
     # group_info["color"] = 
     # motifs_oi["color"] = motifs_oi["group"].map(group_info["color"])
     # group_info["label"] = motifs_oi.loc[group_info.index, "label"] + ""
@@ -641,7 +666,7 @@ for symbol, cluster_oi in design.values:
         ).query("region == @gene_id"),
     )
 
-    panel_differential[0][0, 0].ax.set_ylabel(
+    panel_differential[0][0, 0].set_ylabel(
         f"{clustering.cluster_info.loc[cluster_oi, 'label']}\nvs\n{clustering.cluster_info.loc[relative_to, 'label']}",
         rotation = 0,
         ha = "right",

@@ -24,6 +24,7 @@ import numpy as np
 import pandas as pd
 
 import matplotlib.pyplot as plt
+
 import matplotlib as mpl
 
 import seaborn as sns
@@ -36,14 +37,13 @@ import tqdm.auto as tqdm
 
 import pathlib
 
-import polars as pl
-
 # %%
 import chromatinhd as chd
-import chromatinhd_manuscript as chdm
-from manuscript import Manuscript
 
-manuscript = Manuscript(chd.get_git_root() / "manuscript")
+# import chromatinhd_manuscript as chdm
+# from manuscript import Manuscript
+
+# manuscript = Manuscript(chd.get_git_root() / "manuscript")
 
 # %%
 folder_qtl = chd.get_output() / "data" / "qtl" / "hs" / "gwas"
@@ -69,7 +69,7 @@ import requests
 
 # %%
 # # !pip install owlready2
-if not (folder_qtl / "efo.owl").exists():
+# if not (folder_qtl / "efo.owl").exists():
     # !wget http://www.ebi.ac.uk/efo/efo.owl -O {folder_qtl}/efo.owl
 
 # %%
@@ -113,22 +113,25 @@ diseases = qtl.groupby("disease/trait").size().sort_values(ascending=False)
 # %%
 trait_counts = qtl["disease/trait"].value_counts()
 
+#%%
+trait_counts.loc[trait_counts.index.str.contains("asthma", flags = re.IGNORECASE)].head(20)
+
 # %%
 import re
-traits_oi = pd.DataFrame([
-    *trait_counts.loc[trait_counts.index.str.contains("brain", flags = re.IGNORECASE)][:20].index,
-    *trait_counts.loc[trait_counts.index.str.contains("neuroblastoma", flags = re.IGNORECASE)][:10].index,
-    *trait_counts.loc[trait_counts.index.str.contains("alzheimer", flags = re.IGNORECASE)][:10].index,
-    *trait_counts.loc[trait_counts.index.str.contains("microglia", flags = re.IGNORECASE)][:10].index,
-    *trait_counts.loc[trait_counts.index.str.contains("parkinson", flags = re.IGNORECASE)][:10].index,
-    *trait_counts.loc[trait_counts.index.str.contains("schizophrenia", flags = re.IGNORECASE)][:10].index,
-    *trait_counts.loc[trait_counts.index.str.contains("bipolar", flags = re.IGNORECASE)][:10].index,
-    *trait_counts.loc[trait_counts.index.str.contains("autism", flags = re.IGNORECASE)][:10].index,
-    *trait_counts.loc[trait_counts.index.str.contains("attention-deficit")][:10].index,
-    *trait_counts.loc[trait_counts.index.str.contains("sclerosis", flags = re.IGNORECASE)][:10].index,
-    *trait_counts.loc[trait_counts.index.str.contains("epilepsy", flags = re.IGNORECASE)][:10].index,
-    *trait_counts.loc[trait_counts.index.str.contains("migraine", flags = re.IGNORECASE)][:10].index,
-], columns = ["disease/trait"]).set_index("disease/trait"); motifscan_name = "gwas_cns"
+# traits_oi = pd.DataFrame([
+#     *trait_counts.loc[trait_counts.index.str.contains("brain", flags = re.IGNORECASE)][:20].index,
+#     *trait_counts.loc[trait_counts.index.str.contains("neuroblastoma", flags = re.IGNORECASE)][:10].index,
+#     *trait_counts.loc[trait_counts.index.str.contains("alzheimer", flags = re.IGNORECASE)][:10].index,
+#     *trait_counts.loc[trait_counts.index.str.contains("microglia", flags = re.IGNORECASE)][:10].index,
+#     *trait_counts.loc[trait_counts.index.str.contains("parkinson", flags = re.IGNORECASE)][:10].index,
+#     *trait_counts.loc[trait_counts.index.str.contains("schizophrenia", flags = re.IGNORECASE)][:10].index,
+#     *trait_counts.loc[trait_counts.index.str.contains("bipolar", flags = re.IGNORECASE)][:10].index,
+#     *trait_counts.loc[trait_counts.index.str.contains("autism", flags = re.IGNORECASE)][:10].index,
+#     *trait_counts.loc[trait_counts.index.str.contains("attention-deficit")][:10].index,
+#     *trait_counts.loc[trait_counts.index.str.contains("sclerosis", flags = re.IGNORECASE)][:10].index,
+#     *trait_counts.loc[trait_counts.index.str.contains("epilepsy", flags = re.IGNORECASE)][:10].index,
+#     *trait_counts.loc[trait_counts.index.str.contains("migraine", flags = re.IGNORECASE)][:10].index,
+# ], columns = ["disease/trait"]).set_index("disease/trait"); motifscan_name = "gwas_cns"
 
 # traits_oi = pd.DataFrame([[x] for x in [
 #     "Cholangiocarcinoma in primary sclerosing cholangitis",
@@ -211,10 +214,22 @@ traits_oi = pd.DataFrame([
 #     *trait_counts.loc[trait_counts.index.str.contains("red cell", flags = re.IGNORECASE)][:20].index,
 # ], columns = ["disease/trait"]).set_index("disease/trait"); motifscan_name = "gwas_hema"
 
+traits_oi = pd.DataFrame(
+    [
+        ["Asthma"],
+        ["Allergic disease (asthma, hay fever or eczema)"],
+        ["Asthma (childhood onset)"],
+        ["Atopic asthma"],
+        ["Asthma (adult onset)"],
+    ],
+    columns=["disease/trait"],
+).set_index("disease/trait")
+motifscan_name = "gwas_asthma"
+
 # %%
 traits_oi.to_csv(folder_qtl / f"traits_{motifscan_name}.tsv", sep="\t", index=True) # store for other databases where we want to reuse the same traits, e.g. causaldb
 traits_oi = traits_oi.loc[~traits_oi.index.duplicated()]
-manuscript.store_supplementary_table(traits_oi.reset_index(), f"traits_{motifscan_name}")
+# manuscript.store_supplementary_table(traits_oi.reset_index(), f"traits_{motifscan_name}")
 
 # %%
 qtl = qtl.loc[qtl["disease/trait"].isin(traits_oi.index)]

@@ -394,7 +394,7 @@ nbins = np.array(model.mixture.transform.nbins)
 bincuts = np.concatenate([[0], np.cumsum(nbins)])
 binmids = bincuts[:-1] + nbins/2
 
-ax = main[0, 0] = polyptich.grid.Ax((10, 0.25))
+ax = main[0, 0] = polyptich.grid.Panel((10, 0.25))
 ax = ax.ax
 plotdata = (model.mixture.transform.unnormalized_heights.data.cpu().numpy())[[gene_oi]]
 ax.imshow(plotdata, aspect = "auto")
@@ -405,7 +405,7 @@ ax.set_xlim(0-0.5, plotdata.shape[1]-0.5)
 ax.set_xticks([])
 ax.set_ylabel("$h_0$", rotation = 0, ha = "right", va = "center")
 
-ax = main[1, 0] = polyptich.grid.Ax(dim = (10, n_latent_dimensions * 0.25))
+ax = main[1, 0] = polyptich.grid.Panel(dim = (10, n_latent_dimensions * 0.25))
 ax = ax.ax
 plotdata = (model.decoder.logit_weight.data[gene_oi].data.cpu().numpy())
 ax.imshow(plotdata, aspect = "auto", cmap = mpl.cm.RdBu_r, vmax = np.log(2), vmin = np.log(1/2))
@@ -1067,7 +1067,7 @@ main = polyptich.grid.Wrap()
 fig = polyptich.grid.Figure(main)
 
 for cluster in cluster_info.index:
-    ax_ = main.add(polyptich.grid.Ax((2, 2)))
+    ax_ = main.add(polyptich.grid.Panel((2, 2)))
     
     ax_.ax.set_title(cluster)
     

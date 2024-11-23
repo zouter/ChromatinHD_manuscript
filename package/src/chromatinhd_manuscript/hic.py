@@ -1,5 +1,4 @@
 import chromatinhd as chd
-import cooler
 import numpy as np
 import pandas as pd
 import itertools

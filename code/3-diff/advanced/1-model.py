@@ -295,19 +295,19 @@ height = len(scores)*0.2
 
 plotdata = scores.copy().loc[model_info.index]
 
-panel, ax = fig.main.add(polyptich.grid.Ax((1, height)))
+panel, ax = fig.main.add(polyptich.grid.Panel((1, height)))
 ax.barh(plotdata.index, plotdata["lr_test"])
 ax.axvline(0, color="black", linestyle="--", lw = 1)
 ax.set_title("Test")
 ax.set_xlabel("Log-likehood ratio")
 
-panel, ax = fig.main.add(polyptich.grid.Ax((1, height)))
+panel, ax = fig.main.add(polyptich.grid.Panel((1, height)))
 ax.set_yticks([])
 ax.barh(plotdata.index, plotdata["lr_validation"])
 ax.axvline(0, color="black", linestyle="--", lw = 1)
 ax.set_title("Validation")
 
-panel, ax = fig.main.add(polyptich.grid.Ax((1, height)))
+panel, ax = fig.main.add(polyptich.grid.Panel((1, height)))
 ax.set_yticks([])
 ax.barh(plotdata.index, plotdata["lr_train"])
 ax.axvline(0, color="black", linestyle="--", lw = 1)

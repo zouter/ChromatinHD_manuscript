@@ -514,8 +514,6 @@ plotdata = regionpairwindow.interaction[gene_oi].mean("fold")
 
 # %%
 import chromatinhd.data.associations
-
-# %%
 associations = chd.data.associations.Associations(
     chd.get_output() / "datasets" / dataset_name / "motifscans" / "100k100k" / "gwas_immune_main"
     # chd.get_output() / "datasets" / dataset_name / "motifscans" / "100k100k" / "gwas_immune"

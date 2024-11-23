@@ -185,17 +185,17 @@ motifs.to_csv(motifs_folder2 / "motifs.tsv", sep = "\t")
 # ## Full genome hocomoco
 
 # %%
-genome = "GRCh38"
-organism = "hs"
+# genome = "GRCh38"
+# organism = "hs"
 
 genome = "mm10"
 organism = "mm"
 
-genome = "GRCm39"
-organism = "mm"
+# genome = "GRCm39"
+# organism = "mm"
 
 # %%
-genome_folder = chd.get_output() / "genomes" / genome
+genome_folder = pathlib.Path(f"/srv/data/genomes/{genome}")
 
 # %%
 fasta_file = f"/srv/data/genomes/{genome}/{genome}.fa"
@@ -219,7 +219,7 @@ pwms, motifs = chd.data.motifscan.download.get_hocomoco(motifs_folder, organism 
 # %%
 motifscan_name = "hocomocov12_1e-4";cutoff_col="cutoff_0.0001"
 # motifscan_name = "hocomocov12_5e-4";cutoff_col="cutoff_0.0005"
-# motifscan_name = "hocomocov12_5";cutoff_col="cutoff_5"
+motifscan_name = "hocomocov12_5";cutoff_col="cutoff_5"
 motifs["cutoff_5"] = 5
 motifscan = chd.data.Motifscan.from_pwms(
     pwms,

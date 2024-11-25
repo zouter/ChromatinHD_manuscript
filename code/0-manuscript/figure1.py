@@ -13,32 +13,11 @@
 # ---
 
 # %%
-import IPython
-
-if IPython.get_ipython():
-    IPython.get_ipython().magic("load_ext autoreload")
-    IPython.get_ipython().magic("autoreload 2")
-    IPython.get_ipython().magic("config InlineBackend.figure_format='retina'")
-
 import numpy as np
 import pandas as pd
 
-import matplotlib.pyplot as plt
-import matplotlib as mpl
-
-import seaborn as sns
-
-sns.set_style("ticks")
-
-import pickle
-
-import scanpy as sc
-
-import pathlib
-
-import torch
-
-import tqdm.auto as tqdmpbmc10k_eqtl
+import polyptich as pp
+pp.setup_ipython()
 
 # %%
 import chromatinhd as chd
@@ -48,7 +27,7 @@ from manuscript import Manuscript
 manuscript = Manuscript(chd.get_git_root() / "manuscript")
 
 # %%
-fig = polyptich.grid.Figure(polyptich.grid.Grid())
+fig = pp.grid.Figure(pp.grid.Grid())
 
 import chromatinhd.differential.plot
 
@@ -92,7 +71,7 @@ fig.plot()
 
 manuscript.save_figure(fig, "1", "differential_simple", dpi=300)
 # %%
-fig = polyptich.grid.Figure(polyptich.grid.Grid())
+fig = pp.grid.Figure(pp.grid.Grid())
 
 import chromatinhd.differential.plot
 
@@ -140,7 +119,7 @@ fig.plot()
 manuscript.save_figure(fig, "1", "differential_assymetric", dpi=300)
 
 # %%
-fig = polyptich.grid.Figure(polyptich.grid.Grid())
+fig = pp.grid.Figure(pp.grid.Grid())
 
 import chromatinhd.differential.plot
 
@@ -189,7 +168,7 @@ fig.plot()
 manuscript.save_figure(fig, "1", "differential_multires", dpi=300)
 
 # %%
-fig = polyptich.grid.Figure(polyptich.grid.Grid())
+fig = pp.grid.Figure(pp.grid.Grid())
 
 import chromatinhd.differential.plot
 
@@ -241,7 +220,7 @@ manuscript.save_figure(fig, "1", "differential_differentially", dpi=300)
 # %% [markdown]
 # # Figure 3
 # %%
-fig = polyptich.grid.Figure(polyptich.grid.Grid())
+fig = pp.grid.Figure(pp.grid.Grid())
 
 import chromatinhd.differential.plot
 

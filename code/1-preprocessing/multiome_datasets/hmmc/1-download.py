@@ -13,8 +13,8 @@
 # ---
 
 # %%
-# %load_ext autoreload
-# %autoreload 2
+import polyptich as pp
+pp.setup_ipython()
 import chromatinhd as chd
 import chromatinhd_manuscript as chdm
 import gimmedata

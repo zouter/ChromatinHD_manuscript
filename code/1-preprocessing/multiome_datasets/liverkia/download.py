@@ -13,11 +13,8 @@
 # ---
 
 # %%
-from IPython import get_ipython
-
-if get_ipython():
-    get_ipython().run_line_magic("load_ext", "autoreload")
-    get_ipython().run_line_magic("autoreload", "2")
+import polyptich as pp
+pp.setup_ipython()
 
 from matplotlib import legend
 import numpy as np

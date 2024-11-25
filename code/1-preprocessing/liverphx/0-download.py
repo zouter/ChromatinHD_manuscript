@@ -50,8 +50,8 @@
 # get ./LsecPvPh24h.fwp.filter.non_overlapping.bed
 
 # %%
-# %load_ext autoreload
-# %autoreload 2
+import polyptich as pp
+pp.setup_ipython()
 
 import numpy as np
 import pandas as pd

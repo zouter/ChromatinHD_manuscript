@@ -24,7 +24,6 @@ design = chd.utils.crossing(
             # ["hepatocytes", "mm"],
             # ["pbmc20k", "hs"],
             # ["alzheimer", "hs"],
-            ["liverkia_lsecs", "mm"],
         ],
         columns=["dataset", "organism"],
     ),
@@ -55,7 +54,6 @@ for _, row in design.iterrows():
     elif row["organism"] == "mm":
         genome_folder = chd.get_output() / "genomes" / "mm10"
     parent = chd.data.motifscan.Motifscan(genome_folder / "motifscans" / motifscan_name)
-    # parent = chd.flow.Flow.from_path(genome_folder / "motifscans" / motifscan_name)
 
     motifscan = chd.data.motifscan.MotifscanView(
         path=chd.get_output() / "datasets" / dataset_name / "motifscans" / regions_name / motifscan_name,

@@ -13,31 +13,15 @@
 # ---
 
 # %%
-from IPython import get_ipython
-
-if get_ipython():
-    get_ipython().run_line_magic("load_ext", "autoreload")
-    get_ipython().run_line_magic("autoreload", "2")
+import polyptich as pp
+pp.setup_ipython()
 
 import numpy as np
 import pandas as pd
 
-import matplotlib.pyplot as plt
-import matplotlib as mpl
-
-import seaborn as sns
-
-sns.set_style("ticks")
-# %config InlineBackend.figure_format='retina'
-
 import pickle
 
-import scanpy as sc
 import pathlib
-
-import math
-
-import tqdm.auto as tqdm
 
 device = "cuda:0"
 

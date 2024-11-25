@@ -17,8 +17,8 @@
 # cp /srv/data/liesbetm/Projects/u_mgu/JeanFrancois/epiPipeline/outputBowtie_filtered/* ./
 
 # %%
-# %load_ext autoreload
-# %autoreload 2
+import polyptich as pp
+pp.setup_ipython()
 
 import numpy as np
 import pandas as pd

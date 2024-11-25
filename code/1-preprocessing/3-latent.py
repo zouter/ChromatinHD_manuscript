@@ -16,8 +16,8 @@
 # # Infer latent cellular spaces
 
 # %%
-# %load_ext autoreload
-# %autoreload 2
+import polyptich as pp
+pp.setup_ipython()
 
 import numpy as np
 import pandas as pd
@@ -37,6 +37,7 @@ import scanpy as sc
 import tqdm.auto as tqdm
 
 import chromatinhd as chd
+
 
 # %%
 folder_root = chd.get_output()

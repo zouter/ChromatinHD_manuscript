@@ -21,9 +21,7 @@
 # %autoreload 2
 
 import os
-# os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"
 import torch
-# torch.use_deterministic_algorithms(True)
 
 import numpy as np
 import pandas as pd
@@ -32,16 +30,28 @@ import matplotlib as mpl
 
 import seaborn as sns
 
-sns.set_style("ticks")
-# %config InlineBackend.figure_format='retina'
-
-import pickle
-
-import scanpy as sc
-
-import pathlib
-
 import tqdm.auto as tqdm
+
+import polyptich as pp
+
+# %%
+from elabjournal import elabjournal
+
+# %%
+api = elabjournal.api(key="vib.elabjournal.com;b4d3038d935dd415f4f1cc327be56876")
+
+# %%
+from elabjournal import elabjournal
+api = elabjournal.api(key="API_KEY")
+study = api.study(id = 227030)
+experiment = api.experiment(id = 1305284)
+fig, ax = plt.subplots()
+ax.plot([1, 2, 3], [3, 2, 1])
+ax.set_xlabel("Hours adding stuff to ELN")
+ax.set_ylabel("Hours doing science")
+experiment.add(fig)
+
+# %%
 
 # %%
 import chromatinhd as chd

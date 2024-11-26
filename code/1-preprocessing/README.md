@@ -1,7 +1,7 @@
 # Preprocessing
 
-- [](./multiome_datasets) Preprocessing of all multiome datasets
-- [](./visualize_fragments) Visualization of the fragments for Supplementary Fig. 1
-- [](./qtl) Preprocessing of GWAS and eQTL data
-- [](./peaks) Peak calling and counting
-- [](./crispri) Downloading CRISPRi data
+- [Preprocessing of all multiome datasets](./multiome_datasets)
+- [Visualization of the fragments for Supplementary Fig. 1](./visualize_fragments)
+- [Preprocessing of GWAS and eQTL data](./qtl)
+- [Peak calling and counting](./peaks)
+- [Downloading CRISPRi data](./crispri)

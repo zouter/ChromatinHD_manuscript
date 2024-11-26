@@ -39,6 +39,7 @@ setuptools.setup(
         "chromatinhd",
         "jupyterlab",
         "jupytext",
+        "polyptich",
         # "manuscript",
     ],
     extras_require={

@@ -17,8 +17,8 @@
 # # Model promoters positionally
 
 # %%
-# %load_ext autoreload
-# %autoreload 2
+import polyptich as pp
+pp.setup_ipython()
 
 import os
 import torch

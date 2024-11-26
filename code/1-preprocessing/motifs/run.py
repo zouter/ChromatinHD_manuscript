@@ -1,6 +1,6 @@
 """
 Create all motifscan views for the different datasets
-Make sure to first run scanp.ipynb to create the motifscans for the whole genome
+Make sure to first run scanp.py to create the motifscans for the whole genome
 """
 
 import pandas as pd

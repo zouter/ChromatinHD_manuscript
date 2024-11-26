@@ -25,19 +25,11 @@ import matplotlib as mpl
 
 import seaborn as sns
 
-sns.set_style("ticks")
-
-import torch
-
-import tqdm.auto as tqdm
-
 # %%
 import chromatinhd as chd
-import chromatinhd_manuscript as chdm
 from manuscript import Manuscript
 
 manuscript = Manuscript(chd.get_git_root() / "manuscript")
-
 
 # %%
 folder_root = chd.get_output()

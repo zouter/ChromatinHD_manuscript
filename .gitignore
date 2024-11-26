@@ -2,6 +2,7 @@ data
 output
 software
 
+__old
 
 *.ipynb
 

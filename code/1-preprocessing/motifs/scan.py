@@ -274,12 +274,6 @@ motifs_folder.mkdir(parents=True, exist_ok=True)
 motifs = pd.read_table(motifs_folder / "motifs.tsv").set_index("motif")
 motifs["cutoff"] = 4.5
 pwms = pickle.load(open(motifs_folder / "pwms.pkl", "rb"))
-# pwms, motifs = chd.data.motifscan.download.get_hocomoco(motifs_folder, organism = organism)
-# motifs = motifs.iloc[:5]
-# pwms = {k: v for k, v in pwms.items() if k in motifs.index}
-
-# %%
-# # !ls -la {chd.data.Motifscan(genome_folder / "motifscans" / motifscan_name).path}
 
 # %%
 motifscan_name = "jaspar2024_4.5"

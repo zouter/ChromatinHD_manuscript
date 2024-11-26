@@ -19,24 +19,6 @@
 import polyptich as pp
 pp.setup_ipython()
 
-import numpy as np
-import pandas as pd
-
-import matplotlib.pyplot as plt
-import matplotlib as mpl
-
-import seaborn as sns
-sns.set_style('ticks')
-
-import torch
-
-import pickle
-
-import scanpy as sc
-
-import tqdm.auto as tqdm
-import io
-
 # %%
 import chromatinhd as chd
 

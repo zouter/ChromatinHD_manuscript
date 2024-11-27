@@ -104,18 +104,6 @@ for _, (dataset_name, latent, motifscan_name, organism) in design[["dataset", "l
     diffexp["significant_up"] = (diffexp["pvals_adj"] < 0.05) & (diffexp["scores"] > 10)
     diffexp["significant_down"] = (diffexp["pvals_adj"] < 0.05) & (diffexp["scores"] < -10)
 
-    # dataset_enrichment["significant_up"] = False
-    # diffexp["significant_up_single"] = False
-    # diffexp["significant_down_single"] = False
-    # diffexp.loc[
-    #     diffexp.query("significant_up").sort_values("scores").reset_index().groupby(["cluster"]).last().reset_index().set_index(["cluster", "gene"]).index, "significant_up_single"
-    # ] = True
-    # diffexp.loc[
-    #     diffexp.query("significant_up").sort_values("scores").reset_index().groupby(["cluster"]).first().reset_index().set_index(["cluster", "gene"]).index, "significant_down_single"
-    # ] = True
-    # diffexp["significant_up"] = diffexp["significant_up_single"]
-    # diffexp["significant_down"] = diffexp["significant_down_single"]
-
     diffexp["significant"] = diffexp["significant_up"] | diffexp["significant_down"]
     diffexp["score"] = diffexp["scores"]
 
@@ -326,7 +314,7 @@ for design_ix, enrichment in tqdm.tqdm(enrichments.items()):
     rawscores[design_ix] = score_diffexp_enrichment(enrichment, diffexp, motifs_oi)[0]
 rawscores = pd.concat(rawscores, names = ["design_ix"])
 
-###!
+# remove clusters with <50 nuclei in hspc dataset
 rawscores = rawscores.loc[rawscores.index.get_level_values("cluster") != "Plasma"]
 rawscores = rawscores.loc[(rawscores.index.get_level_values("cluster") != "NK")]
 rawscores = rawscores.loc[(rawscores.index.get_level_values("cluster") != "Unknown 1")]

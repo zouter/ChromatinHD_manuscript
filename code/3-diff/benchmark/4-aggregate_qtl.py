@@ -58,20 +58,12 @@ design = pd.concat([
 
 design = design.query("regions == '100k100k'")
 
-# design = design.loc[design["motifscan"].str.contains("gtex")]
-# design = design.loc[design["motifscan"].str.contains("gtex") & design["motifscan"].str.contains("differential")]
-# design = design.loc[design["motifscan"].str.contains("causaldb")]
-# design = design.loc[design["motifscan"].str.contains("main")]
-# design = design.loc[design["motifscan"].str.contains("gwas")]
-
 design["method"] = [f"{row.peakcaller}/{row.diffexp}" if not pd.isnull(row.peakcaller) else "chd" for _, row in design.iterrows()]
 
 design.shape
 
 # %%
-# design = design.query("dataset != 'e18brain'")
 design = design.query("dataset != 'pbmc20k'")
-# design = design.query("dataset != 'hspc'")
 
 # %%
 scores = {}

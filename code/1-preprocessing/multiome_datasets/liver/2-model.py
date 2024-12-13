@@ -15,6 +15,10 @@ import chromatinhd as chd
 import polyptich as pp
 
 import pysam
+import eyck
+
+chd.set_default_device("cpu")
+
 
 pp.setup_ipython()
 
@@ -36,7 +40,6 @@ clustering = chd.data.Clustering.from_labels(
 fragments = chd.data.Fragments(folder_dataset / "fragments" / "100k100k")
 
 # %%
-import eyck
 eyck.m.t.plot_umap(transcriptome, ["Ly6c2", "Clec4f", "Cdh5", "Spi1", "Zeb2", "Hdac9", "Mki67"], datashader = True).display()
 
 # %% [markdown]
@@ -46,7 +49,6 @@ eyck.m.t.plot_umap(transcriptome, ["Ly6c2", "Clec4f", "Cdh5", "Spi1", "Zeb2", "H
 model_folder = (
     chd.get_output() / "diff" / "liver" / "100k100k" / "cluster"
 )
-
 
 # %%
 import chromatinhd.models.diff.model.binary
@@ -67,7 +69,7 @@ models = chd.models.diff.model.binary.Models.create(
     ),
     train_params = dict(
         early_stopping=False,
-        n_epochs = 40,
+        n_epochs = 5, # <----- originally I used 40
     ),
     path=model_folder,
     reset = True,
@@ -75,6 +77,9 @@ models = chd.models.diff.model.binary.Models.create(
 
 # %%
 models.train_models()
+
+# %%
+models.models["0"].trace.plot()
 
 # %% [markdown]
 # ## Inference
@@ -85,7 +90,7 @@ models = chd.models.diff.model.binary.Models(model_folder)
 # %%
 regionpositional = chd.models.diff.interpret.RegionPositional(
     model_folder / "scoring" / "regionpositional",
-    # reset=True,
+    reset=True,
 )
 
 # %%
